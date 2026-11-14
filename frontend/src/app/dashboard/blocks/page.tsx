@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { isOwner, useMe } from '@/lib/me';
 import { Button, Card, Input } from '@/components/ui';
 import type { TeamMember, TimeBlock, TimeBlockList } from '@/lib/types';
 
@@ -54,6 +55,12 @@ function describe(block: TimeBlock, timeZone: string) {
 }
 
 export default function BlocksPage() {
+  const me = useMe();
+  // El profesional bloquea solo su horario (sin "Aplica a") y ve también los
+  // bloqueos de todo el negocio, pero solo puede eliminar los suyos
+  const owner = isOwner(me);
+  const canDelete = (b: TimeBlock) =>
+    owner || b.member?.id === me.membership.memberId;
   const [data, setData] = useState<TimeBlockList | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [memberId, setMemberId] = useState(''); // '' = todo el negocio
@@ -76,10 +83,11 @@ export default function BlocksPage() {
     api<TimeBlockList>('/time-blocks')
       .then(setData)
       .catch((e) => setError(e.message));
+    if (!owner) return;
     api<TeamMember[]>('/members')
       .then((list) => setMembers(list.filter((m) => m.active)))
       .catch(() => {});
-  }, []);
+  }, [owner]);
 
   function changeStart(value: string) {
     setStartDate(value);
@@ -101,7 +109,9 @@ export default function BlocksPage() {
             endDate,
             allDay,
             ...(!allDay && { startTime, endTime }),
-            ...(memberId && { memberId }),
+            ...(owner
+              ? memberId && { memberId }
+              : { memberId: me.membership.memberId }),
             ...(reason.trim() && { reason: reason.trim() }),
           }),
         },
@@ -138,30 +148,34 @@ export default function BlocksPage() {
     <div>
       <h1 className="text-xl font-semibold tracking-tight">Bloqueos</h1>
       <p className="mt-1 text-sm text-gray-600">
-        Cierra días u horas por vacaciones, feriados o trámites. En esos
-        períodos no se ofrecen horas en tu página pública.
+        Cierra días u horas por vacaciones, feriados o trámites.{' '}
+        {owner
+          ? 'En esos períodos no se ofrecen horas en tu página pública.'
+          : 'En esos períodos no se ofrecen horas contigo en la página del negocio.'}
       </p>
 
       <Card className="my-4">
         <form onSubmit={create} className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium text-gray-700">
-                Aplica a
-              </span>
-              <select
-                value={memberId}
-                onChange={(e) => setMemberId(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-              >
-                <option value="">Todo el negocio</option>
-                {members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.displayName}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {owner && (
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-gray-700">
+                  Aplica a
+                </span>
+                <select
+                  value={memberId}
+                  onChange={(e) => setMemberId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                >
+                  <option value="">Todo el negocio</option>
+                  {members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.displayName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="block text-sm">
               <span className="mb-1 block font-medium text-gray-700">
                 Motivo (opcional)
@@ -268,7 +282,7 @@ export default function BlocksPage() {
                   {b.reason && ` · ${b.reason}`}
                 </p>
               </div>
-              {confirmId === b.id ? (
+              {!canDelete(b) ? null : confirmId === b.id ? (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">¿Eliminar?</span>
                   <Button

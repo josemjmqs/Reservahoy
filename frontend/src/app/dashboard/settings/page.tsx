@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Button, Field, Input } from "@/components/ui";
 import { api } from "@/lib/api";
+import { isOwner, useMe } from "@/lib/me";
 import type { BusinessInfo, Settings } from "@/lib/types";
 
 // Nombre y teléfono del negocio: los ven los clientes en la página pública,
@@ -97,6 +98,7 @@ function BusinessSection() {
 }
 
 export default function SettingsPage() {
+  const owner = isOwner(useMe());
   const [settings, setSettings] = useState<Settings | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -131,7 +133,8 @@ export default function SettingsPage() {
     <div>
       <h1 className="text-xl font-semibold tracking-tight">Ajustes</h1>
 
-      <BusinessSection />
+      {/* Los datos del negocio son del dueño */}
+      {owner && <BusinessSection />}
 
       <h2 className="mb-2 mt-6 text-sm font-medium text-gray-900">
         Notificaciones
@@ -145,8 +148,9 @@ export default function SettingsPage() {
               </p>
               <p className="mt-0.5 text-sm text-gray-600">
                 Te escribimos a <strong>{settings.email}</strong> cada vez que
-                un cliente reserva desde tu página, con el servicio, la hora y
-                sus datos de contacto.
+                un cliente{" "}
+                {owner ? "reserva desde tu página" : "reserva contigo"}, con el
+                servicio, la hora y sus datos de contacto.
               </p>
             </div>
             <button

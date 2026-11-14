@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { loginAsDemo, loginAsStaff, STAFF } from "./helpers";
+import { AUTH_FILE, loginAsDemo, loginAsStaff, STAFF } from "./helpers";
 
 // El panel según el rol: el profesional demo (Diego, STAFF) ve solo lo que
 // puede hacer; el dueño sigue viendo todo
@@ -82,4 +82,61 @@ test("el dueño filtra la agenda por profesional y su horario lleva su nombre", 
   await expect(
     page.getByRole("button", { name: "Guardar horario" }),
   ).toBeVisible();
+});
+
+test("el profesional bloquea y borra solo lo suyo, y ve los bloqueos del negocio", async ({
+  page,
+  playwright,
+}, testInfo) => {
+  const run = Date.now().toString(36);
+  // Un bloqueo de todo el negocio, creado por el dueño
+  const owner = await playwright.request.newContext({
+    baseURL: testInfo.project.use.baseURL,
+    storageState: AUTH_FILE,
+  });
+  const res = await owner.post("/api/time-blocks", {
+    data: {
+      startDate: "2032-03-10",
+      endDate: "2032-03-10",
+      allDay: true,
+      reason: `E2E negocio ${run}`,
+    },
+  });
+  expect(res.status()).toBe(201);
+  const businessBlock = (await res.json()).id;
+
+  try {
+    await loginAsStaff(page);
+    await page.getByRole("link", { name: "Bloqueos" }).click();
+    await expect(page.getByText("no se ofrecen horas contigo")).toBeVisible();
+    await expect(page.getByText("Aplica a")).toHaveCount(0);
+
+    const rows = page.getByRole("listitem");
+    const shared = rows.filter({ hasText: `Todo el negocio · E2E negocio ${run}` });
+    await expect(shared).toBeVisible();
+    await expect(shared.getByRole("button", { name: "Eliminar" })).toHaveCount(0);
+
+    // Bloquea un día suyo: queda con su nombre y lo puede eliminar
+    await page.getByPlaceholder("Vacaciones, feriado, trámite...").fill(`E2E propio ${run}`);
+    await page.locator('input[type="date"]').first().fill("2032-03-11");
+    await page.getByRole("button", { name: "Bloquear" }).click();
+    const own = rows.filter({ hasText: `${STAFF.name} · E2E propio ${run}` });
+    await expect(own).toBeVisible();
+    await own.getByRole("button", { name: "Eliminar" }).click();
+    await own.getByRole("button", { name: "Sí, eliminar" }).click();
+    await expect(own).toHaveCount(0);
+  } finally {
+    await owner.delete(`/api/time-blocks/${businessBlock}`);
+    await owner.dispose();
+  }
+});
+
+test("en Ajustes el profesional ve solo su aviso, sin los datos del negocio", async ({
+  page,
+}) => {
+  await loginAsStaff(page);
+  await page.getByRole("link", { name: "Ajustes" }).click();
+  await expect(page.getByText("un cliente reserva contigo")).toBeVisible();
+  await expect(page.getByText("Datos del negocio")).toHaveCount(0);
+  await expect(page.getByLabel("Nombre del negocio")).toHaveCount(0);
 });
