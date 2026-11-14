@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -27,7 +28,8 @@ export const pendingInvitation = (now = new Date()) => ({
 });
 
 // Invitaciones por correo para que un profesional del equipo cree su cuenta.
-// Solo el dueño invita; el negocio sale siempre de su membresía
+// Solo el dueño invita; el negocio sale siempre de su membresía. Por ahora quien
+// acepta queda como dueño (OWNER), con los mismos permisos que quien lo invitó
 @Injectable()
 export class InvitationsService {
   constructor(
@@ -86,8 +88,8 @@ export class InvitationsService {
   }
 
   // Crea la cuenta del profesional, verificada (abrir el enlace prueba el
-  // correo), la enlaza a su membresía y devuelve el token de sesión. Todo en una
-  // transacción: dos clics a la vez crean una sola cuenta
+  // correo), la enlaza a su membresía como dueño y devuelve el token de sesión.
+  // Todo en una transacción: dos clics a la vez crean una sola cuenta
   async accept(token: string, name: string, password: string) {
     const hashed = await bcrypt.hash(password, 10);
     const user = await this.prisma
@@ -111,7 +113,7 @@ export class InvitationsService {
         // Solo si nadie más la tomó en el intertanto (si no, se deshace todo)
         const linked = await tx.member.updateMany({
           where: { id: inv.member.id, userId: null, active: true },
-          data: { userId: created.id },
+          data: { userId: created.id, role: 'OWNER' },
         });
         const used = await tx.memberInvitation.updateMany({
           where: { id: inv.id, usedAt: null, revokedAt: null },
@@ -149,6 +151,17 @@ export class InvitationsService {
   private async ownerAndMember(userId: string, memberId: string) {
     const m = await getMembership(this.prisma, userId);
     assertOwner(m);
+    // Quien acepta queda como dueño y verificado: si invitara un dueño sin
+    // verificar, el invitado habilitaría las reservas por él (acceptsBookings)
+    const inviter = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { emailVerifiedAt: true },
+    });
+    if (!inviter.emailVerifiedAt) {
+      throw new ForbiddenException(
+        'Verifica tu correo antes de invitar a tu equipo',
+      );
+    }
     const member = await this.prisma.member.findFirst({
       where: { id: memberId, businessId: m.businessId },
       select: {

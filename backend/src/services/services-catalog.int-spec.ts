@@ -39,7 +39,9 @@ let businessId: string;
 let otherBusinessId: string;
 let userId: string;
 let otherUserId: string;
+let coOwnerUserId: string;
 let ownerMemberId: string;
+let coOwnerMemberId: string;
 let staffMemberId: string;
 
 beforeAll(async () => {
@@ -52,8 +54,8 @@ beforeAll(async () => {
       ),
     )
   ).map((b) => b.id);
-  [userId, otherUserId] = await Promise.all(
-    ['a', 'b'].map(
+  [userId, otherUserId, coOwnerUserId] = await Promise.all(
+    ['a', 'b', 'c'].map(
       async (x) =>
         (
           await prisma.user.create({
@@ -69,6 +71,17 @@ beforeAll(async () => {
   ownerMemberId = (
     await prisma.member.create({
       data: { role: 'OWNER', displayName: 'Dueña', userId, businessId },
+    })
+  ).id;
+  // Un segundo dueño (como queda quien acepta una invitación)
+  coOwnerMemberId = (
+    await prisma.member.create({
+      data: {
+        role: 'OWNER',
+        displayName: 'Socia',
+        userId: coOwnerUserId,
+        businessId,
+      },
     })
   ).id;
   staffMemberId = (
@@ -99,7 +112,7 @@ afterAll(async () => {
   await prisma.service.deleteMany({ where: { businessId: { in: ids } } }); // borra MemberService en cascada
   await prisma.member.deleteMany({ where: { businessId: { in: ids } } });
   await prisma.user.deleteMany({
-    where: { id: { in: [userId, otherUserId] } },
+    where: { id: { in: [userId, otherUserId, coOwnerUserId] } },
   });
   await prisma.business.deleteMany({ where: { id: { in: ids } } });
   await prisma.$disconnect();
@@ -109,14 +122,24 @@ const stored = (id: string) =>
   prisma.service.findUniqueOrThrow({ where: { id } });
 
 describe('crear servicios', () => {
-  it('se asignan a los dueños del negocio, no a los profesionales', async () => {
-    const s = await service.create(userId, { name: 'Corte', durationMin: 30 });
-    const assigned = await prisma.memberService.findMany({
-      where: { serviceId: s.id },
-      select: { memberId: true },
+  // Con varios dueños, cada uno hace sus servicios: los demás se suman en Equipo
+  it('se asignan solo a quien los crea, no a los otros dueños ni profesionales', async () => {
+    const assignedTo = async (serviceId: string) =>
+      (
+        await prisma.memberService.findMany({
+          where: { serviceId },
+          select: { memberId: true },
+        })
+      ).map((a) => a.memberId);
+
+    const corte = await service.create(userId, { name: 'Corte', durationMin: 30 });
+    expect(await assignedTo(corte.id)).toEqual([ownerMemberId]);
+    const barba = await service.create(coOwnerUserId, {
+      name: 'Barba',
+      durationMin: 20,
     });
-    expect(assigned.map((a) => a.memberId)).toEqual([ownerMemberId]);
-    expect(assigned.map((a) => a.memberId)).not.toContain(staffMemberId);
+    expect(await assignedTo(barba.id)).toEqual([coOwnerMemberId]);
+    expect(await assignedTo(corte.id)).not.toContain(staffMemberId);
   });
 
   it('guarda la categoría sin espacios sobrantes; vacía queda en null', async () => {

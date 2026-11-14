@@ -236,8 +236,8 @@ export class NotificationsService {
       subject: `Te invitaron a ${data.businessName} en Reservahoy`,
       html: `<p>Hola ${escapeHtml(data.memberName)},</p>
         <p>${escapeHtml(data.inviterName)} te invitó a unirte al equipo de
-        <strong>${escapeHtml(data.businessName)}</strong>. Crea tu cuenta para ver
-        tu agenda (el enlace vale 7 días):</p>
+        <strong>${escapeHtml(data.businessName)}</strong>. Crea tu cuenta para
+        administrar la agenda y el negocio en el panel (el enlace vale 7 días):</p>
         <p><a href="${link}">Crear mi cuenta</a></p>
         <p>Si no esperabas esta invitación, ignora este mensaje.</p>`,
     });

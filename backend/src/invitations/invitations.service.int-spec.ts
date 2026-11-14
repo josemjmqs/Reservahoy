@@ -52,7 +52,13 @@ beforeAll(async () => {
   for (const key of ['owner', 'ana', 'other'] as const) {
     users[key] = (
       await prisma.user.create({
-        data: { email: mail(key), name: key, password: 'x' },
+        // solo un dueño con el correo verificado invita
+        data: {
+          email: mail(key),
+          name: key,
+          password: 'x',
+          emailVerifiedAt: new Date(),
+        },
       })
     ).id;
   }
@@ -154,6 +160,26 @@ describe('invitar', () => {
     await expect(
       invitations.create(users.ana, ids.caro, mail('caro')),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('un dueño sin el correo verificado no puede invitar (403)', async () => {
+    // el invitado entraría verificado y habilitaría las reservas por él
+    await prisma.user.update({
+      where: { id: users.owner },
+      data: { emailVerifiedAt: null },
+    });
+    try {
+      await expect(
+        invitations.create(users.owner, ids.caro, mail('caro')),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(await invitationsOf(ids.caro)).toHaveLength(0);
+      expect(sent).toHaveLength(0);
+    } finally {
+      await prisma.user.update({
+        where: { id: users.owner },
+        data: { emailVerifiedAt: new Date() },
+      });
+    }
   });
 
   it('otro negocio no puede invitar a un profesional ajeno (404)', async () => {
@@ -282,7 +308,7 @@ describe('aceptar la invitación', () => {
     });
   });
 
-  it('crea la cuenta verificada, enlazada y con sesión de profesional', async () => {
+  it('crea la cuenta verificada, enlazada y con sesión de dueño', async () => {
     const { token, email, memberId } = await fresh('Eli');
     const { accessToken } = await invitations.accept(
       token,
@@ -301,7 +327,8 @@ describe('aceptar la invitación', () => {
     });
     expect(member.userId).toBe(user.id);
     expect(member.displayName).toBe('Eli'); // el nombre público no cambia
-    expect((await getMembership(db, user.id)).role).toBe('STAFF');
+    // Por ahora quien acepta queda como dueño, con los mismos permisos
+    expect((await getMembership(db, user.id)).role).toBe('OWNER');
 
     const payload = await jwt.verifyAsync<{ sub: string; sv: number }>(
       accessToken,
@@ -315,6 +342,30 @@ describe('aceptar la invitación', () => {
       account: 'active',
       invitation: null,
     });
+  });
+
+  it('el invitado puede lo mismo que el dueño: invita y desactiva', async () => {
+    const { token, email, memberId } = await fresh('Nico');
+    await invitations.accept(token, 'Nico', 'clave-segura');
+    const nico = await prisma.user.findUniqueOrThrow({ where: { email } });
+
+    const olga = await prisma.member.create({
+      data: { role: 'STAFF', displayName: 'Olga', businessId },
+    });
+    await invitations.create(nico.id, olga.id, mail('olga'));
+    expect(sent.at(-1)).toMatchObject({ to: mail('olga'), inviterName: 'Nico' });
+    expect((await members.list(nico.id)).find((m) => m.id === olga.id))
+      .toMatchObject({ account: 'invited', invitation: { email: mail('olga') } });
+
+    await members.update(nico.id, olga.id, { active: false });
+    expect(
+      (await prisma.member.findUniqueOrThrow({ where: { id: olga.id } })).active,
+    ).toBe(false);
+    // Y la dueña puede quitarle el acceso al invitado
+    await members.update(users.owner, memberId, { active: false });
+    await expect(getMembership(db, nico.id)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 
   it('un enlace usado ya no sirve, ni para ver ni para aceptar', async () => {

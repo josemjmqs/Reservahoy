@@ -147,6 +147,21 @@ describe('AvailabilityService.getBusiness (página pública)', () => {
     expect((await availability.getBusiness(slug)).acceptsBookings).toBe(true);
   });
 
+  it('un dueño desactivado no habilita las reservas', async () => {
+    await prisma.member.updateMany({
+      where: { businessId, userId },
+      data: { active: false },
+    });
+    try {
+      expect(await availability.acceptsBookings({ id: businessId })).toBe(false);
+    } finally {
+      await prisma.member.updateMany({
+        where: { businessId, userId },
+        data: { active: true },
+      });
+    }
+  });
+
   it('un slug que no existe responde 404', async () => {
     await expect(availability.getBusiness(`no-${run}`)).rejects.toBeInstanceOf(
       NotFoundException,
