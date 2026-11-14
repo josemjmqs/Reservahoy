@@ -277,8 +277,14 @@ describe('horario de un profesional', () => {
 describe('bloqueos de un profesional', () => {
   const day = { startDate: '2033-06-01', endDate: '2033-06-01', allDay: true };
 
-  it('ve todos los bloqueos del negocio', async () => {
+  it('ve sus bloqueos y los de todo el negocio, no los de otro profesional', async () => {
     const { blocks: list } = await blocks.list(anaUserId);
+    expect(ids(list)).toEqual([anaBlockId, businessBlockId].sort());
+    expect(ids(list)).not.toContain(betoBlockId);
+  });
+
+  it('el dueño sigue viendo todos los bloqueos', async () => {
+    const { blocks: list } = await blocks.list(ownerUserId);
     expect(ids(list)).toEqual(
       [anaBlockId, betoBlockId, businessBlockId].sort(),
     );

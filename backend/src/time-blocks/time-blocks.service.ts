@@ -46,11 +46,20 @@ export class TimeBlocksService {
     return new Map(members.map((m) => [m.id, m.displayName]));
   }
 
-  // Bloqueos vigentes o futuros (los que ya terminaron no se muestran)
+  // Bloqueos vigentes o futuros (los que ya terminaron no se muestran). Un
+  // profesional ve los suyos y los de todo el negocio, que también cierran su
+  // agenda; los de otros profesionales (y su motivo) no
   async list(userId: string) {
-    const { businessId, timezone } = await getMembership(this.prisma, userId);
+    const m = await getMembership(this.prisma, userId);
+    const { businessId, timezone } = m;
     const blocks = await this.prisma.timeBlock.findMany({
-      where: { businessId, endsAt: { gt: new Date() } },
+      where: {
+        businessId,
+        endsAt: { gt: new Date() },
+        ...(!isOwner(m) && {
+          OR: [{ memberId: m.memberId }, { memberId: null }],
+        }),
+      },
       orderBy: { startsAt: 'asc' },
       take: 200,
     });
