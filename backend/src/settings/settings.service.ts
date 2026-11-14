@@ -1,4 +1,5 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { getMembership } from '../auth/membership';
 import { PrismaService } from '../prisma/prisma.service';
 
 // Preferencias del usuario dentro de su negocio (su membresía)
@@ -7,16 +8,15 @@ export class SettingsService {
   constructor(private readonly prisma: PrismaService) {}
 
   private async getMember(userId: string) {
-    const member = await this.prisma.member.findFirst({
-      where: { userId },
+    const { memberId } = await getMembership(this.prisma, userId);
+    return this.prisma.member.findUniqueOrThrow({
+      where: { id: memberId },
       select: {
         id: true,
         notifyNewBookings: true,
         user: { select: { email: true } },
       },
     });
-    if (!member) throw new ForbiddenException('No perteneces a ningún negocio');
-    return member;
   }
 
   async get(userId: string) {

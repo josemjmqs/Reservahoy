@@ -156,7 +156,9 @@ export class BookingsService {
   }
 
   // Avisa por correo a los miembros con cuenta que tienen activados los avisos
-  // de reservas nuevas. Nunca lanza: un fallo aquí no debe romper la reserva
+  // de reservas nuevas: los dueños y el profesional de la reserva (un
+  // profesional no recibe datos de clientes de otros). Nunca lanza: un fallo
+  // aquí no debe romper la reserva
   async notifyStaff(bookingId: string): Promise<void> {
     try {
       const booking = await this.prisma.booking.findUniqueOrThrow({
@@ -165,6 +167,7 @@ export class BookingsService {
           startsAt: true,
           notes: true,
           businessId: true,
+          memberId: true,
           business: { select: { name: true, timezone: true } },
           member: { select: { displayName: true } },
           customer: { select: { name: true, email: true, phone: true } },
@@ -180,6 +183,7 @@ export class BookingsService {
           active: true,
           notifyNewBookings: true,
           userId: { not: null },
+          OR: [{ role: 'OWNER' }, { id: booking.memberId }],
         },
         select: { user: { select: { email: true, name: true } } },
       });

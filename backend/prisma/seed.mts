@@ -5,13 +5,15 @@
 //   npx prisma db seed                 → hoy queda sin reservas
 //   SEED_TODAY=1 npx prisma db seed    → también agrega reservas para hoy
 //
-// Panel: demo@reservahoy.local / demo1234 · página pública: /demo-peluqueria
+// Panel: demo@reservahoy.local / demo1234 (dueña) y diego@reservahoy.local /
+// demo1234 (profesional, STAFF) · página pública: /demo-peluqueria
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { DateTime } from 'luxon';
 
 const SLUG = 'demo-peluqueria';
 const EMAIL = 'demo@reservahoy.local';
+const STAFF_EMAIL = 'diego@reservahoy.local';
 const PASSWORD = 'demo1234';
 const TZ = 'America/Santiago';
 
@@ -39,8 +41,9 @@ async function reset() {
     await prisma.service.deleteMany({ where: { businessId } });
     await prisma.business.delete({ where: { id: businessId } });
   }
-  const user = await prisma.user.findUnique({ where: { email: EMAIL } });
-  if (user) {
+  for (const email of [EMAIL, STAFF_EMAIL]) {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) continue;
     await prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
     await prisma.emailVerificationToken.deleteMany({
       where: { userId: user.id },
@@ -64,11 +67,21 @@ function workday(n: number) {
 async function main() {
   await reset();
 
+  const password = await bcrypt.hash(PASSWORD, 10);
   const user = await prisma.user.create({
     data: {
       email: EMAIL,
       name: 'Camila Rojas',
-      password: await bcrypt.hash(PASSWORD, 10),
+      password,
+      emailVerifiedAt: new Date(),
+    },
+  });
+  // Profesional con cuenta: solo ve y cambia lo suyo (pruebas de permisos STAFF)
+  const staffUser = await prisma.user.create({
+    data: {
+      email: STAFF_EMAIL,
+      name: 'Diego Fuentes',
+      password,
       emailVerifiedAt: new Date(),
     },
   });
@@ -87,7 +100,12 @@ async function main() {
     },
   });
   const diego = await prisma.member.create({
-    data: { role: 'STAFF', displayName: 'Diego', businessId },
+    data: {
+      role: 'STAFF',
+      displayName: 'Diego',
+      userId: staffUser.id,
+      businessId,
+    },
   });
 
   const service = (
@@ -133,14 +151,16 @@ async function main() {
     });
   }
 
+  // nombre, correo y teléfono (opcional)
+  const customerRows: [string, string, string | null][] = [
+    ['Valentina Muñoz', 'valentina@ejemplo.cl', '+56 9 8765 4321'],
+    ['Matías González', 'matias@ejemplo.cl', null],
+    ['Fernanda Soto', 'fernanda@ejemplo.cl', '+56 9 5555 1234'],
+    ['Benjamín Díaz', 'benjamin@ejemplo.cl', null],
+    ['Josefa Pérez', 'josefa@ejemplo.cl', '+56 9 4444 9876'],
+  ];
   const customers = await Promise.all(
-    [
-      ['Valentina Muñoz', 'valentina@ejemplo.cl', '+56 9 8765 4321'],
-      ['Matías González', 'matias@ejemplo.cl', null],
-      ['Fernanda Soto', 'fernanda@ejemplo.cl', '+56 9 5555 1234'],
-      ['Benjamín Díaz', 'benjamin@ejemplo.cl', null],
-      ['Josefa Pérez', 'josefa@ejemplo.cl', '+56 9 4444 9876'],
-    ].map(([name, email, phone]) =>
+    customerRows.map(([name, email, phone]) =>
       prisma.customer.create({ data: { name, email, phone, businessId } }),
     ),
   );
@@ -194,7 +214,7 @@ async function main() {
   await book(workday(4), '11:00', diego.id, 1, [barba]);
 
   console.log(
-    `Negocio demo listo: entra con ${EMAIL} / ${PASSWORD} (página pública: /${SLUG})`,
+    `Negocio demo listo: entra con ${EMAIL} (dueña) o ${STAFF_EMAIL} (profesional), contraseña ${PASSWORD} (página pública: /${SLUG})`,
   );
 }
 

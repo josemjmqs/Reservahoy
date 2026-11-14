@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { TimeBlock } from '@prisma/client';
+import { getMembership, isOwner } from '../auth/membership';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTimeBlockDto } from './dto/create-time-block.dto';
 import { exceedsDays, isAllDay, resolveBlockRange } from './block-range';
@@ -14,16 +15,6 @@ const MAX_DAYS = 366;
 @Injectable()
 export class TimeBlocksService {
   constructor(private readonly prisma: PrismaService) {}
-
-  // El negocio sale de la membresía del usuario, nunca del cliente
-  private async getBusiness(userId: string) {
-    const member = await this.prisma.member.findFirst({
-      where: { userId },
-      select: { business: { select: { id: true, timezone: true } } },
-    });
-    if (!member) throw new ForbiddenException('No perteneces a ningún negocio');
-    return member.business;
-  }
 
   private serialize(
     block: TimeBlock,
@@ -57,44 +48,51 @@ export class TimeBlocksService {
 
   // Bloqueos vigentes o futuros (los que ya terminaron no se muestran)
   async list(userId: string) {
-    const business = await this.getBusiness(userId);
+    const { businessId, timezone } = await getMembership(this.prisma, userId);
     const blocks = await this.prisma.timeBlock.findMany({
-      where: { businessId: business.id, endsAt: { gt: new Date() } },
+      where: { businessId, endsAt: { gt: new Date() } },
       orderBy: { startsAt: 'asc' },
       take: 200,
     });
     const names = await this.memberNames(
-      business.id,
+      businessId,
       blocks.map((b) => b.memberId),
     );
     return {
-      timezone: business.timezone,
-      blocks: blocks.map((b) => this.serialize(b, business.timezone, names)),
+      timezone,
+      blocks: blocks.map((b) => this.serialize(b, timezone, names)),
     };
   }
 
   async create(userId: string, dto: CreateTimeBlockDto) {
-    const business = await this.getBusiness(userId);
+    const m = await getMembership(this.prisma, userId);
+    const { businessId, timezone } = m;
+
+    // Un profesional (STAFF) solo bloquea su propio horario, nunca el de otro
+    // ni el de todo el negocio
+    if (!isOwner(m) && dto.memberId !== m.memberId) {
+      throw new ForbiddenException('Solo puedes bloquear tu propio horario');
+    }
 
     // El profesional debe ser de tu negocio (404 si no)
     const names = new Map<string, string>();
     if (dto.memberId) {
       const member = await this.prisma.member.findFirst({
-        where: { id: dto.memberId, businessId: business.id },
+        where: { id: dto.memberId, businessId },
         select: { id: true, displayName: true },
       });
       if (!member) throw new NotFoundException('Profesional no encontrado');
       names.set(member.id, member.displayName);
     }
 
-    const range = resolveBlockRange({ ...dto, timezone: business.timezone });
+    const range = resolveBlockRange({ ...dto, timezone });
     if (!range) {
       throw new BadRequestException('El término debe ser posterior al inicio');
     }
     if (range.endsAt.getTime() <= Date.now()) {
       throw new BadRequestException('Ese período ya pasó');
     }
-    if (exceedsDays(range, business.timezone, MAX_DAYS)) {
+    if (exceedsDays(range, timezone, MAX_DAYS)) {
       throw new BadRequestException('Un bloqueo no puede durar más de un año');
     }
 
@@ -105,14 +103,14 @@ export class TimeBlocksService {
         data: {
           ...range,
           reason: dto.reason?.trim() || null,
-          businessId: business.id,
+          businessId,
           memberId: dto.memberId ?? null,
         },
       });
       // Las reservas existentes no se cancelan solas: se avisa cuántas hay
       const count = await tx.booking.count({
         where: {
-          businessId: business.id,
+          businessId,
           ...(dto.memberId && { memberId: dto.memberId }),
           status: { in: ['PENDING', 'CONFIRMED'] },
           startsAt: { lt: range.endsAt },
@@ -123,15 +121,20 @@ export class TimeBlocksService {
     });
 
     return {
-      ...this.serialize(block, business.timezone, names),
+      ...this.serialize(block, timezone, names),
       conflicts,
     };
   }
 
   async remove(userId: string, id: string) {
-    const business = await this.getBusiness(userId);
+    const m = await getMembership(this.prisma, userId);
+    // Un profesional solo borra sus propios bloqueos; los demás, 404
     const block = await this.prisma.timeBlock.findFirst({
-      where: { id, businessId: business.id },
+      where: {
+        id,
+        businessId: m.businessId,
+        ...(!isOwner(m) && { memberId: m.memberId }),
+      },
       select: { id: true },
     });
     if (!block) throw new NotFoundException('Bloqueo no encontrado');

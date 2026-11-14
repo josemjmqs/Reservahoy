@@ -1,20 +1,11 @@
-import { ForbiddenException, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { assertOwner, getMembership } from '../auth/membership';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMemberDto, UpdateMemberDto } from './dto/member.dto';
 
 @Injectable()
 export class MembersService {
   constructor(private readonly prisma: PrismaService) {}
-
-  // El negocio sale de la membresía del usuario autenticado
-  private async getBusinessId(userId: string): Promise<string> {
-    const m = await this.prisma.member.findFirst({
-      where: { userId },
-      select: { businessId: true },
-    });
-    if (!m) throw new ForbiddenException('No perteneces a ningún negocio');
-    return m.businessId;
-  }
 
   // Todos los servicios deben ser del mismo negocio
   private async assertServices(businessId: string, ids: string[]) {
@@ -26,7 +17,7 @@ export class MembersService {
   }
 
   async list(userId: string) {
-    const businessId = await this.getBusinessId(userId);
+    const { businessId } = await getMembership(this.prisma, userId);
     return this.prisma.member.findMany({
       where: { businessId },
       orderBy: { id: 'asc' },
@@ -42,7 +33,9 @@ export class MembersService {
   }
 
   async create(userId: string, dto: CreateMemberDto) {
-    const businessId = await this.getBusinessId(userId);
+    const m = await getMembership(this.prisma, userId);
+    assertOwner(m);
+    const { businessId } = m;
     const serviceIds = dto.serviceIds ?? [];
     await this.assertServices(businessId, serviceIds);
     return this.prisma.member.create({
@@ -57,7 +50,9 @@ export class MembersService {
   }
 
   async update(userId: string, id: string, dto: UpdateMemberDto) {
-    const businessId = await this.getBusinessId(userId);
+    const m = await getMembership(this.prisma, userId);
+    assertOwner(m);
+    const { businessId } = m;
     const member = await this.prisma.member.findFirst({ where: { id, businessId } });
     if (!member) throw new NotFoundException('Profesional no encontrado');
 
