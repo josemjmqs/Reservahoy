@@ -40,7 +40,8 @@ interface Ids {
   member: string;
   service: string;
   booking: string;
-  block: string;
+  block: string; // bloqueo de todo el negocio
+  ownerBlock: string; // bloqueo solo de la dueña
 }
 type Call = (ctx: APIRequestContext, a: Ids) => Promise<APIResponse>;
 // Estado esperado (o varios aceptables) o una revisión propia de la respuesta
@@ -199,10 +200,13 @@ const PANEL_ROUTES: Record<
     other: async (res, a) => {
       const ids = (await res.json()).blocks.map((b: { id: string }) => b.id);
       expect(ids).not.toContain(a.block);
+      expect(ids).not.toContain(a.ownerBlock);
     },
+    // ve los bloqueos de todo el negocio, no los de otro profesional
     staff: async (res, a) => {
       const ids = (await res.json()).blocks.map((b: { id: string }) => b.id);
       expect(ids).toContain(a.block);
+      expect(ids).not.toContain(a.ownerBlock);
     },
   },
   "POST /time-blocks": {
@@ -338,10 +342,24 @@ test.beforeAll(async () => {
       })
     ).json()
   ).id;
+  a.ownerBlock = (
+    await (
+      await ownerA.post("/time-blocks", {
+        data: {
+          startDate: "2033-01-11",
+          endDate: "2033-01-11",
+          allDay: true,
+          memberId: a.member,
+          reason: "e2e dueña",
+        },
+      })
+    ).json()
+  ).id;
 });
 
 test.afterAll(async () => {
   await ownerA?.delete(`/time-blocks/${a.block}`);
+  await ownerA?.delete(`/time-blocks/${a.ownerBlock}`);
   // PATCH /settings del profesional cambió sus propios avisos: se restauran
   await staffA?.patch("/settings", { data: { newBookingEmail: true } });
   await Promise.all([anon, ownerA, ownerB, staffA].map((c) => c?.dispose()));
@@ -358,7 +376,13 @@ test("cada ruta del backend está clasificada como pública o del panel", () => 
 
 for (const [route, { call }] of Object.entries(PANEL_ROUTES)) {
   test(`sin sesión: ${route} responde 401`, async () => {
-    const fake = { member: "x", service: "x", booking: "x", block: "x" };
+    const fake = {
+      member: "x",
+      service: "x",
+      booking: "x",
+      block: "x",
+      ownerBlock: "x",
+    };
     expect((await call(anon, fake)).status()).toBe(401);
   });
 }
