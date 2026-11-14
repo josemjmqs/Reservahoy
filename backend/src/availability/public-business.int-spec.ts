@@ -19,6 +19,7 @@ const slug = `int-public-${run}`;
 
 let businessId: string;
 let userId: string;
+let staffUserId: string | undefined;
 
 beforeAll(async () => {
   businessId = (
@@ -68,7 +69,9 @@ afterAll(async () => {
   await prisma.memberService.deleteMany({ where: { member: { businessId } } });
   await prisma.member.deleteMany({ where: { businessId } });
   await prisma.service.deleteMany({ where: { businessId } });
-  await prisma.user.delete({ where: { id: userId } });
+  await prisma.user.deleteMany({
+    where: { id: { in: [userId, staffUserId].filter((x) => x !== undefined) } },
+  });
   await prisma.business.delete({ where: { id: businessId } });
   await prisma.$disconnect();
 });
@@ -108,6 +111,31 @@ describe('AvailabilityService.getBusiness (página pública)', () => {
     expect(text).not.toContain(`public-${run}@test.local`);
     expect(text).not.toContain(userId);
     expect(text).not.toContain(businessId);
+  });
+
+  // Con invitaciones, un profesional puede tener su correo verificado antes que
+  // el dueño: eso no basta para que el negocio reciba reservas
+  it('un profesional con correo verificado no habilita las reservas', async () => {
+    staffUserId = (
+      await prisma.user.create({
+        data: {
+          email: `public-staff-${run}@test.local`,
+          name: 'P',
+          password: 'secreto',
+          emailVerifiedAt: new Date(),
+        },
+      })
+    ).id;
+    await prisma.member.create({
+      data: {
+        role: 'STAFF',
+        displayName: 'Profesional',
+        userId: staffUserId,
+        businessId,
+      },
+    });
+    expect((await availability.getBusiness(slug)).acceptsBookings).toBe(false);
+    expect(await availability.acceptsBookings({ id: businessId })).toBe(false);
   });
 
   it('indica si el negocio recibe reservas según la verificación del dueño', async () => {
