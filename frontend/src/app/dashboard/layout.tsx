@@ -3,15 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui";
-
-interface Me {
-  name: string;
-  email: string;
-  emailVerifiedAt: string | null;
-  members: { business: { name: string; slug: string } }[];
-}
+import type { Me } from "@/lib/types";
 
 const TABS = [
   { href: "/dashboard/agenda", label: "Agenda" },
@@ -77,10 +71,20 @@ export default function DashboardLayout({
   const [me, setMe] = useState<Me | null>(null);
 
   useEffect(() => {
+    // Sin sesión, al login. Con sesión pero sin membresía activa (403: lo
+    // desactivaron), se cierra la sesión y el login lo explica, en vez de
+    // mostrar un panel donde todo responde 403
     const loadMe = () =>
       api<Me>("/auth/me")
         .then(setMe)
-        .catch(() => router.replace("/login"));
+        .catch(async (err) => {
+          if (err instanceof ApiError && err.status === 403) {
+            await api("/auth/logout", { method: "POST" }).catch(() => {});
+            router.replace("/login?revoked=1");
+          } else {
+            router.replace("/login");
+          }
+        });
     loadMe();
     // Ajustes avisa cuando cambia el nombre del negocio, para el encabezado
     window.addEventListener("business-updated", loadMe);
@@ -94,7 +98,8 @@ export default function DashboardLayout({
 
   if (!me) return <p className="p-6 text-gray-600">Cargando...</p>;
 
-  const business = me.members[0]?.business;
+  // `?.`: mientras se despliega, un backend anterior todavía no trae membership
+  const business = me.membership?.business;
 
   return (
     <div className="min-h-screen">

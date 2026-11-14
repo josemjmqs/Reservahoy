@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { assertOwner, getMembership, isOwner } from '../auth/membership';
 import { pendingInvitation } from '../invitations/invitations.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -90,11 +91,39 @@ export class MembersService {
           data: dto.serviceIds.map((serviceId) => ({ memberId: id, serviceId })),
         });
       }
+      if (dto.active === false) await this.revokeAccess(tx, id);
       return tx.member.update({
         where: { id },
         data: { displayName: dto.displayName, active: dto.active },
         select: { id: true, displayName: true, active: true },
       });
+    });
+  }
+
+  // Al desactivar a alguien se le quita el acceso al instante: se cierran sus
+  // sesiones (sube sessionVersion; una persona pertenece a un solo negocio) y
+  // se anula su invitación pendiente, para que no reviva si lo reactivan. Solo
+  // quien lo pasa de activo a inactivo lo hace (updateMany condicional): dos
+  // clics no suben la versión dos veces
+  private async revokeAccess(tx: Prisma.TransactionClient, id: string) {
+    const { count } = await tx.member.updateMany({
+      where: { id, active: true },
+      data: { active: false },
+    });
+    if (!count) return;
+    const { userId } = await tx.member.findUniqueOrThrow({
+      where: { id },
+      select: { userId: true },
+    });
+    if (userId) {
+      await tx.user.update({
+        where: { id: userId },
+        data: { sessionVersion: { increment: 1 } },
+      });
+    }
+    await tx.memberInvitation.updateMany({
+      where: { memberId: id, usedAt: null, revokedAt: null },
+      data: { revokedAt: new Date() },
     });
   }
 }

@@ -56,6 +56,9 @@ afterAll(async () => {
   const ids = [businessId, otherBusinessId];
   await prisma.member.deleteMany({ where: { businessId: { in: ids } } });
   await prisma.service.deleteMany({ where: { businessId: { in: ids } } });
+  await prisma.user.deleteMany({
+    where: { email: { startsWith: `members-staff-${run}` } },
+  });
   await prisma.user.delete({ where: { id: ownerUserId } });
   await prisma.business.deleteMany({ where: { id: { in: ids } } });
   await prisma.$disconnect();
@@ -136,6 +139,48 @@ describe('MembersService', () => {
     await expect(
       members.update(ownerUserId, ownerMemberId, { active: false }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('desactivar a alguien con cuenta cierra sus sesiones, una sola vez', async () => {
+    const user = await prisma.user.create({
+      data: { email: `members-staff-${run}@test.local`, name: 'G', password: 'x' },
+    });
+    const { id } = await members.create(ownerUserId, { displayName: 'Gabi' });
+    await prisma.member.update({ where: { id }, data: { userId: user.id } });
+    const version = async () =>
+      (await prisma.user.findUniqueOrThrow({ where: { id: user.id } }))
+        .sessionVersion;
+
+    await members.update(ownerUserId, id, { active: false });
+    expect(await version()).toBe(1);
+    // desactivarlo otra vez o editarlo inactivo no vuelve a subirla
+    await members.update(ownerUserId, id, { active: false });
+    await members.update(ownerUserId, id, { displayName: 'Gabriela' });
+    expect(await version()).toBe(1);
+    // reactivarlo tampoco: vuelve a entrar con un login nuevo
+    await members.update(ownerUserId, id, { active: true });
+    expect(await version()).toBe(1);
+  });
+
+  it('desactivar a alguien sin cuenta anula su invitación y no revive al reactivarlo', async () => {
+    const { id } = await members.create(ownerUserId, { displayName: 'Hugo' });
+    await prisma.memberInvitation.create({
+      data: {
+        memberId: id,
+        email: `hugo-${run}@test.local`,
+        tokenHash: `hash-hugo-${run}`,
+        expiresAt: new Date(Date.now() + 86_400_000),
+      },
+    });
+    const accountOf = async () =>
+      (await members.list(ownerUserId)).find((m) => m.id === id)!.account;
+    expect(await accountOf()).toBe('invited');
+
+    await members.update(ownerUserId, id, { active: false });
+    const [inv] = await prisma.memberInvitation.findMany({ where: { memberId: id } });
+    expect(inv.revokedAt).not.toBeNull();
+    await members.update(ownerUserId, id, { active: true });
+    expect(await accountOf()).toBe('none');
   });
 
   it('un profesional que no existe responde 404', async () => {

@@ -1,14 +1,17 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { createHash } from 'crypto';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { PrismaService } from '../prisma/prisma.service';
-import { AuthService } from './auth.service';
+import { MembersService } from '../members/members.service';
+import { ACCESS_REVOKED, AuthService } from './auth.service';
 
 // Registro, inicio de sesión y restablecer contraseña contra PostgreSQL;
 // el correo se reemplaza por un registro en memoria
@@ -270,5 +273,91 @@ describe('sesiones', () => {
     expect(
       await auth.validateSession({ sub: 'no-existe', email, sv: 0, iat: 0 }),
     ).toBeNull();
+  });
+});
+
+describe('acceso desactivado', () => {
+  type Payload = { sub: string; email: string; sv?: number; iat: number };
+  const members = new MembersService(prisma as unknown as PrismaService);
+  const staffEmail = `auth-staff-${run}@test.local`;
+  const staffLogin = (password = 'clave-staff-1') =>
+    auth.login({ email: staffEmail, password });
+  let staffMemberId: string;
+  let staffUserId: string;
+  let ownerMember: { id: string; businessId: string };
+
+  // Un profesional con cuenta en el negocio de la dueña registrada arriba (el
+  // afterAll general lo borra junto con el negocio)
+  beforeAll(async () => {
+    const owner = await prisma.member.findFirstOrThrow({ where: { userId } });
+    ownerMember = owner;
+    const user = await prisma.user.create({
+      data: {
+        email: staffEmail,
+        name: 'Pro',
+        password: await bcrypt.hash('clave-staff-1', 4),
+        emailVerifiedAt: new Date(),
+      },
+    });
+    staffUserId = user.id;
+    staffMemberId = (
+      await prisma.member.create({
+        data: {
+          role: 'STAFF',
+          displayName: 'Pro',
+          userId: user.id,
+          businessId: owner.businessId,
+        },
+      })
+    ).id;
+  });
+
+  it('/auth/me trae la membresía activa de cada uno, con su rol', async () => {
+    expect(await auth.me(userId)).toMatchObject({
+      id: userId,
+      email,
+      membership: {
+        memberId: ownerMember.id,
+        role: 'OWNER',
+        business: { id: ownerMember.businessId, slug, name: 'Negocio Auth' },
+      },
+    });
+    const me = await auth.me(staffUserId);
+    expect(me).toMatchObject({
+      email: staffEmail,
+      membership: {
+        memberId: staffMemberId,
+        role: 'STAFF',
+        displayName: 'Pro',
+        business: { id: ownerMember.businessId, slug },
+      },
+    });
+    expect(me).not.toHaveProperty('members');
+  });
+
+  it('al desactivarlo se cierran sus sesiones y no puede volver a entrar', async () => {
+    const session = jwt.verify<Payload>((await staffLogin()).accessToken);
+    expect(await auth.validateSession(session)).not.toBeNull();
+
+    await members.update(userId, staffMemberId, { active: false });
+
+    expect(await auth.validateSession(session)).toBeNull();
+    const error = await staffLogin().catch((e: Error) => e);
+    expect(error).toBeInstanceOf(ForbiddenException);
+    expect((error as Error).message).toBe(ACCESS_REVOKED);
+    // con una contraseña incorrecta responde como siempre: no revela nada
+    await expect(staffLogin('otra-clave')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    // y /auth/me, con una sesión que se colara, tampoco le da el negocio
+    await expect(auth.me(staffUserId)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
+  it('al reactivarlo vuelve a entrar con la misma contraseña', async () => {
+    await members.update(userId, staffMemberId, { active: true });
+    const session = jwt.verify<Payload>((await staffLogin()).accessToken);
+    expect(await auth.validateSession(session)).not.toBeNull();
   });
 });

@@ -90,7 +90,9 @@ const PANEL_ROUTES: Record<
       expect((await res.json()).email).not.toBe("demo@reservahoy.local");
     },
     staff: async (res) => {
-      expect((await res.json()).email).toBe(STAFF_EMAIL);
+      const me = await res.json();
+      expect(me.email).toBe(STAFF_EMAIL);
+      expect(me.membership.role).toBe("STAFF");
     },
   },
   "POST /auth/resend-verification": {

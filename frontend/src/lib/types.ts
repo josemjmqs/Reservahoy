@@ -79,6 +79,20 @@ export interface TeamMember {
   invitation?: { email: string; expiresAt: string } | null;
 }
 
+// GET /auth/me: la cuenta y su membresía activa (sin ella responde 403)
+export interface Me {
+  id: string;
+  name: string;
+  email: string;
+  emailVerifiedAt: string | null;
+  membership: {
+    memberId: string;
+    role: "OWNER" | "STAFF";
+    displayName: string;
+    business: { id: string; name: string; slug: string };
+  };
+}
+
 // Lo que muestra la página de una invitación antes de aceptarla
 export interface InvitationPreview {
   businessName: string;

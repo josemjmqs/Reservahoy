@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -14,10 +15,13 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { getMembership } from './membership';
 import { signSession, type SessionUser } from './session';
 
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas
 const VERIFY_MAX_PER_HOUR = 3;
+export const ACCESS_REVOKED =
+  'Tu acceso a este negocio está desactivado. Habla con el dueño.';
 
 // Si otro registro con el mismo correo o slug entra entre la revisión previa y el
 // insert, la base lo impide (índice único): se responde 409 en vez de un error 500
@@ -90,27 +94,41 @@ export class AuthService {
     if (!user || !valid) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
+    // Sin membresía activa (lo desactivaron) no entra. Se revisa después de la
+    // contraseña para no revelar qué cuentas existen
+    await getMembership(this.prisma, user.id).catch((e: unknown) => {
+      throw e instanceof ForbiddenException
+        ? new ForbiddenException(ACCESS_REVOKED)
+        : e;
+    });
     return this.signToken(user.id, user.email, user.sessionVersion);
   }
 
+  // La cuenta y su membresía activa (la misma que usa toda la API, con
+  // getMembership). Sin membresía activa responde 403 y el panel cierra la sesión
   async me(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        emailVerifiedAt: true,
-        members: {
-          select: {
-            role: true,
-            business: { select: { id: true, name: true, slug: true } },
-          },
-        },
-      },
+      select: { id: true, email: true, name: true, emailVerifiedAt: true },
     });
     if (!user) throw new UnauthorizedException();
-    return user;
+    const m = await getMembership(this.prisma, userId);
+    const member = await this.prisma.member.findUniqueOrThrow({
+      where: { id: m.memberId },
+      select: {
+        displayName: true,
+        business: { select: { name: true, slug: true } },
+      },
+    });
+    return {
+      ...user,
+      membership: {
+        memberId: m.memberId,
+        role: m.role,
+        displayName: member.displayName,
+        business: { id: m.businessId, ...member.business },
+      },
+    };
   }
 
   // Solo se guarda el hash del token, nunca el token
