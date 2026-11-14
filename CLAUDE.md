@@ -22,7 +22,7 @@ Plataforma de reservas online para pequeños negocios. Cada negocio tiene una p�
 
 ## Reglas del proyecto
 - El `businessId` SIEMPRE se obtiene de la membresía del usuario autenticado, nunca del cliente, con `getMembership` (`auth/membership.ts`), que solo acepta membresías activas. Recursos de otro negocio responden 404
-- Roles: `OWNER` puede todo; `STAFF` ve y cambia solo lo suyo: su agenda (incluido cancelar), su horario sin poder cambiarlo, sus bloqueos, sus ajustes, y en solo lectura servicios, equipo y datos del negocio. Una acción que no es de su rol responde 403; un recurso de otro profesional, 404. Usar `isOwner`, `assertOwner` y `scopeMemberId` (`auth/membership.ts`), nunca comparar `role === 'STAFF'` (un rol nuevo debe partir limitado). Las reglas como casos: `staff-permissions.int-spec.ts`
+- Roles: `OWNER` puede todo; `STAFF` ve y cambia solo lo suyo: su agenda (incluido cancelar), su horario sin poder cambiarlo, sus bloqueos y los de todo el negocio (no los de otros profesionales; crea y borra solo los suyos), sus ajustes, y en solo lectura servicios, equipo y datos del negocio. Una acción que no es de su rol responde 403; un recurso de otro profesional, 404. Usar `isOwner`, `assertOwner` y `scopeMemberId` (`auth/membership.ts`), nunca comparar `role === 'STAFF'` (un rol nuevo debe partir limitado). Las reglas como casos: `staff-permissions.int-spec.ts`
 - La restricción `booking_no_overlap` (exclusion constraint de PostgreSQL) es la garantía final contra dobles reservas; solape y deadlock se traducen a 409
 - Todas las fechas se guardan en UTC y se convierten con luxon según la zona del negocio (`America/Santiago`)
 - Código y nombres en inglés; textos visibles al usuario en español
@@ -73,4 +73,5 @@ Plataforma de reservas online para pequeños negocios. Cada negocio tiene una p�
 - Recordatorios por correo 24 h antes
 - Correo de contacto con dominio propio (Cloudflare Email Routing)
 - Trabajadores con cuenta propia: los permisos por rol están listos; faltan invitar por correo, quitar acceso, panel según el rol, panel cómodo en celular e instalable (PWA)
+- Rol de recepción: alguien que ve toda la agenda sin atender clientes. Hoy no se puede crear un miembro no reservable (`bookable`), y como `STAFF` vería una agenda vacía
 - WhatsApp, campos personalizados, pagos
