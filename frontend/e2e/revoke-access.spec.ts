@@ -80,6 +80,8 @@ test("al desactivarlo pierde la sesión y no entra hasta que lo reactivan", asyn
     const ownerPage = await ownerContext.newPage();
     await ownerPage.goto("/dashboard/team");
     const row = ownerPage.getByRole("listitem").filter({ hasText: m.name });
+    // Quien acepta una invitación queda como dueño, y aun así se le quita el acceso
+    await expect(row.getByText("Dueño")).toBeVisible();
     await expect(row.getByText("Con acceso")).toBeVisible();
     await row.getByRole("button", { name: "Desactivar" }).click();
     await expect(row.getByText("Inactivo")).toBeVisible();

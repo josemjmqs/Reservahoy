@@ -48,6 +48,9 @@ test("el dueño invita a un profesional desde Equipo y anula la invitación", as
   await expect(row.getByText("Sin cuenta")).toBeVisible();
 
   await row.getByRole("button", { name: "Invitar" }).click();
+  await expect(
+    row.getByText("Al aceptar tendrá acceso a todo el panel, igual que tú"),
+  ).toBeVisible();
   await row.getByPlaceholder(`Correo de ${name}`).fill(inviteEmail);
   await row.getByRole("button", { name: "Enviar invitación" }).click();
   await expect(page.getByRole("status")).toHaveText(
@@ -78,7 +81,7 @@ test("si las contraseñas no coinciden, no crea la cuenta", async ({ page }) => 
   await expect(page).toHaveURL(new RegExp(`/invitacion/${token}$`));
 });
 
-test("el profesional acepta la invitación, crea su cuenta y entra a su agenda", async ({
+test("el profesional acepta la invitación, crea su cuenta y entra como dueño", async ({
   page,
 }) => {
   // Contexto sin sesión: es otra persona, en su propio celular
@@ -99,8 +102,12 @@ test("el profesional acepta la invitación, crea su cuenta y entra a su agenda",
 
   await page.waitForURL("**/dashboard/agenda");
   await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible();
+  // Con el panel completo, como la dueña
+  for (const tab of ["Servicios", "Equipo"]) {
+    await expect(page.getByRole("link", { name: tab })).toBeVisible();
+  }
 
-  // Quedó con sesión: cuenta verificada, profesional (STAFF) del negocio demo
+  // Quedó con sesión: cuenta verificada y dueño (OWNER) del negocio demo
   const me = await page.request.get("/api/auth/me");
   expect(me.status()).toBe(200);
   const user = await me.json();
@@ -109,7 +116,7 @@ test("el profesional acepta la invitación, crea su cuenta y entra a su agenda",
   expect(user.emailVerifiedAt).toBeTruthy();
   expect(user.membership).toMatchObject({
     memberId: team.joiner.id,
-    role: "STAFF",
+    role: "OWNER",
     business: { slug: DEMO.slug },
   });
 
