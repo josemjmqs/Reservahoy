@@ -57,16 +57,24 @@ export function zonedTime(date: string, hhmm: string): Date {
   return new Date(guess - (shownAsUtc - guess));
 }
 
-// Sesión del dueño demo, guardada una sola vez por auth.setup.ts (el login tiene
-// un límite de 5 intentos por minuto y varias pruebas la necesitan)
-export const AUTH_FILE = "e2e/.auth/demo.json";
+// Profesional (STAFF) del negocio demo, con la misma contraseña
+export const STAFF = { email: "diego@reservahoy.local", name: "Diego" };
 
-export async function loginAsDemo(page: Page) {
-  const { cookies } = JSON.parse(readFileSync(AUTH_FILE, "utf8"));
+// Sesiones del dueño y del profesional demo, guardadas una sola vez por
+// auth.setup.ts (el login tiene un límite de 5 intentos por minuto y varias
+// pruebas las necesitan)
+export const AUTH_FILE = "e2e/.auth/demo.json";
+export const STAFF_AUTH_FILE = "e2e/.auth/staff.json";
+
+async function loginWith(page: Page, file: string) {
+  const { cookies } = JSON.parse(readFileSync(file, "utf8"));
   await page.context().addCookies(cookies);
   await page.goto("/dashboard/agenda");
   await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible();
 }
+
+export const loginAsDemo = (page: Page) => loginWith(page, AUTH_FILE);
+export const loginAsStaff = (page: Page) => loginWith(page, STAFF_AUTH_FILE);
 
 const slotButtons = (page: Page) =>
   page.getByRole("button", { name: /^\d{1,2}:\d{2}/ });
