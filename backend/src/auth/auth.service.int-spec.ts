@@ -90,6 +90,7 @@ describe('registro', () => {
     expect(user.password).not.toBe('password123');
     expect(user.members).toHaveLength(1);
     expect(user.members[0].role).toBe('OWNER');
+    expect(user.members[0].newBookingsScope).toBe('ALL');
     expect(user.members[0].business.slug).toBe(slug);
   });
 

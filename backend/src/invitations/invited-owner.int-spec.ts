@@ -114,6 +114,7 @@ beforeAll(async () => {
     await prisma.member.create({
       data: {
         role: 'OWNER',
+        newBookingsScope: 'ALL', // como al registrarse
         displayName: 'Dueña',
         userId: ownerUserId,
         businessId,
@@ -350,10 +351,11 @@ describe('servicios, equipo y datos del negocio', () => {
   });
 
   it('su preferencia de avisos es suya, sin tocar la de la dueña', async () => {
-    await settings.update(sociaUserId, false);
-    expect((await settings.get(sociaUserId)).newBookingEmail).toBe(false);
-    expect((await settings.get(ownerUserId)).newBookingEmail).toBe(true);
-    await settings.update(sociaUserId, true);
+    expect((await settings.get(sociaUserId)).newBookings).toBe('ALL');
+    await settings.update(sociaUserId, 'OWN');
+    expect((await settings.get(sociaUserId)).newBookings).toBe('OWN');
+    expect((await settings.get(ownerUserId)).newBookings).toBe('ALL');
+    await settings.update(sociaUserId, 'ALL');
   });
 });
 

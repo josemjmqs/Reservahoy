@@ -73,6 +73,7 @@ export class AuthService {
       await tx.member.create({
         data: {
           role: 'OWNER',
+          newBookingsScope: 'ALL',
           displayName: dto.name,
           userId: user.id,
           businessId: business.id,

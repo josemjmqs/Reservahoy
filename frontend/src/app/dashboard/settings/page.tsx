@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Button, Field, Input } from "@/components/ui";
 import { api } from "@/lib/api";
 import { isOwner, useMe } from "@/lib/me";
-import type { BusinessInfo, Settings } from "@/lib/types";
+import type { BusinessInfo, NotifyScope, Settings } from "@/lib/types";
 
 // Nombre y teléfono del negocio: los ven los clientes en la página pública,
 // en su reserva y en los correos
@@ -111,18 +111,42 @@ export default function SettingsPage() {
       );
   }, []);
 
-  async function toggleNewBookingEmail() {
-    if (!settings) return;
+  // Todas las del negocio es solo para un dueño (el backend también lo niega):
+  // un profesional no recibe datos de clientes de otros
+  const options: { value: NotifyScope; label: string; hint: string }[] = [
+    ...(owner
+      ? [
+          {
+            value: "ALL" as const,
+            label: "Todas las reservas del negocio",
+            hint: "Las de cualquier profesional.",
+          },
+        ]
+      : []),
+    {
+      value: "OWN",
+      label: "Solo las que atiendo yo",
+      hint: "Cuando un cliente reserva contigo.",
+    },
+    { value: "NONE", label: "Ninguna", hint: "No te escribimos." },
+  ];
+
+  async function changeNewBookings(newBookings: NotifyScope) {
+    if (!settings || newBookings === settings.newBookings) return;
+    // Se marca al instante; si no se guarda, vuelve a la opción anterior
+    const previous = settings;
+    setSettings({ ...settings, newBookings });
     setSaving(true);
     setError("");
     try {
       setSettings(
         await api<Settings>("/settings", {
           method: "PATCH",
-          body: JSON.stringify({ newBookingEmail: !settings.newBookingEmail }),
+          body: JSON.stringify({ newBookings }),
         }),
       );
     } catch (e) {
+      setSettings(previous);
       setError(e instanceof Error ? e.message : "Error inesperado");
     } finally {
       setSaving(false);
@@ -141,36 +165,49 @@ export default function SettingsPage() {
       </h2>
       <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         {settings ? (
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p id="new-booking-email" className="font-medium">
-                Correo cuando entra una reserva
-              </p>
-              <p className="mt-0.5 text-sm text-gray-600">
-                Te escribimos a <strong>{settings.email}</strong> cada vez que
-                un cliente{" "}
-                {owner ? "reserva desde tu página" : "reserva contigo"}, con el
-                servicio, la hora y sus datos de contacto.
-              </p>
+          <fieldset disabled={saving}>
+            <legend className="font-medium">
+              Correo cuando entra una reserva
+            </legend>
+            <p className="mt-0.5 text-sm text-gray-600">
+              Te escribimos a <strong>{settings.email}</strong> con el servicio,
+              la hora y los datos de contacto del cliente.
+            </p>
+            <div className="mt-3 space-y-2">
+              {options.map((o) => (
+                <label
+                  key={o.value}
+                  className={`flex min-h-10 cursor-pointer items-start gap-3 rounded-md border px-3 py-2 transition has-[:disabled]:cursor-default has-[:disabled]:opacity-60 ${
+                    settings.newBookings === o.value
+                      ? "border-indigo-600 bg-indigo-50"
+                      : "border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="new-bookings"
+                    value={o.value}
+                    checked={settings.newBookings === o.value}
+                    onChange={() => changeNewBookings(o.value)}
+                    className="mt-1 h-4 w-4 accent-indigo-600"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-gray-900">
+                      {o.label}
+                    </span>
+                    <span className="block text-sm text-gray-600">
+                      {o.hint}
+                    </span>
+                  </span>
+                </label>
+              ))}
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={settings.newBookingEmail}
-              aria-labelledby="new-booking-email"
-              disabled={saving}
-              onClick={toggleNewBookingEmail}
-              className={`relative mt-1 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition disabled:opacity-50 ${
-                settings.newBookingEmail ? "bg-indigo-600" : "bg-gray-300"
-              }`}
-            >
-              <span
-                className={`inline-block h-5 w-5 rounded-full bg-white shadow transition ${
-                  settings.newBookingEmail ? "translate-x-5" : "translate-x-0.5"
-                }`}
-              />
-            </button>
-          </div>
+            {saving && (
+              <p role="status" className="mt-2 text-sm text-gray-500">
+                Guardando...
+              </p>
+            )}
+          </fieldset>
         ) : (
           !error && <p className="text-sm text-gray-500">Cargando...</p>
         )}

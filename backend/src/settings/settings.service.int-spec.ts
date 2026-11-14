@@ -44,18 +44,22 @@ afterAll(async () => {
 });
 
 describe('SettingsService', () => {
-  it('los avisos de reservas nuevas vienen activados por defecto', async () => {
+  // El registro y aceptar una invitación dejan al dueño en ALL; un miembro
+  // creado sin elegir parte limitado, como un rol nuevo
+  it('un miembro nuevo parte recibiendo solo las reservas que atiende', async () => {
     expect(await service.get(userId)).toEqual({
-      newBookingEmail: true,
+      newBookings: 'OWN',
       email: `settings-${run}@test.local`,
     });
   });
 
-  it('se pueden desactivar y volver a activar', async () => {
-    await service.update(userId, false);
-    expect((await service.get(userId)).newBookingEmail).toBe(false);
-    await service.update(userId, true);
-    expect((await service.get(userId)).newBookingEmail).toBe(true);
+  it('el dueño elige entre todas, las suyas o ninguna', async () => {
+    for (const scope of ['ALL', 'NONE', 'OWN'] as const) {
+      expect(await service.update(userId, scope)).toMatchObject({
+        newBookings: scope,
+      });
+      expect((await service.get(userId)).newBookings).toBe(scope);
+    }
   });
 
   it('un usuario sin negocio no tiene ajustes', async () => {

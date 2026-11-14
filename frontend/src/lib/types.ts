@@ -115,8 +115,12 @@ export interface TimeBlockList {
   blocks: TimeBlock[];
 }
 
+// Qué reservas nuevas llegan por correo: todas las del negocio (solo un
+// dueño), solo las que atiende o ninguna
+export type NotifyScope = "ALL" | "OWN" | "NONE";
+
 export interface Settings {
-  newBookingEmail: boolean;
+  newBookings: NotifyScope;
   email: string;
 }
 

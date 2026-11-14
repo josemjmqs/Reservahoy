@@ -136,7 +136,43 @@ test("en Ajustes el profesional ve solo su aviso, sin los datos del negocio", as
 }) => {
   await loginAsStaff(page);
   await page.getByRole("link", { name: "Ajustes" }).click();
-  await expect(page.getByText("un cliente reserva contigo")).toBeVisible();
+  // Sus reservas o ninguna: las de todo el negocio son solo para un dueño
+  const own = page.getByRole("radio", { name: "Solo las que atiendo yo" });
+  const none = page.getByRole("radio", { name: "Ninguna" });
+  await expect(own).toBeChecked();
+  await expect(page.getByRole("radio")).toHaveCount(2);
+  await expect(page.getByText("Todas las reservas del negocio")).toHaveCount(0);
   await expect(page.getByText("Datos del negocio")).toHaveCount(0);
   await expect(page.getByLabel("Nombre del negocio")).toHaveCount(0);
+
+  try {
+    await none.check();
+    await expect(page.getByRole("status")).toHaveCount(0); // terminó de guardar
+    await page.reload();
+    await expect(none).toBeChecked();
+  } finally {
+    await own.check();
+    await expect(page.getByRole("status")).toHaveCount(0);
+  }
+});
+
+test("en Ajustes el dueño elige entre todas las reservas, las suyas o ninguna", async ({
+  page,
+}) => {
+  await loginAsDemo(page);
+  await page.getByRole("link", { name: "Ajustes" }).click();
+  const all = page.getByRole("radio", { name: "Todas las reservas del negocio" });
+  const own = page.getByRole("radio", { name: "Solo las que atiendo yo" });
+  await expect(page.getByRole("radio")).toHaveCount(3);
+  await expect(all).toBeChecked();
+
+  try {
+    await own.check();
+    await expect(page.getByRole("status")).toHaveCount(0);
+    await page.reload();
+    await expect(own).toBeChecked();
+  } finally {
+    await all.check();
+    await expect(page.getByRole("status")).toHaveCount(0);
+  }
 });
