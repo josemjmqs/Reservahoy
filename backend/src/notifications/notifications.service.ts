@@ -47,6 +47,14 @@ export interface CancelledByBusinessEmailData {
   reason: string | null;
 }
 
+export interface MemberInvitationEmailData {
+  to: string;
+  memberName: string;
+  businessName: string;
+  inviterName: string;
+  token: string;
+}
+
 export interface NewBookingEmailData {
   to: string;
   recipientName: string;
@@ -216,6 +224,22 @@ export class NotificationsService {
         <p>Confirma tu correo para que tu página pública empiece a recibir reservas (el enlace vale 24 horas):</p>
         <p><a href="${link}">Confirmar mi correo</a></p>
         <p>Si no creaste una cuenta en Reservahoy, ignora este mensaje.</p>`,
+    });
+  }
+
+  // Invitación a un profesional del equipo para que cree su cuenta. Nunca lanza
+  async memberInvitation(data: MemberInvitationEmailData): Promise<void> {
+    const link = `${this.frontendUrl}/invitacion/${data.token}`;
+    await this.send('invitación al equipo', {
+      from: this.from,
+      to: data.to,
+      subject: `Te invitaron a ${data.businessName} en Reservahoy`,
+      html: `<p>Hola ${escapeHtml(data.memberName)},</p>
+        <p>${escapeHtml(data.inviterName)} te invitó a unirte al equipo de
+        <strong>${escapeHtml(data.businessName)}</strong>. Crea tu cuenta para ver
+        tu agenda (el enlace vale 7 días):</p>
+        <p><a href="${link}">Crear mi cuenta</a></p>
+        <p>Si no esperabas esta invitación, ignora este mensaje.</p>`,
     });
   }
 

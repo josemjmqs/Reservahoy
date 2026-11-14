@@ -17,6 +17,7 @@ import { TimeBlocksModule } from './time-blocks/time-blocks.module';
 import { StorageModule } from './storage/storage.module';
 import { SettingsModule } from './settings/settings.module';
 import { BusinessModule } from './business/business.module';
+import { InvitationsModule } from './invitations/invitations.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { BusinessModule } from './business/business.module';
     TimeBlocksModule,
     SettingsModule,
     BusinessModule,
+    InvitationsModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

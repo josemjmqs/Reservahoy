@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { assertOwner, getMembership } from '../auth/membership';
+import { assertOwner, getMembership, isOwner } from '../auth/membership';
+import { pendingInvitation } from '../invitations/invitations.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMemberDto, UpdateMemberDto } from './dto/member.dto';
 
@@ -16,10 +17,13 @@ export class MembersService {
     if (count !== ids.length) throw new BadRequestException('Servicio inválido');
   }
 
+  // Cada miembro con su estado de cuenta: 'active' (tiene cuenta), 'invited'
+  // (invitación vigente) o 'none'. El correo invitado y su vencimiento solo los
+  // ve el dueño: un profesional no ve el correo de un compañero
   async list(userId: string) {
-    const { businessId } = await getMembership(this.prisma, userId);
-    return this.prisma.member.findMany({
-      where: { businessId },
+    const m = await getMembership(this.prisma, userId);
+    const members = await this.prisma.member.findMany({
+      where: { businessId: m.businessId },
       orderBy: { id: 'asc' },
       select: {
         id: true,
@@ -27,8 +31,24 @@ export class MembersService {
         role: true,
         bookable: true,
         active: true,
+        userId: true,
         services: { select: { serviceId: true } },
+        invitations: {
+          where: pendingInvitation(),
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { email: true, expiresAt: true },
+        },
       },
+    });
+    const owner = isOwner(m);
+    return members.map(({ userId: accountId, invitations, ...member }) => {
+      const invitation = accountId ? null : (invitations[0] ?? null);
+      return {
+        ...member,
+        account: accountId ? 'active' : invitation ? 'invited' : 'none',
+        ...(owner && { invitation }),
+      };
     });
   }
 

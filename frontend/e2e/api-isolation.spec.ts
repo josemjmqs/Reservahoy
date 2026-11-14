@@ -179,6 +179,20 @@ const PANEL_ROUTES: Record<
     other: 404,
     staff: 403,
   },
+  "POST /members/:id/invitation": {
+    // invitar a un miembro de A: solo su dueño puede (no sale ningún correo)
+    call: (c, a) =>
+      c.post(`/members/${a.member}/invitation`, {
+        data: { email: `e2e-invite-${run}@test.local` },
+      }),
+    other: 404,
+    staff: 403,
+  },
+  "DELETE /members/:id/invitation": {
+    call: (c, a) => c.delete(`/members/${a.member}/invitation`),
+    other: 404,
+    staff: 403,
+  },
   "GET /working-hours": {
     call: (c, a) => c.get(`/working-hours?memberId=${a.member}`),
     other: 404,
