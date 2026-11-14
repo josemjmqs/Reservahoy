@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { getMembership } from '../auth/membership';
+import { assertOwner, getMembership } from '../auth/membership';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMemberDto, UpdateMemberDto } from './dto/member.dto';
 
@@ -33,7 +33,9 @@ export class MembersService {
   }
 
   async create(userId: string, dto: CreateMemberDto) {
-    const { businessId } = await getMembership(this.prisma, userId);
+    const m = await getMembership(this.prisma, userId);
+    assertOwner(m);
+    const { businessId } = m;
     const serviceIds = dto.serviceIds ?? [];
     await this.assertServices(businessId, serviceIds);
     return this.prisma.member.create({
@@ -48,7 +50,9 @@ export class MembersService {
   }
 
   async update(userId: string, id: string, dto: UpdateMemberDto) {
-    const { businessId } = await getMembership(this.prisma, userId);
+    const m = await getMembership(this.prisma, userId);
+    assertOwner(m);
+    const { businessId } = m;
     const member = await this.prisma.member.findFirst({ where: { id, businessId } });
     if (!member) throw new NotFoundException('Profesional no encontrado');
 

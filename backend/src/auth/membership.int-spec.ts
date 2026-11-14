@@ -1,7 +1,7 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
-import { assertOwner, getMembership } from './membership';
+import { assertOwner, getMembership, scopeMemberId } from './membership';
 
 const prisma = new PrismaClient();
 const db = prisma as unknown as PrismaService;
@@ -87,6 +87,25 @@ describe('getMembership', () => {
     const m = await getMembership(db, userIds.moved);
     expect(m.businessId).toBe(otherBusinessId);
     expect(m.timezone).toBe('America/Lima');
+  });
+});
+
+describe('scopeMemberId', () => {
+  it('el dueño consulta a quien pida, o a todo el negocio', async () => {
+    const m = await getMembership(db, userIds.owner);
+    expect(scopeMemberId(m)).toBeUndefined();
+    expect(scopeMemberId(m, 'cualquiera')).toBe('cualquiera');
+  });
+
+  it('un profesional siempre se consulta a sí mismo', async () => {
+    const m = await getMembership(db, userIds.staff);
+    expect(scopeMemberId(m)).toBe(m.memberId);
+    expect(scopeMemberId(m, m.memberId)).toBe(m.memberId);
+  });
+
+  it('un profesional que pide a otro recibe 404', async () => {
+    const m = await getMembership(db, userIds.staff);
+    expect(() => scopeMemberId(m, 'otro')).toThrow(NotFoundException);
   });
 });
 

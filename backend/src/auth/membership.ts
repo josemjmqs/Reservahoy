@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { MemberRole } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
 
@@ -40,4 +40,18 @@ export function assertOwner(
   message = 'Solo el dueño puede hacer esto',
 ) {
   if (m.role !== 'OWNER') throw new ForbiddenException(message);
+}
+
+// Profesional sobre el que se consulta. El dueño elige cualquiera (o ninguno:
+// todo el negocio); un profesional solo se ve a sí mismo y pedir a otro
+// responde 404, igual que un recurso de otro negocio
+export function scopeMemberId(
+  m: Membership,
+  requested?: string,
+): string | undefined {
+  if (m.role === 'OWNER') return requested;
+  if (requested && requested !== m.memberId) {
+    throw new NotFoundException('Profesional no encontrado');
+  }
+  return m.memberId;
 }

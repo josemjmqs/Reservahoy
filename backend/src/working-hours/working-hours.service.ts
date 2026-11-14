@@ -3,7 +3,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { getMembership } from '../auth/membership';
+import {
+  assertOwner,
+  getMembership,
+  scopeMemberId,
+  type Membership,
+} from '../auth/membership';
 import { PrismaService } from '../prisma/prisma.service';
 import { SetWorkingHoursDto } from './dto/set-working-hours.dto';
 
@@ -13,11 +18,12 @@ export class WorkingHoursService {
 
   // Resuelve el profesional objetivo. El negocio sale siempre de la
   // membresía del usuario autenticado, nunca del cliente.
+  // Un profesional (STAFF) solo ve su propio horario.
   private async resolveMemberId(
-    userId: string,
-    memberId?: string,
+    own: Membership,
+    requested?: string,
   ): Promise<string> {
-    const own = await getMembership(this.prisma, userId);
+    const memberId = scopeMemberId(own, requested);
     if (!memberId) return own.memberId;
 
     const target = await this.prisma.member.findFirst({
@@ -29,7 +35,8 @@ export class WorkingHoursService {
   }
 
   async findAll(userId: string, memberId?: string) {
-    const id = await this.resolveMemberId(userId, memberId);
+    const own = await getMembership(this.prisma, userId);
+    const id = await this.resolveMemberId(own, memberId);
     return this.prisma.workingHours.findMany({
       where: { memberId: id },
       orderBy: { weekday: 'asc' },
@@ -37,7 +44,10 @@ export class WorkingHoursService {
   }
 
   async replace(userId: string, dto: SetWorkingHoursDto) {
-    const memberId = await this.resolveMemberId(userId, dto.memberId);
+    // El horario lo define el negocio: solo el dueño lo cambia
+    const own = await getMembership(this.prisma, userId);
+    assertOwner(own);
+    const memberId = await this.resolveMemberId(own, dto.memberId);
 
     const weekdays = dto.days.map((d) => d.weekday);
     if (new Set(weekdays).size !== weekdays.length) {

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -64,7 +65,14 @@ export class TimeBlocksService {
   }
 
   async create(userId: string, dto: CreateTimeBlockDto) {
-    const { businessId, timezone } = await getMembership(this.prisma, userId);
+    const m = await getMembership(this.prisma, userId);
+    const { businessId, timezone } = m;
+
+    // Un profesional (STAFF) solo bloquea su propio horario, nunca el de otro
+    // ni el de todo el negocio
+    if (m.role === 'STAFF' && dto.memberId !== m.memberId) {
+      throw new ForbiddenException('Solo puedes bloquear tu propio horario');
+    }
 
     // El profesional debe ser de tu negocio (404 si no)
     const names = new Map<string, string>();
@@ -119,9 +127,14 @@ export class TimeBlocksService {
   }
 
   async remove(userId: string, id: string) {
-    const { businessId } = await getMembership(this.prisma, userId);
+    const m = await getMembership(this.prisma, userId);
+    // Un profesional solo borra sus propios bloqueos; los demás, 404
     const block = await this.prisma.timeBlock.findFirst({
-      where: { id, businessId },
+      where: {
+        id,
+        businessId: m.businessId,
+        ...(m.role === 'STAFF' && { memberId: m.memberId }),
+      },
       select: { id: true },
     });
     if (!block) throw new NotFoundException('Bloqueo no encontrado');

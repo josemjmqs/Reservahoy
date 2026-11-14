@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DateTime } from 'luxon';
-import { getMembership } from '../auth/membership';
+import { getMembership, scopeMemberId } from '../auth/membership';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -53,9 +53,20 @@ export class AgendaService {
     if (!target) throw new NotFoundException('Profesional no encontrado');
   }
 
-  async list(userId: string, from: string, to: string, memberId?: string) {
-    const { businessId, timezone } = await getMembership(this.prisma, userId);
-    await this.assertMember(businessId, memberId);
+  // Negocio y profesional que se consultan: un profesional (STAFF) solo ve
+  // sus propias reservas
+  private async scope(userId: string, requested?: string) {
+    const m = await getMembership(this.prisma, userId);
+    const memberId = scopeMemberId(m, requested);
+    await this.assertMember(m.businessId, memberId);
+    return { businessId: m.businessId, timezone: m.timezone, memberId };
+  }
+
+  async list(userId: string, from: string, to: string, requested?: string) {
+    const { businessId, timezone, memberId } = await this.scope(
+      userId,
+      requested,
+    );
 
     const start = DateTime.fromISO(from, { zone: timezone }).startOf('day');
     const end = DateTime.fromISO(to, { zone: timezone }).endOf('day');
@@ -74,9 +85,8 @@ export class AgendaService {
 
   // Próxima reserva activa (pendiente o confirmada) que aún no empieza.
   // Se envuelve en { booking } porque Nest responde un null como cuerpo vacío
-  async next(userId: string, memberId?: string, now = new Date()) {
-    const { businessId } = await getMembership(this.prisma, userId);
-    await this.assertMember(businessId, memberId);
+  async next(userId: string, requested?: string, now = new Date()) {
+    const { businessId, memberId } = await this.scope(userId, requested);
 
     const booking = await this.prisma.booking.findFirst({
       where: {
@@ -97,9 +107,14 @@ export class AgendaService {
     status: string,
     reason?: string,
   ) {
-    const { businessId } = await getMembership(this.prisma, userId);
+    const m = await getMembership(this.prisma, userId);
+    // Un profesional solo cambia sus propias reservas; las de otro, 404
     const booking = await this.prisma.booking.findFirst({
-      where: { id, businessId },
+      where: {
+        id,
+        businessId: m.businessId,
+        ...(m.role === 'STAFF' && { memberId: m.memberId }),
+      },
     });
     if (!booking) throw new NotFoundException('Reserva no encontrada');
 
