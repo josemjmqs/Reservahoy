@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
+import { isOwner, useMe } from "@/lib/me";
 import { CancelBookingDialog } from "@/components/CancelBookingDialog";
 import { Button, Input } from "@/components/ui";
 import type {
@@ -81,11 +82,15 @@ function AgendaContent() {
     }
   }, [date, memberId]);
 
+  // Solo el dueño elige profesional: el profesional ve únicamente su agenda,
+  // sin el filtro ni el "Con {nombre}" (ambos aparecen con más de un miembro)
+  const owner = isOwner(useMe());
   useEffect(() => {
+    if (!owner) return;
     api<TeamMember[]>("/members")
       .then((list) => setMembers(list.filter((m) => m.active)))
       .catch(() => {});
-  }, []);
+  }, [owner]);
 
   useEffect(() => {
     // al cambiar de día, ignora la respuesta del día anterior si llega tarde
