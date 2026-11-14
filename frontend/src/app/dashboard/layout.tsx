@@ -5,16 +5,22 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui";
+import { isOwner, MeProvider } from "@/lib/me";
 import type { Me } from "@/lib/types";
 
+// ownerOnly: pestañas que un profesional no ve (Servicios y Equipo son del
+// dueño; el backend igual responde 403 a sus cambios)
 const TABS = [
   { href: "/dashboard/agenda", label: "Agenda" },
-  { href: "/dashboard/services", label: "Servicios" },
-  { href: '/dashboard/team', label: 'Equipo' },
+  { href: "/dashboard/services", label: "Servicios", ownerOnly: true },
+  { href: "/dashboard/team", label: "Equipo", ownerOnly: true },
   { href: "/dashboard/hours", label: "Horario" },
   { href: "/dashboard/blocks", label: "Bloqueos" },
   { href: "/dashboard/settings", label: "Ajustes" },
 ];
+
+const ownerOnly = (pathname: string) =>
+  TABS.some((t) => t.ownerOnly && pathname.startsWith(t.href));
 
 function VerifyEmailBanner({ email }: { email: string }) {
   const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
@@ -91,6 +97,14 @@ export default function DashboardLayout({
     return () => window.removeEventListener("business-updated", loadMe);
   }, [router]);
 
+  // Servicios y Equipo son del dueño: un profesional que abre esas direcciones
+  // a mano va a su Agenda
+  useEffect(() => {
+    if (me && !isOwner(me) && ownerOnly(pathname)) {
+      router.replace("/dashboard/agenda");
+    }
+  }, [me, pathname, router]);
+
   async function logout() {
     await api("/auth/logout", { method: "POST" }).catch(() => {});
     router.push("/login");
@@ -98,21 +112,23 @@ export default function DashboardLayout({
 
   if (!me) return <p className="p-6 text-gray-600">Cargando...</p>;
 
-  // `?.`: mientras se despliega, un backend anterior todavía no trae membership
-  const business = me.membership?.business;
+  const owner = isOwner(me);
+  const { business } = me.membership;
+  // Mientras se va a la Agenda no se muestra la pantalla del dueño
+  const redirecting = !owner && ownerOnly(pathname);
 
   return (
     <div className="min-h-screen">
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-3">
           <div>
-            <p className="font-semibold tracking-tight">{business?.name}</p>
+            <p className="font-semibold tracking-tight">{business.name}</p>
             <Link
-              href={`/${business?.slug}`}
+              href={`/${business.slug}`}
               target="_blank"
               className="text-xs text-indigo-600 hover:underline"
             >
-              Ver mi página pública ↗
+              {owner ? "Ver mi página pública ↗" : "Ver la página del negocio ↗"}
             </Link>
           </div>
           <Button variant="secondary" onClick={logout}>
@@ -120,7 +136,7 @@ export default function DashboardLayout({
           </Button>
         </div>
         <nav className="mx-auto flex max-w-3xl gap-6 overflow-x-auto px-6">
-          {TABS.map((t) => (
+          {TABS.filter((t) => owner || !t.ownerOnly).map((t) => (
             <Link
               key={t.href}
               href={t.href}
@@ -135,8 +151,14 @@ export default function DashboardLayout({
           ))}
         </nav>
       </header>
-      {!me.emailVerifiedAt && <VerifyEmailBanner email={me.email} />}
-      <div className="mx-auto max-w-3xl px-6 py-6">{children}</div>
+      {/* Solo el dueño: sin su correo verificado el negocio no recibe reservas
+          (el profesional entra ya verificado por la invitación) */}
+      {owner && !me.emailVerifiedAt && <VerifyEmailBanner email={me.email} />}
+      <MeProvider value={me}>
+        <div className="mx-auto max-w-3xl px-6 py-6">
+          {redirecting ? null : children}
+        </div>
+      </MeProvider>
     </div>
   );
 }

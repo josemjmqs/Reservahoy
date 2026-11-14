@@ -85,8 +85,8 @@ test("al desactivarlo pierde la sesión y no entra hasta que lo reactivan", asyn
     await expect(row.getByText("Inactivo")).toBeVisible();
 
     // Lo siguiente que hace el profesional lo lleva al login
-    // (toHaveURL y no waitForURL: la carga de Servicios se corta al irse al login)
-    await page.getByRole("link", { name: "Servicios" }).click();
+    // (toHaveURL y no waitForURL: la carga de Bloqueos se corta al irse al login)
+    await page.getByRole("link", { name: "Bloqueos" }).click();
     await expect(page).toHaveURL(/\/login\?expired=1$/);
     await login(page, m.email);
     await expect(

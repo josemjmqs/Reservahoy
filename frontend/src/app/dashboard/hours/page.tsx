@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { isOwner, useMe } from '@/lib/me';
 import { Button, Input } from '@/components/ui';
 import type { TeamMember, WorkingHour } from '@/lib/types';
 
@@ -38,7 +39,13 @@ const emptyWeek = () =>
 
 function HoursContent() {
   const memberId = useSearchParams().get('memberId');
-  const [memberName, setMemberName] = useState('');
+  const me = useMe();
+  // El profesional ve su horario en solo lectura: lo define el dueño
+  const readOnly = !isOwner(me);
+  // Sin ?memberId= es el horario propio (de quien entró); con él, el del
+  // profesional elegido en Equipo
+  const [otherName, setOtherName] = useState('');
+  const memberName = memberId ? otherName : me.membership.displayName;
   const [days, setDays] = useState<Record<number, DayState>>(emptyWeek());
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
@@ -70,14 +77,12 @@ function HoursContent() {
       })
       .catch((e) => setError(e.message));
 
-    // Nombre del profesional para el título
+    // Nombre del profesional elegido, para el título
+    if (!memberId) return;
     api<TeamMember[]>('/members')
-      .then((list) => {
-        const m = memberId
-          ? list.find((x) => x.id === memberId)
-          : list.find((x) => x.role === 'OWNER');
-        setMemberName(m?.displayName ?? '');
-      })
+      .then((list) =>
+        setOtherName(list.find((x) => x.id === memberId)?.displayName ?? ''),
+      )
       .catch(() => {});
   }, [memberId]);
 
@@ -119,11 +124,23 @@ function HoursContent() {
         </Link>
       )}
       <h1 className="mt-1 text-xl font-semibold tracking-tight">
-        Horario de atención{memberName && ` · ${memberName}`}
+        {readOnly ? 'Mi horario' : 'Horario de atención'}
+        {memberName && ` · ${memberName}`}
       </h1>
-      <p className="mt-1 text-sm text-gray-600">
-        Marca los días en que atiende y define el horario de cada uno.
-      </p>
+      {readOnly ? (
+        <p className="mt-1 text-sm text-gray-600">
+          Tu horario lo define el dueño del negocio. Para ausencias puntuales
+          usa{' '}
+          <Link href="/dashboard/blocks" className="text-indigo-600 underline">
+            Bloqueos
+          </Link>
+          .
+        </p>
+      ) : (
+        <p className="mt-1 text-sm text-gray-600">
+          Marca los días en que atiende y define el horario de cada uno.
+        </p>
+      )}
 
       {!loaded && !error && (
         <p className="my-4 text-sm text-gray-500">Cargando horario...</p>
@@ -139,10 +156,13 @@ function HoursContent() {
               key={weekday}
               className="flex flex-wrap items-center gap-3 p-4"
             >
-              <label className="flex w-36 cursor-pointer items-center gap-3 font-medium">
+              <label
+                className={`flex w-36 items-center gap-3 font-medium ${readOnly ? '' : 'cursor-pointer'}`}
+              >
                 <input
                   type="checkbox"
                   checked={day.enabled}
+                  disabled={readOnly}
                   onChange={(e) =>
                     update(weekday, { enabled: e.target.checked })
                   }
@@ -155,6 +175,7 @@ function HoursContent() {
                   <Input
                     type="time"
                     value={day.opensAt}
+                    disabled={readOnly}
                     onChange={(e) =>
                       update(weekday, { opensAt: e.target.value })
                     }
@@ -164,6 +185,7 @@ function HoursContent() {
                   <Input
                     type="time"
                     value={day.closesAt}
+                    disabled={readOnly}
                     onChange={(e) =>
                       update(weekday, { closesAt: e.target.value })
                     }
@@ -183,9 +205,11 @@ function HoursContent() {
         <p className="mb-3 text-sm text-green-700">Horario guardado.</p>
       )}
 
-      <Button onClick={save} disabled={saving || !loaded}>
-        {saving ? 'Guardando...' : 'Guardar horario'}
-      </Button>
+      {!readOnly && (
+        <Button onClick={save} disabled={saving || !loaded}>
+          {saving ? 'Guardando...' : 'Guardar horario'}
+        </Button>
+      )}
     </div>
   );
 }
