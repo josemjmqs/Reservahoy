@@ -26,6 +26,13 @@ export interface SessionUser {
 export const shouldRenew = (iat: number, now = Date.now()) =>
   now - iat * 1000 > RENEW_AFTER_MS;
 
+// Contenido del token de sesión, en un solo lugar: login, registro, aceptar una
+// invitación y la renovación firman lo mismo
+export const signSession = (
+  jwt: JwtService,
+  user: { userId: string; email: string; sv: number },
+) => jwt.signAsync({ sub: user.userId, email: user.email, sv: user.sv });
+
 // Si el token llegó por cookie y tiene más de un día, se firma uno nuevo y se
 // vuelve a poner la cookie: así la sesión vence recién tras 30 días sin uso.
 // Con el header Bearer (pruebas) no se toca nada
@@ -38,10 +45,5 @@ export async function renewSession(
   const user = req.user as SessionUser | undefined;
   const fromCookie = Boolean(req.cookies?.['token']);
   if (!user || !fromCookie || !shouldRenew(user.iat, now)) return;
-  const token = await jwt.signAsync({
-    sub: user.userId,
-    email: user.email,
-    sv: user.sv,
-  });
-  res.cookie('token', token, SESSION_COOKIE);
+  res.cookie('token', await signSession(jwt, user), SESSION_COOKIE);
 }

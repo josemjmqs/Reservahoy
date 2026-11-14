@@ -5,7 +5,10 @@ import {
   HttpException,
   NotFoundException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+import { getMembership } from '../auth/membership';
 import { hashToken } from '../auth/one-time-token';
 import { MembersService } from '../members/members.service';
 import type {
@@ -15,7 +18,7 @@ import type {
 import type { PrismaService } from '../prisma/prisma.service';
 import { INVITATION_TTL_MS, InvitationsService } from './invitations.service';
 
-// Invitar, reenviar y anular contra PostgreSQL; el correo se simula
+// Invitar, reenviar, anular y aceptar contra PostgreSQL; el correo se simula
 const prisma = new PrismaClient();
 const db = prisma as unknown as PrismaService;
 const sent: MemberInvitationEmailData[] = [];
@@ -25,7 +28,8 @@ const notifications = {
     return Promise.resolve();
   },
 } as unknown as NotificationsService;
-const invitations = new InvitationsService(db, notifications);
+const jwt = new JwtService({ secret: 'test-invitations' });
+const invitations = new InvitationsService(db, notifications, jwt);
 const members = new MembersService(db);
 const run = Date.now().toString(36);
 const mail = (x: string) => `invite-${x}-${run}@test.local`;
@@ -87,7 +91,15 @@ beforeEach(() => {
 afterAll(async () => {
   const businesses = [businessId, otherBusinessId];
   await prisma.member.deleteMany({ where: { businessId: { in: businesses } } }); // borra invitaciones en cascada
-  await prisma.user.deleteMany({ where: { id: { in: Object.values(users) } } });
+  // los fijos y las cuentas creadas al aceptar invitaciones
+  await prisma.user.deleteMany({
+    where: {
+      OR: [
+        { id: { in: Object.values(users) } },
+        { email: { startsWith: 'invite-', endsWith: `-${run}@test.local` } },
+      ],
+    },
+  });
   await prisma.business.deleteMany({ where: { id: { in: businesses } } });
   await prisma.$disconnect();
 });
@@ -245,5 +257,137 @@ describe('estado de cuenta en GET /members', () => {
     expect(byName(list, 'Caro').account).toBe('invited');
     expect(byName(list, 'Caro')).not.toHaveProperty('invitation');
     expect(JSON.stringify(list)).not.toContain(mail('caro-final'));
+  });
+});
+
+describe('aceptar la invitación', () => {
+  // Un profesional nuevo, sin cuenta, con su invitación recién enviada
+  const fresh = async (name: string) => {
+    const member = await prisma.member.create({
+      data: { role: 'STAFF', displayName: name, businessId },
+    });
+    const email = mail(name.toLowerCase());
+    await invitations.create(users.owner, member.id, email);
+    return { memberId: member.id, email, token: sent.at(-1)!.token };
+  };
+  const invalid = 'El enlace no es válido o expiró';
+
+  it('el enlace muestra el negocio, el profesional y el correo', async () => {
+    const { token, email } = await fresh('Dani');
+    expect(await invitations.lookup(token)).toMatchObject({
+      businessName: 'Equipo a',
+      memberName: 'Dani',
+      email,
+      expiresAt: expect.any(Date),
+    });
+  });
+
+  it('crea la cuenta verificada, enlazada y con sesión de profesional', async () => {
+    const { token, email, memberId } = await fresh('Eli');
+    const { accessToken } = await invitations.accept(
+      token,
+      'Elisa Rojas',
+      'clave-segura',
+    );
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    expect(user.name).toBe('Elisa Rojas');
+    expect(user.emailVerifiedAt).toBeInstanceOf(Date);
+    expect(user.password).not.toBe('clave-segura');
+    expect(await bcrypt.compare('clave-segura', user.password)).toBe(true);
+
+    const member = await prisma.member.findUniqueOrThrow({
+      where: { id: memberId },
+    });
+    expect(member.userId).toBe(user.id);
+    expect(member.displayName).toBe('Eli'); // el nombre público no cambia
+    expect((await getMembership(db, user.id)).role).toBe('STAFF');
+
+    const payload = await jwt.verifyAsync<{ sub: string; sv: number }>(
+      accessToken,
+    );
+    expect(payload).toMatchObject({ sub: user.id, email, sv: 0 });
+
+    const [inv] = await invitationsOf(memberId);
+    expect(inv.usedAt).toBeInstanceOf(Date);
+    const list = await members.list(users.owner);
+    expect(list.find((m) => m.id === memberId)).toMatchObject({
+      account: 'active',
+      invitation: null,
+    });
+  });
+
+  it('un enlace usado ya no sirve, ni para ver ni para aceptar', async () => {
+    const { token } = await fresh('Fran');
+    await invitations.accept(token, 'Fran', 'clave-segura');
+    await expect(invitations.lookup(token)).rejects.toThrow(invalid);
+    await expect(
+      invitations.accept(token, 'Fran', 'clave-segura'),
+    ).rejects.toThrow(invalid);
+  });
+
+  it('un enlace inexistente, vencido o anulado no sirve', async () => {
+    await expect(invitations.lookup('no-existe')).rejects.toThrow(invalid);
+
+    const expired = await fresh('Gabi');
+    await prisma.memberInvitation.updateMany({
+      where: { memberId: expired.memberId },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    });
+    await expect(invitations.lookup(expired.token)).rejects.toThrow(invalid);
+    await expect(
+      invitations.accept(expired.token, 'Gabi', 'clave-segura'),
+    ).rejects.toThrow(invalid);
+
+    const revoked = await fresh('Hugo');
+    await invitations.revoke(users.owner, revoked.memberId);
+    await expect(
+      invitations.accept(revoked.token, 'Hugo', 'clave-segura'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(
+      await prisma.user.findUnique({ where: { email: revoked.email } }),
+    ).toBeNull();
+  });
+
+  it('reenviar deja sin efecto el enlace anterior', async () => {
+    const first = await fresh('Ines');
+    await invitations.create(users.owner, first.memberId, first.email);
+    const second = sent.at(-1)!.token;
+    await expect(invitations.lookup(first.token)).rejects.toThrow(invalid);
+    await expect(invitations.lookup(second)).resolves.toBeDefined();
+  });
+
+  it('si el profesional fue desactivado, el enlace no sirve', async () => {
+    const { token, memberId } = await fresh('Juan');
+    await prisma.member.update({
+      where: { id: memberId },
+      data: { active: false },
+    });
+    await expect(
+      invitations.accept(token, 'Juan', 'clave-segura'),
+    ).rejects.toThrow(invalid);
+  });
+
+  it('si el correo se registró en el intertanto, responde 409 y no enlaza', async () => {
+    const { token, email, memberId } = await fresh('Kari');
+    await prisma.user.create({ data: { email, name: 'Kari', password: 'x' } });
+    await expect(
+      invitations.accept(token, 'Kari', 'clave-segura'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    const member = await prisma.member.findUniqueOrThrow({
+      where: { id: memberId },
+    });
+    expect(member.userId).toBeNull();
+  });
+
+  it('dos aceptaciones a la vez crean una sola cuenta', async () => {
+    const { token, email } = await fresh('Lalo');
+    const results = await Promise.allSettled([
+      invitations.accept(token, 'Lalo', 'clave-segura'),
+      invitations.accept(token, 'Lalo', 'clave-segura'),
+    ]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((r) => r.status === 'rejected')).toHaveLength(1);
+    expect(await prisma.user.count({ where: { email } })).toBe(1);
   });
 });

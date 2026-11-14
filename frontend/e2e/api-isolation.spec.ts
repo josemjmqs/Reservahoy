@@ -73,6 +73,8 @@ const PUBLIC_ROUTES = [
   "POST /public/:slug/bookings",
   "GET /public/bookings/:token",
   "POST /public/bookings/:token/cancel",
+  "GET /invitations/:token",
+  "POST /invitations/:token/accept",
 ];
 
 // Rutas del panel: cómo llamarlas apuntando a recursos de la dueña del negocio A
