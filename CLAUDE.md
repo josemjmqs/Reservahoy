@@ -18,16 +18,17 @@ Plataforma de reservas online para pequeños negocios. Cada negocio tiene una p�
 - Backend: `npm run start:dev`, `npx nest build`, `npm test`, `npm run test:integration`
 - Frontend: `npm run dev` (puerto 3001), `npx tsc --noEmit`, `npm run lint`, `npm run build`
 - Base local: `docker compose up -d`; consola: `docker compose exec db psql -U reservaya -d reservaya`
-- Datos de prueba: `npx prisma db seed` (en `backend/`, `prisma/seed.mts`): negocio demo `demo-peluqueria`, login `demo@reservahoy.local` / `demo1234`; `SEED_TODAY=1` agrega reservas hoy. Solo corre contra bases locales
+- Datos de prueba: `npx prisma db seed` (en `backend/`, `prisma/seed.mts`): negocio demo `demo-peluqueria`, login de la dueña `demo@reservahoy.local` / `demo1234` y del profesional (STAFF) `diego@reservahoy.local` / `demo1234`; `SEED_TODAY=1` agrega reservas hoy. Solo corre contra bases locales
 
 ## Reglas del proyecto
-- El `businessId` SIEMPRE se obtiene de la membresía del usuario autenticado, nunca del cliente. Recursos de otro negocio responden 404
+- El `businessId` SIEMPRE se obtiene de la membresía del usuario autenticado, nunca del cliente, con `getMembership` (`auth/membership.ts`), que solo acepta membresías activas. Recursos de otro negocio responden 404
+- Roles: `OWNER` puede todo; `STAFF` ve y cambia solo lo suyo: su agenda (incluido cancelar), su horario sin poder cambiarlo, sus bloqueos, sus ajustes, y en solo lectura servicios, equipo y datos del negocio. Una acción que no es de su rol responde 403; un recurso de otro profesional, 404. Usar `isOwner`, `assertOwner` y `scopeMemberId` (`auth/membership.ts`), nunca comparar `role === 'STAFF'` (un rol nuevo debe partir limitado). Las reglas como casos: `staff-permissions.int-spec.ts`
 - La restricción `booking_no_overlap` (exclusion constraint de PostgreSQL) es la garantía final contra dobles reservas; solape y deadlock se traducen a 409
 - Todas las fechas se guardan en UTC y se convierten con luxon según la zona del negocio (`America/Santiago`)
 - Código y nombres en inglés; textos visibles al usuario en español
 - Sesión: JWT en cookie `httpOnly` (también se acepta header Bearer para pruebas) que dura 30 días y se renueva con el uso, como mucho una vez al día (`renewSession` en `auth/session.ts`, desde `JwtAuthGuard`). El token lleva `sv` (`User.sessionVersion`): restablecer la contraseña la incrementa y cierra las demás sesiones (`AuthService.validateSession`). En el panel, un 401 lleva a `/login?expired=1` (`lib/api.ts`)
 - Correos: nunca deben romper el flujo principal (el envío captura sus errores) y se mandan sin `await` (`void`). Todos pasan por `NotificationsService.send`, que reintenta 3 veces ante fallas pasajeras (`isTransient`) con la misma clave de idempotencia de Resend
-- Al crear una reserva se avisa por correo a los miembros activos con cuenta y `notifyNewBookings` (`BookingsService.notifyStaff`, preferencia en `/settings`)
+- Al crear una reserva se avisa por correo a los dueños y al profesional de la reserva, activos, con cuenta y `notifyNewBookings` (`BookingsService.notifyStaff`, preferencia en `/settings`): un profesional no recibe datos de clientes de otros
 - Si el negocio cancela (`PATCH /agenda/:id/status` a `CANCELLED`, motivo opcional `reason`), se avisa al cliente por correo una sola vez: solo quien pasa la reserva de activa a cancelada envía (`updateMany` condicional en `AgendaService.updateStatus`)
 - Datos del negocio (nombre, teléfono): `GET/PATCH /business`, solo el `OWNER` los cambia. Las preferencias de cada miembro van en `/settings`
 - Los correos se normalizan a minúsculas (trim + lowercase)
@@ -41,7 +42,7 @@ Plataforma de reservas online para pequeños negocios. Cada negocio tiene una p�
 - Jest corre en ESM porque NestJS 12 es solo ESM: configuración en `jest.config.ts`, `test/jest-int.json` y `tsconfig.spec.json`; los scripts usan `node --experimental-vm-modules`
 - Los servicios se prueban instanciándolos con un `PrismaClient` real (ej. `time-blocks.service.int-spec.ts`)
 - Todavía no se puede cargar `AppModule` ni `AuthController` en Jest: `@nestjs/throttler` es CommonJS y hace `require` de `@nestjs/common` (ESM); Jest lo soporta recién en Node 24.9+
-- Pruebas e2e con Playwright en `frontend/e2e/` (`npm run e2e` en `frontend/`, con backend y frontend levantados y el seed corrido): `api-isolation.spec.ts` prueba todas las rutas del panel (401 sin sesión, 404 con otro negocio); el resto, los flujos en el navegador (reserva, cancelación con enlace, registro, configuración del negocio, horario cargando). El dueño demo inicia sesión una sola vez (`auth.setup.ts`) y las pruebas reutilizan la sesión con `loginAsDemo`: el login tiene un límite de 5 por minuto. Backend con `THROTTLE_LIMIT=1000` (límite global configurable; en producción queda en 60). Las pruebas que cambian el negocio demo lo dejan como estaba. Al crear una ruta nueva en el backend, agregarla a `PANEL_ROUTES` (con su caso de aislamiento) o a `PUBLIC_ROUTES`: la prueba falla si hay rutas sin clasificar
+- Pruebas e2e con Playwright en `frontend/e2e/` (`npm run e2e` en `frontend/`, con backend y frontend levantados y el seed corrido): `api-isolation.spec.ts` prueba todas las rutas del panel (401 sin sesión, 404 con otro negocio, y lo que responde el profesional demo: 404 en lo de otro profesional, 403 en lo que es solo del dueño); el resto, los flujos en el navegador (reserva, cancelación con enlace, registro, configuración del negocio, horario cargando). El dueño demo inicia sesión una sola vez (`auth.setup.ts`) y las pruebas reutilizan la sesión con `loginAsDemo`: el login tiene un límite de 5 por minuto. Backend con `THROTTLE_LIMIT=1000` (límite global configurable; en producción queda en 60). Las pruebas que cambian el negocio demo lo dejan como estaba. Al crear una ruta nueva en el backend, agregarla a `PANEL_ROUTES` (con sus casos `other`, otro negocio, y `staff`, el profesional demo) o a `PUBLIC_ROUTES`: la prueba falla si hay rutas sin clasificar
 - Cada carpeta de `frontend/src/app` debe estar en `RESERVED_SLUGS`: lo revisa `auth-dto.spec.ts`
 
 ## Prisma y migraciones
@@ -71,4 +72,5 @@ Plataforma de reservas online para pequeños negocios. Cada negocio tiene una p�
 ## Pendientes conocidos
 - Recordatorios por correo 24 h antes
 - Correo de contacto con dominio propio (Cloudflare Email Routing)
-- WhatsApp, trabajadores con cuenta propia, campos personalizados, pagos
+- Trabajadores con cuenta propia: los permisos por rol están listos; faltan invitar por correo, quitar acceso, panel según el rol, panel cómodo en celular e instalable (PWA)
+- WhatsApp, campos personalizados, pagos
