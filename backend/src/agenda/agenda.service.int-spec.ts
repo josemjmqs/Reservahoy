@@ -1,4 +1,5 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { jest } from '@jest/globals'; // en modo ESM, jest no es global
+import { ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { DateTime } from 'luxon';
 import type {
@@ -162,13 +163,156 @@ describe('AgendaService.next', () => {
   });
 });
 
+describe('AgendaService.list', () => {
+  // Reservas en enero de 2032 (antes del "ahora" fijo) para no tocar los tests
+  // de next. En enero Santiago está en UTC-3: las 22:00 locales ya son el día
+  // siguiente en UTC, así se nota si el rango se calcula en UTC por error
+  const ids: Record<string, string> = {};
+
+  beforeAll(async () => {
+    const [wash, cut] = await Promise.all(
+      ['Lavado', 'Peinado'].map((name) =>
+        prisma.service.create({ data: { name, durationMin: 30, businessId } }),
+      ),
+    );
+    const customerId = (
+      await prisma.customer.create({
+        data: { name: 'L', email: `agenda-l-${run}@test.local`, businessId },
+      })
+    ).id;
+    const book = async (
+      key: string,
+      date: string,
+      time: string,
+      opts: {
+        member?: string;
+        status?: 'CONFIRMED' | 'CANCELLED';
+        business?: string;
+        customer?: string;
+        // [serviceId, position]: se insertan en este orden
+        items?: [string, number][];
+      } = {},
+    ) => {
+      const startsAt = local(date, time);
+      ids[key] = (
+        await prisma.booking.create({
+          data: {
+            startsAt,
+            endsAt: DateTime.fromJSDate(startsAt).plus({ hours: 1 }).toJSDate(),
+            status: opts.status ?? 'CONFIRMED',
+            businessId: opts.business ?? businessId,
+            memberId: opts.member ?? memberId,
+            customerId: opts.customer ?? customerId,
+            items: {
+              create: (opts.items ?? [[wash.id, 0]]).map(
+                ([serviceId, position]) => ({ serviceId, position }),
+              ),
+            },
+          },
+        })
+      ).id;
+    };
+
+    const otherCustomer = await prisma.customer.create({
+      data: {
+        name: 'O',
+        email: `agenda-o-${run}@test.local`,
+        businessId: otherBusinessId,
+      },
+    });
+    const otherService = await prisma.service.create({
+      data: { name: 'Ajeno', durationMin: 30, businessId: otherBusinessId },
+    });
+
+    await book('eveBefore', '2032-01-19', '22:00'); // fuera: día anterior
+    await book('firstMinutes', '2032-01-20', '00:10');
+    await book('cancelled', '2032-01-20', '10:00', {
+      member: secondMemberId,
+      status: 'CANCELLED',
+    });
+    // Peinado (posición 1) se inserta antes que Lavado (posición 0)
+    await book('multi', '2032-01-21', '12:00', {
+      items: [
+        [cut.id, 1],
+        [wash.id, 0],
+      ],
+    });
+    await book('lastMinutes', '2032-01-21', '23:30');
+    await book('dayAfter', '2032-01-22', '00:45'); // fuera: día siguiente
+    await book('otherBusiness', '2032-01-20', '11:00', {
+      business: otherBusinessId,
+      member: otherMemberId,
+      customer: otherCustomer.id,
+      items: [[otherService.id, 0]],
+    });
+  });
+
+  const listIds = async (memberFilter?: string) =>
+    (
+      await service.list(ownerUserId, '2032-01-20', '2032-01-21', memberFilter)
+    ).map((b) => b.id);
+
+  it('incluye el día completo en la zona del negocio, en orden', async () => {
+    expect(await listIds()).toEqual([
+      ids.firstMinutes,
+      ids.cancelled,
+      ids.multi,
+      ids.lastMinutes,
+    ]);
+  });
+
+  it('no incluye reservas de otro negocio', async () => {
+    expect(await listIds()).not.toContain(ids.otherBusiness);
+  });
+
+  it('incluye las canceladas, con su estado', async () => {
+    const list = await service.list(
+      ownerUserId,
+      '2032-01-20',
+      '2032-01-20',
+      secondMemberId,
+    );
+    expect(list.map((b) => [b.id, b.status])).toEqual([
+      [ids.cancelled, 'CANCELLED'],
+    ]);
+  });
+
+  it('filtra por profesional', async () => {
+    expect(await listIds(memberId)).toEqual([
+      ids.firstMinutes,
+      ids.multi,
+      ids.lastMinutes,
+    ]);
+  });
+
+  it('responde los servicios planos, en el orden en que se hacen', async () => {
+    const list = await service.list(ownerUserId, '2032-01-21', '2032-01-21');
+    const multi = list.find((b) => b.id === ids.multi);
+    expect(multi).toMatchObject({
+      services: [
+        { name: 'Lavado', durationMin: 30 },
+        { name: 'Peinado', durationMin: 30 },
+      ],
+      member: { id: memberId, displayName: 'Dueña' },
+      customer: { name: 'L', email: `agenda-l-${run}@test.local`, phone: null },
+    });
+    expect(multi).not.toHaveProperty('items');
+  });
+
+  it('no deja consultar un profesional de otro negocio', async () => {
+    await expect(
+      service.list(ownerUserId, '2032-01-20', '2032-01-21', otherMemberId),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
 describe('AgendaService.updateStatus', () => {
   // Reservas en febrero de 2032 (antes del "ahora" fijo) para no tocar los tests de next
   let serviceId: string;
   let customerId: string;
   const book = async (
     time: string,
-    status: 'CONFIRMED' | 'CANCELLED' = 'CONFIRMED',
+    status: 'CONFIRMED' | 'CANCELLED' | 'PENDING' = 'CONFIRMED',
     member = memberId,
   ) =>
     (
@@ -246,6 +390,28 @@ describe('AgendaService.updateStatus', () => {
       expect(cancelled[0].reason).toBeNull();
     });
 
+    it('un motivo con solo espacios cuenta como sin motivo', async () => {
+      await service.updateStatus(
+        ownerUserId,
+        await book('20:00'),
+        'CANCELLED',
+        '   ',
+      );
+      await settle();
+      expect(cancelled).toHaveLength(1);
+      expect(cancelled[0].reason).toBeNull();
+    });
+
+    it('cancelar una reserva pendiente también le avisa', async () => {
+      const id = await book('21:00', 'PENDING');
+      expect(await service.updateStatus(ownerUserId, id, 'CANCELLED')).toEqual({
+        id,
+        status: 'CANCELLED',
+      });
+      await settle();
+      expect(cancelled).toHaveLength(1);
+    });
+
     it('cancelar dos veces al mismo tiempo manda un solo correo', async () => {
       const id = await book('15:00');
       await Promise.all([
@@ -298,5 +464,35 @@ describe('AgendaService.updateStatus', () => {
     await expect(
       service.updateStatus(otherUserId, id, 'CANCELLED'),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('si el correo falla, la cancelación igual queda hecha', async () => {
+    const logged = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => {});
+    const failing = new AgendaService(
+      prisma as unknown as PrismaService,
+      {
+        bookingCancelledByBusiness: () =>
+          Promise.reject(new Error('Resend caído')),
+      } as unknown as NotificationsService,
+    );
+    try {
+      const id = await book('22:00');
+      expect(await failing.updateStatus(ownerUserId, id, 'CANCELLED')).toEqual({
+        id,
+        status: 'CANCELLED',
+      });
+      await settle();
+      const saved = await prisma.booking.findUniqueOrThrow({ where: { id } });
+      expect(saved.status).toBe('CANCELLED');
+      // El error queda en el log en vez de propagarse
+      expect(logged).toHaveBeenCalledWith(
+        'Error avisando la cancelación',
+        expect.any(Error),
+      );
+    } finally {
+      logged.mockRestore();
+    }
   });
 });

@@ -2,7 +2,10 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { AgendaService } from '../agenda/agenda.service';
 import { MembersService } from '../members/members.service';
-import type { NotificationsService } from '../notifications/notifications.service';
+import type {
+  CancelledByBusinessEmailData,
+  NotificationsService,
+} from '../notifications/notifications.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import { ServicesService } from '../services/services.service';
 import type { StorageService } from '../storage/storage.service';
@@ -13,9 +16,16 @@ import { WorkingHoursService } from '../working-hours/working-hours.service';
 // Ana es STAFF con cuenta; Beto, STAFF sin cuenta. El dueño sirve de control
 const prisma = new PrismaClient();
 const db = prisma as unknown as PrismaService;
+// Correos simulados: se anotan en vez de enviarse
+const cancelledEmails: CancelledByBusinessEmailData[] = [];
 const notifications = {
-  bookingCancelledByBusiness: () => Promise.resolve(),
+  bookingCancelledByBusiness: (data: CancelledByBusinessEmailData) => {
+    cancelledEmails.push(data);
+    return Promise.resolve();
+  },
 } as unknown as NotificationsService;
+// El correo sale en segundo plano: espera a que llegue
+const settle = () => new Promise((r) => setTimeout(r, 300));
 // Sin R2: así se comprueba que el rol se revisa antes que la subida (403, no 503)
 const storage = {
   enabled: false,
@@ -156,6 +166,12 @@ describe('agenda de un profesional', () => {
     expect(ids(await agenda.list(anaUserId, ...range))).toEqual([anaBookingId]);
   });
 
+  it('puede pedir su propia agenda por su id', async () => {
+    expect(ids(await agenda.list(anaUserId, ...range, anaId))).toEqual([
+      anaBookingId,
+    ]);
+  });
+
   it('pedir la agenda de otro profesional responde 404', async () => {
     await notFound(agenda.list(anaUserId, ...range, betoId));
     await notFound(agenda.next(anaUserId, betoId));
@@ -170,17 +186,41 @@ describe('agenda de un profesional', () => {
     expect(booking?.id).toBe(anaBookingId);
   });
 
-  it('cambia el estado de sus reservas, incluso cancelarlas', async () => {
+  it('cambia el estado de sus reservas', async () => {
     expect(
       (await agenda.updateStatus(anaUserId, anaBookingId, 'COMPLETED')).status,
     ).toBe('COMPLETED');
     expect(
-      (await agenda.updateStatus(anaUserId, anaBookingId, 'CANCELLED')).status,
-    ).toBe('CANCELLED');
+      (await agenda.updateStatus(anaUserId, anaBookingId, 'CONFIRMED')).status,
+    ).toBe('CONFIRMED');
   });
 
-  it('la reserva de otro profesional responde 404', async () => {
+  it('cancela sus reservas y el cliente recibe el aviso una vez', async () => {
+    await settle();
+    cancelledEmails.length = 0;
+    expect(
+      (
+        await agenda.updateStatus(
+          anaUserId,
+          anaBookingId,
+          'CANCELLED',
+          'Me enfermé',
+        )
+      ).status,
+    ).toBe('CANCELLED');
+    await settle();
+    expect(cancelledEmails).toHaveLength(1);
+    expect(cancelledEmails[0]).toMatchObject({
+      to: `staff-perms-c-${run}@test.local`,
+      reason: 'Me enfermé',
+    });
+  });
+
+  it('la reserva de otro profesional responde 404, sin avisar a nadie', async () => {
+    cancelledEmails.length = 0;
     await notFound(agenda.updateStatus(anaUserId, betoBookingId, 'CANCELLED'));
+    await settle();
+    expect(cancelledEmails).toEqual([]);
     const beto = await prisma.booking.findUniqueOrThrow({
       where: { id: betoBookingId },
     });
