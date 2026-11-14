@@ -107,12 +107,11 @@ test("el profesional acepta la invitación, crea su cuenta y entra a su agenda",
   expect(user.email).toBe(joinEmail);
   expect(user.name).toBe("Nombre Cuenta E2E");
   expect(user.emailVerifiedAt).toBeTruthy();
-  expect(user.members).toEqual([
-    expect.objectContaining({
-      role: "STAFF",
-      business: expect.objectContaining({ slug: DEMO.slug }),
-    }),
-  ]);
+  expect(user.membership).toMatchObject({
+    memberId: team.joiner.id,
+    role: "STAFF",
+    business: { slug: DEMO.slug },
+  });
 
   // El enlace es de un solo uso
   await page.goto(`/invitacion/${token}`);

@@ -104,24 +104,31 @@ export class AuthService {
     return this.signToken(user.id, user.email, user.sessionVersion);
   }
 
+  // La cuenta y su membresía activa (la misma que usa toda la API, con
+  // getMembership). Sin membresía activa responde 403 y el panel cierra la sesión
   async me(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        emailVerifiedAt: true,
-        members: {
-          select: {
-            role: true,
-            business: { select: { id: true, name: true, slug: true } },
-          },
-        },
-      },
+      select: { id: true, email: true, name: true, emailVerifiedAt: true },
     });
     if (!user) throw new UnauthorizedException();
-    return user;
+    const m = await getMembership(this.prisma, userId);
+    const member = await this.prisma.member.findUniqueOrThrow({
+      where: { id: m.memberId },
+      select: {
+        displayName: true,
+        business: { select: { name: true, slug: true } },
+      },
+    });
+    return {
+      ...user,
+      membership: {
+        memberId: m.memberId,
+        role: m.role,
+        displayName: member.displayName,
+        business: { id: m.businessId, ...member.business },
+      },
+    };
   }
 
   // Solo se guarda el hash del token, nunca el token

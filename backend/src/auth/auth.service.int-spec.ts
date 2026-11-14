@@ -283,11 +283,14 @@ describe('acceso desactivado', () => {
   const staffLogin = (password = 'clave-staff-1') =>
     auth.login({ email: staffEmail, password });
   let staffMemberId: string;
+  let staffUserId: string;
+  let ownerMember: { id: string; businessId: string };
 
   // Un profesional con cuenta en el negocio de la dueña registrada arriba (el
   // afterAll general lo borra junto con el negocio)
   beforeAll(async () => {
     const owner = await prisma.member.findFirstOrThrow({ where: { userId } });
+    ownerMember = owner;
     const user = await prisma.user.create({
       data: {
         email: staffEmail,
@@ -296,6 +299,7 @@ describe('acceso desactivado', () => {
         emailVerifiedAt: new Date(),
       },
     });
+    staffUserId = user.id;
     staffMemberId = (
       await prisma.member.create({
         data: {
@@ -306,6 +310,29 @@ describe('acceso desactivado', () => {
         },
       })
     ).id;
+  });
+
+  it('/auth/me trae la membresía activa de cada uno, con su rol', async () => {
+    expect(await auth.me(userId)).toMatchObject({
+      id: userId,
+      email,
+      membership: {
+        memberId: ownerMember.id,
+        role: 'OWNER',
+        business: { id: ownerMember.businessId, slug, name: 'Negocio Auth' },
+      },
+    });
+    const me = await auth.me(staffUserId);
+    expect(me).toMatchObject({
+      email: staffEmail,
+      membership: {
+        memberId: staffMemberId,
+        role: 'STAFF',
+        displayName: 'Pro',
+        business: { id: ownerMember.businessId, slug },
+      },
+    });
+    expect(me).not.toHaveProperty('members');
   });
 
   it('al desactivarlo se cierran sus sesiones y no puede volver a entrar', async () => {
@@ -321,6 +348,10 @@ describe('acceso desactivado', () => {
     // con una contraseña incorrecta responde como siempre: no revela nada
     await expect(staffLogin('otra-clave')).rejects.toBeInstanceOf(
       UnauthorizedException,
+    );
+    // y /auth/me, con una sesión que se colara, tampoco le da el negocio
+    await expect(auth.me(staffUserId)).rejects.toBeInstanceOf(
+      ForbiddenException,
     );
   });
 

@@ -5,13 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui";
-
-interface Me {
-  name: string;
-  email: string;
-  emailVerifiedAt: string | null;
-  members: { business: { name: string; slug: string } }[];
-}
+import type { Me } from "@/lib/types";
 
 const TABS = [
   { href: "/dashboard/agenda", label: "Agenda" },
@@ -94,7 +88,8 @@ export default function DashboardLayout({
 
   if (!me) return <p className="p-6 text-gray-600">Cargando...</p>;
 
-  const business = me.members[0]?.business;
+  // `?.`: mientras se despliega, un backend anterior todavía no trae membership
+  const business = me.membership?.business;
 
   return (
     <div className="min-h-screen">
