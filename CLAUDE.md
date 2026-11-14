@@ -9,7 +9,7 @@ Plataforma de reservas online para pequeños negocios. Cada negocio tiene una p�
 - Infra: Vercel (frontend), Render (API), Neon (DB), Cloudflare (DNS, R2 para respaldos y para fotos de servicios), Resend (correo)
 
 ## Estructura
-- `backend/`: API (auth, business, services, members, working-hours, availability, bookings, agenda, notifications, settings)
+- `backend/`: API (auth, business, services, members, working-hours, time-blocks, availability, bookings, agenda, notifications, settings, storage, health)
 - `frontend/`: Next.js. El navegador llama a `/api/*` (rewrite hacia el backend con `API_URL`), así la cookie de sesión es first-party
 - `docker-compose.yml`: PostgreSQL local en el puerto 5433
 
@@ -29,7 +29,7 @@ Plataforma de reservas online para pequeños negocios. Cada negocio tiene una p�
 - Sesión: JWT en cookie `httpOnly` (también se acepta header Bearer para pruebas) que dura 30 días y se renueva con el uso, como mucho una vez al día (`renewSession` en `auth/session.ts`, desde `JwtAuthGuard`). El token lleva `sv` (`User.sessionVersion`): restablecer la contraseña la incrementa y cierra las demás sesiones (`AuthService.validateSession`). En el panel, un 401 lleva a `/login?expired=1` (`lib/api.ts`)
 - Correos: nunca deben romper el flujo principal (el envío captura sus errores) y se mandan sin `await` (`void`). Todos pasan por `NotificationsService.send`, que reintenta 3 veces ante fallas pasajeras (`isTransient`) con la misma clave de idempotencia de Resend
 - Al crear una reserva se avisa por correo a los dueños y al profesional de la reserva, activos, con cuenta y `notifyNewBookings` (`BookingsService.notifyStaff`, preferencia en `/settings`): un profesional no recibe datos de clientes de otros
-- Si el negocio cancela (`PATCH /agenda/:id/status` a `CANCELLED`, motivo opcional `reason`), se avisa al cliente por correo una sola vez: solo quien pasa la reserva de activa a cancelada envía (`updateMany` condicional en `AgendaService.updateStatus`)
+- Si el negocio cancela (el dueño, o el profesional en una reserva suya: `PATCH /agenda/:id/status` a `CANCELLED`, motivo opcional `reason`), se avisa al cliente por correo una sola vez: solo quien pasa la reserva de activa a cancelada envía (`updateMany` condicional en `AgendaService.updateStatus`)
 - Datos del negocio (nombre, teléfono): `GET/PATCH /business`, solo el `OWNER` los cambia. Las preferencias de cada miembro van en `/settings`
 - Los correos se normalizan a minúsculas (trim + lowercase)
 - Un negocio recibe reservas solo si su dueño tiene `emailVerifiedAt` (`AvailabilityService.acceptsBookings`)
@@ -42,7 +42,7 @@ Plataforma de reservas online para pequeños negocios. Cada negocio tiene una p�
 - Jest corre en ESM porque NestJS 12 es solo ESM: configuración en `jest.config.ts`, `test/jest-int.json` y `tsconfig.spec.json`; los scripts usan `node --experimental-vm-modules`
 - Los servicios se prueban instanciándolos con un `PrismaClient` real (ej. `time-blocks.service.int-spec.ts`)
 - Todavía no se puede cargar `AppModule` ni `AuthController` en Jest: `@nestjs/throttler` es CommonJS y hace `require` de `@nestjs/common` (ESM); Jest lo soporta recién en Node 24.9+
-- Pruebas e2e con Playwright en `frontend/e2e/` (`npm run e2e` en `frontend/`, con backend y frontend levantados y el seed corrido): `api-isolation.spec.ts` prueba todas las rutas del panel (401 sin sesión, 404 con otro negocio, y lo que responde el profesional demo: 404 en lo de otro profesional, 403 en lo que es solo del dueño); el resto, los flujos en el navegador (reserva, cancelación con enlace, registro, configuración del negocio, horario cargando). El dueño demo inicia sesión una sola vez (`auth.setup.ts`) y las pruebas reutilizan la sesión con `loginAsDemo`: el login tiene un límite de 5 por minuto. Backend con `THROTTLE_LIMIT=1000` (límite global configurable; en producción queda en 60). Las pruebas que cambian el negocio demo lo dejan como estaba. Al crear una ruta nueva en el backend, agregarla a `PANEL_ROUTES` (con sus casos `other`, otro negocio, y `staff`, el profesional demo) o a `PUBLIC_ROUTES`: la prueba falla si hay rutas sin clasificar
+- Pruebas e2e con Playwright en `frontend/e2e/` (`npm run e2e` en `frontend/`, con backend y frontend levantados y el seed corrido): `api-isolation.spec.ts` prueba todas las rutas del panel (401 sin sesión, 404 con otro negocio, y lo que responde el profesional demo: 404 en lo de otro profesional, 403 en lo que es solo del dueño); el resto, los flujos en el navegador (reserva, cancelación con enlace, registro, configuración del negocio, horario cargando). El dueño demo inicia sesión una sola vez (`auth.setup.ts`) y las pruebas reutilizan la sesión con `loginAsDemo`: el login tiene un límite de 5 por minuto. Backend con `THROTTLE_LIMIT=1000` (límite global configurable; en producción queda en 60). Las pruebas que cambian el negocio demo lo dejan como estaba (horario, datos del negocio, ajustes, bloqueos), salvo las reservas, clientes y servicios de prueba, que no se pueden borrar desde la API y se acumulan hasta el próximo `npx prisma db seed`; en CI no afecta, porque cada corrida parte de una base nueva. Al crear una ruta nueva en el backend, agregarla a `PANEL_ROUTES` (con sus casos `other`, otro negocio, y `staff`, el profesional demo) o a `PUBLIC_ROUTES`: la prueba falla si hay rutas sin clasificar
 - Cada carpeta de `frontend/src/app` debe estar en `RESERVED_SLUGS`: lo revisa `auth-dto.spec.ts`
 
 ## Prisma y migraciones
@@ -72,6 +72,12 @@ Plataforma de reservas online para pequeños negocios. Cada negocio tiene una p�
 ## Pendientes conocidos
 - Recordatorios por correo 24 h antes
 - Correo de contacto con dominio propio (Cloudflare Email Routing)
-- Trabajadores con cuenta propia: los permisos por rol están listos; faltan invitar por correo, quitar acceso, panel según el rol, panel cómodo en celular e instalable (PWA)
+- Trabajadores con cuenta propia: los permisos por rol están listos; faltan:
+  - Invitar por correo: una persona pertenece a un solo negocio; un dueño sin verificar no habilita reservas aunque el profesional invitado sí lo esté
+  - Quitar acceso: `/auth/me` debe armarse con `getMembership` (hoy lista también membresías desactivadas, sin orden) y definir qué ve alguien sin membresía activa (hoy carga el panel y recibe 403 en todo)
+  - Panel según el rol: pestañas y botones solo de lo que puede hacer; agenda sin filtro de otros profesionales; título de Horario con su nombre (hoy muestra al dueño); Bloqueos parte en el propio profesional (hoy en "Todo el negocio", que le da 403); Ajustes sin datos del negocio y con el texto del aviso para sus reservas
+  - Panel cómodo en celular (hoy las pestañas no caben a 375 px) e instalable (PWA)
 - Rol de recepción: alguien que ve toda la agenda sin atender clientes. Hoy no se puede crear un miembro no reservable (`bookable`), y como `STAFF` vería una agenda vacía
+- Avisos de cancelación: cuando el cliente cancela con su enlace no se avisa a nadie del negocio, y cuando un profesional cancela la dueña no se entera. Si se agregan, configurables como el de reservas nuevas
+- Deuda técnica: `GET /working-hours` lee `memberId` sin DTO (repetido en la URL da 500 al dueño); `GET /agenda` no valida `from` ≤ `to` ni limita el largo del rango; `npm run lint` del backend marca `main.ts` (promesa sin manejar) y avisos `no-misused-spread` en DTO
 - WhatsApp, campos personalizados, pagos
