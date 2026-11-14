@@ -167,13 +167,15 @@ export class AvailabilityService {
     return { ...business, services, acceptsBookings };
   }
 
-  // Un negocio recibe reservas solo cuando su dueño verificó el correo:
-  // evita que una cuenta falsa use la plataforma para enviar correos a terceros
+  // Un negocio recibe reservas solo cuando un dueño activo verificó el correo:
+  // evita que una cuenta falsa use la plataforma para enviar correos a terceros.
+  // Un dueño invitado entra verificado, pero solo invita un dueño verificado
   async acceptsBookings(business: { id: string } | { slug: string }) {
     const verifiedOwners = await this.prisma.member.count({
       where: {
         business,
         role: 'OWNER',
+        active: true,
         user: { emailVerifiedAt: { not: null } },
       },
     });

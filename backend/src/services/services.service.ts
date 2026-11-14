@@ -26,26 +26,28 @@ export class ServicesService {
   }
 
   // Solo el dueño crea o cambia servicios; el profesional los ve
-  private async ownerBusinessId(userId: string): Promise<string> {
+  private async ownerMembership(userId: string) {
     const m = await getMembership(this.prisma, userId);
     assertOwner(m);
-    return m.businessId;
+    return m;
   }
 
+  private async ownerBusinessId(userId: string): Promise<string> {
+    return (await this.ownerMembership(userId)).businessId;
+  }
+
+  // El servicio nuevo queda asignado a quien lo crea. Con varios dueños no se
+  // asigna a todos (cada uno hace sus servicios); los demás se suman en Equipo
   async create(userId: string, dto: CreateServiceDto) {
-    const businessId = await this.ownerBusinessId(userId);
+    const { businessId, memberId } = await this.ownerMembership(userId);
     assertTotalCoversDuration(dto.durationMin, dto.totalMin);
-    const owners = await this.prisma.member.findMany({
-      where: { businessId, role: 'OWNER' },
-      select: { id: true },
-    });
     const created = await this.prisma.service.create({
       data: {
         ...dto,
         category: normalizeText(dto.category) ?? null,
         description: normalizeText(dto.description) ?? null,
         businessId,
-        members: { create: owners.map((o) => ({ memberId: o.id })) },
+        members: { create: [{ memberId }] },
       },
     });
     return this.withImageUrl(created);

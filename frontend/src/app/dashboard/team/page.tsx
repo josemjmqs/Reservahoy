@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { useMe } from '@/lib/me';
 import { Button, Card, Input } from '@/components/ui';
 import type { Service, TeamMember } from '@/lib/types';
 
@@ -18,6 +19,10 @@ const shortDate = (iso: string) =>
   });
 
 export default function TeamPage() {
+  // Puede haber varios dueños (quien acepta una invitación queda como dueño):
+  // a cualquiera se le puede quitar el acceso, salvo a uno mismo
+  const { membership } = useMe();
+  const isMe = (m: TeamMember) => m.id === membership.memberId;
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [name, setName] = useState('');
@@ -223,6 +228,9 @@ export default function TeamPage() {
               <div className={m.active ? '' : 'opacity-50'}>
                 <p className="font-medium">
                   {m.displayName}
+                  {isMe(m) && (
+                    <span className="font-normal text-gray-500"> (tú)</span>
+                  )}
                   {m.role === 'OWNER' && (
                     <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">
                       Dueño
@@ -233,7 +241,7 @@ export default function TeamPage() {
                   {m.services.length} servicio(s)
                   {!m.active && ' · Inactivo'}
                 </p>
-                {m.role !== 'OWNER' && m.active && (
+                {!isMe(m) && m.active && (
                   <p className="mt-1 text-sm">
                     {m.account === 'active' && (
                       <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">
@@ -254,7 +262,7 @@ export default function TeamPage() {
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
-                {m.role !== 'OWNER' && m.active && m.account !== 'active' && (
+                {m.active && m.account !== 'active' && (
                   <Button
                     variant="secondary"
                     className="px-3 py-1"
@@ -284,7 +292,7 @@ export default function TeamPage() {
                 >
                   Editar
                 </Button>
-                {m.role !== 'OWNER' && (
+                {!isMe(m) && (
                   <Button
                     variant="secondary"
                     className="px-3 py-1"
@@ -299,6 +307,10 @@ export default function TeamPage() {
                   onSubmit={(e) => sendInvite(e, m.id)}
                   className="flex w-full flex-wrap gap-2"
                 >
+                  <p className="w-full text-sm text-gray-600">
+                    Al aceptar tendrá acceso a todo el panel, igual que tú:
+                    agenda, servicios, equipo y datos del negocio.
+                  </p>
                   <Input
                     type="email"
                     placeholder={`Correo de ${m.displayName}`}

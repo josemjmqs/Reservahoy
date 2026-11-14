@@ -181,7 +181,7 @@ export default function DashboardLayout({
         </nav>
       </header>
       {/* Solo el dueño: sin su correo verificado el negocio no recibe reservas
-          (el profesional entra ya verificado por la invitación) */}
+          ni puede invitar (quien acepta una invitación entra ya verificado) */}
       {owner && !me.emailVerifiedAt && <VerifyEmailBanner email={me.email} />}
       <MeProvider value={me}>
         {/* En el celular deja lugar abajo para la barra de navegación */}

@@ -78,7 +78,8 @@ export default function InvitationPage({
               Únete a {invitation.businessName}
             </h1>
             <p className="mt-2 text-sm text-gray-600">
-              Hola {invitation.memberName}, crea tu cuenta para ver tu agenda.
+              Hola {invitation.memberName}, crea tu cuenta para administrar la
+              agenda y el negocio desde el panel.
             </p>
             <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3">
               <label className="text-sm text-gray-700">
