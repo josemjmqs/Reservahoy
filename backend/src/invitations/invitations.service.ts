@@ -151,17 +151,6 @@ export class InvitationsService {
   private async ownerAndMember(userId: string, memberId: string) {
     const m = await getMembership(this.prisma, userId);
     assertOwner(m);
-    // Quien acepta queda como dueño y verificado: si invitara un dueño sin
-    // verificar, el invitado habilitaría las reservas por él (acceptsBookings)
-    const inviter = await this.prisma.user.findUniqueOrThrow({
-      where: { id: userId },
-      select: { emailVerifiedAt: true },
-    });
-    if (!inviter.emailVerifiedAt) {
-      throw new ForbiddenException(
-        'Verifica tu correo antes de invitar a tu equipo',
-      );
-    }
     const member = await this.prisma.member.findFirst({
       where: { id: memberId, businessId: m.businessId },
       select: {
@@ -179,6 +168,18 @@ export class InvitationsService {
   // Invita o reenvía: la invitación nueva anula la que estaba pendiente
   async create(userId: string, memberId: string, email: string) {
     const { m, member } = await this.ownerAndMember(userId, memberId);
+    // Quien acepta queda como dueño y verificado: si invitara un dueño sin
+    // verificar, el invitado habilitaría las reservas por él (acceptsBookings).
+    // Va después de buscar al miembro: uno de otro negocio sigue dando 404
+    const account = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { emailVerifiedAt: true },
+    });
+    if (!account.emailVerifiedAt) {
+      throw new ForbiddenException(
+        'Verifica tu correo antes de invitar a tu equipo',
+      );
+    }
     if (member.userId) {
       throw new ConflictException('Ese profesional ya tiene una cuenta');
     }

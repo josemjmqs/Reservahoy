@@ -52,12 +52,13 @@ beforeAll(async () => {
   for (const key of ['owner', 'ana', 'other'] as const) {
     users[key] = (
       await prisma.user.create({
-        // solo un dueño con el correo verificado invita
+        // Solo un dueño con el correo verificado invita. El otro negocio queda
+        // sin verificar: un miembro ajeno igual responde 404, no 403
         data: {
           email: mail(key),
           name: key,
           password: 'x',
-          emailVerifiedAt: new Date(),
+          emailVerifiedAt: key === 'owner' ? new Date() : null,
         },
       })
     ).id;
