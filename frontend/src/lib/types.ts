@@ -73,6 +73,18 @@ export interface TeamMember {
   bookable: boolean;
   active: boolean;
   services: { serviceId: string }[];
+  // 'active': tiene cuenta; 'invited': invitación vigente; 'none': sin cuenta
+  account: "active" | "invited" | "none";
+  // Solo llega cuando quien pide es el dueño
+  invitation?: { email: string; expiresAt: string } | null;
+}
+
+// Lo que muestra la página de una invitación antes de aceptarla
+export interface InvitationPreview {
+  businessName: string;
+  memberName: string;
+  email: string;
+  expiresAt: string;
 }
 
 export interface TimeBlock {

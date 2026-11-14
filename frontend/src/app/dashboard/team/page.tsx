@@ -9,6 +9,14 @@ import type { Service, TeamMember } from '@/lib/types';
 const fetchTeam = () =>
   Promise.all([api<TeamMember[]>('/members'), api<Service[]>('/services')]);
 
+// "21 nov." en la zona del negocio
+const shortDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('es-CL', {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'America/Santiago',
+  });
+
 export default function TeamPage() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -17,6 +25,11 @@ export default function TeamPage() {
   const [editName, setEditName] = useState('');
   const [editServices, setEditServices] = useState<string[]>([]);
   const [error, setError] = useState('');
+  // Invitación por correo: a quién se le está escribiendo y el aviso de envío
+  const [invitingId, setInvitingId] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [sending, setSending] = useState(false);
+  const [notice, setNotice] = useState('');
 
   const apply = useCallback(([m, s]: [TeamMember[], Service[]]) => {
     setMembers(m);
@@ -78,6 +91,47 @@ export default function TeamPage() {
     }
   }
 
+  function startInvite(m: TeamMember) {
+    setError('');
+    setNotice('');
+    setInvitingId(m.id);
+    setInviteEmail(m.invitation?.email ?? '');
+  }
+
+  // Invita o reenvía (la invitación nueva anula la anterior)
+  async function sendInvite(e: React.FormEvent, id: string) {
+    e.preventDefault();
+    setError('');
+    setNotice('');
+    setSending(true);
+    try {
+      const res = await api<{ email: string }>(`/members/${id}/invitation`, {
+        method: 'POST',
+        body: JSON.stringify({ email: inviteEmail }),
+      });
+      setInvitingId(null);
+      setNotice(`Invitación enviada a ${res.email}`);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error inesperado');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function revokeInvite(m: TeamMember) {
+    if (!confirm(`¿Anular la invitación de ${m.displayName}?`)) return;
+    setError('');
+    setNotice('');
+    try {
+      await api(`/members/${m.id}/invitation`, { method: 'DELETE' });
+      setInvitingId(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error inesperado');
+    }
+  }
+
   async function toggleActive(m: TeamMember) {
     setError('');
     try {
@@ -111,6 +165,11 @@ export default function TeamPage() {
       </Card>
 
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+      {notice && (
+        <p role="status" className="mb-3 text-sm text-green-700">
+          {notice}
+        </p>
+      )}
 
       <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white shadow-sm">
         {members.map((m) =>
@@ -174,8 +233,45 @@ export default function TeamPage() {
                   {m.services.length} servicio(s)
                   {!m.active && ' · Inactivo'}
                 </p>
+                {m.role !== 'OWNER' && m.active && (
+                  <p className="mt-1 text-sm">
+                    {m.account === 'active' && (
+                      <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">
+                        Con acceso
+                      </span>
+                    )}
+                    {m.account === 'invited' && (
+                      <span className="text-gray-600">
+                        {m.invitation
+                          ? `Invitación enviada a ${m.invitation.email} · vence el ${shortDate(m.invitation.expiresAt)}`
+                          : 'Invitación enviada'}
+                      </span>
+                    )}
+                    {m.account === 'none' && (
+                      <span className="text-gray-500">Sin cuenta</span>
+                    )}
+                  </p>
+                )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                {m.role !== 'OWNER' && m.active && m.account !== 'active' && (
+                  <Button
+                    variant="secondary"
+                    className="px-3 py-1"
+                    onClick={() => startInvite(m)}
+                  >
+                    {m.account === 'invited' ? 'Reenviar' : 'Invitar'}
+                  </Button>
+                )}
+                {m.account === 'invited' && m.invitation && (
+                  <Button
+                    variant="secondary"
+                    className="px-3 py-1"
+                    onClick={() => revokeInvite(m)}
+                  >
+                    Anular
+                  </Button>
+                )}
                 <Link href={`/dashboard/hours?memberId=${m.id}`}>
                   <Button variant="secondary" className="px-3 py-1">
                     Horario
@@ -198,6 +294,33 @@ export default function TeamPage() {
                   </Button>
                 )}
               </div>
+              {invitingId === m.id && (
+                <form
+                  onSubmit={(e) => sendInvite(e, m.id)}
+                  className="flex w-full flex-wrap gap-2"
+                >
+                  <Input
+                    type="email"
+                    placeholder={`Correo de ${m.displayName}`}
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    className="min-w-0 flex-1 basis-56"
+                    autoFocus
+                    required
+                  />
+                  <Button className="px-3 py-1" disabled={sending}>
+                    {sending ? 'Enviando...' : 'Enviar invitación'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="px-3 py-1"
+                    onClick={() => setInvitingId(null)}
+                  >
+                    Cancelar
+                  </Button>
+                </form>
+              )}
             </li>
           ),
         )}

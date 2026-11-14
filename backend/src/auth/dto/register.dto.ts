@@ -19,6 +19,7 @@ const RESERVED_SLUGS = [
   'verify-email',
   'privacidad',
   'terminos',
+  'invitacion',
 ];
 
 export class RegisterDto {
