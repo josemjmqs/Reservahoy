@@ -1,9 +1,9 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { getMembership } from '../auth/membership';
 import { PrismaService } from '../prisma/prisma.service';
 import { SetWorkingHoursDto } from './dto/set-working-hours.dto';
 
@@ -17,12 +17,8 @@ export class WorkingHoursService {
     userId: string,
     memberId?: string,
   ): Promise<string> {
-    const own = await this.prisma.member.findFirst({
-      where: { userId },
-      select: { id: true, businessId: true },
-    });
-    if (!own) throw new ForbiddenException('No perteneces a ningún negocio');
-    if (!memberId) return own.id;
+    const own = await getMembership(this.prisma, userId);
+    if (!memberId) return own.memberId;
 
     const target = await this.prisma.member.findFirst({
       where: { id: memberId, businessId: own.businessId },

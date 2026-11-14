@@ -1,12 +1,12 @@
 import {
   ConflictException,
-  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DateTime } from 'luxon';
+import { getMembership } from '../auth/membership';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -43,16 +43,6 @@ export class AgendaService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  // El negocio sale de la membresía del usuario, nunca del cliente
-  private async getBusiness(userId: string) {
-    const member = await this.prisma.member.findFirst({
-      where: { userId },
-      select: { business: { select: { id: true, timezone: true } } },
-    });
-    if (!member) throw new ForbiddenException('No perteneces a ningún negocio');
-    return member.business;
-  }
-
   // Si se filtra por profesional, debe ser de tu negocio (404 si no)
   private async assertMember(businessId: string, memberId?: string) {
     if (!memberId) return;
@@ -64,17 +54,15 @@ export class AgendaService {
   }
 
   async list(userId: string, from: string, to: string, memberId?: string) {
-    const business = await this.getBusiness(userId);
-    await this.assertMember(business.id, memberId);
+    const { businessId, timezone } = await getMembership(this.prisma, userId);
+    await this.assertMember(businessId, memberId);
 
-    const start = DateTime.fromISO(from, { zone: business.timezone }).startOf(
-      'day',
-    );
-    const end = DateTime.fromISO(to, { zone: business.timezone }).endOf('day');
+    const start = DateTime.fromISO(from, { zone: timezone }).startOf('day');
+    const end = DateTime.fromISO(to, { zone: timezone }).endOf('day');
 
     const bookings = await this.prisma.booking.findMany({
       where: {
-        businessId: business.id,
+        businessId,
         ...(memberId && { memberId }),
         startsAt: { gte: start.toJSDate(), lte: end.toJSDate() },
       },
@@ -87,12 +75,12 @@ export class AgendaService {
   // Próxima reserva activa (pendiente o confirmada) que aún no empieza.
   // Se envuelve en { booking } porque Nest responde un null como cuerpo vacío
   async next(userId: string, memberId?: string, now = new Date()) {
-    const business = await this.getBusiness(userId);
-    await this.assertMember(business.id, memberId);
+    const { businessId } = await getMembership(this.prisma, userId);
+    await this.assertMember(businessId, memberId);
 
     const booking = await this.prisma.booking.findFirst({
       where: {
-        businessId: business.id,
+        businessId,
         ...(memberId && { memberId }),
         status: { in: ['PENDING', 'CONFIRMED'] },
         startsAt: { gt: now },
@@ -109,9 +97,9 @@ export class AgendaService {
     status: string,
     reason?: string,
   ) {
-    const business = await this.getBusiness(userId);
+    const { businessId } = await getMembership(this.prisma, userId);
     const booking = await this.prisma.booking.findFirst({
-      where: { id, businessId: business.id },
+      where: { id, businessId },
     });
     if (!booking) throw new NotFoundException('Reserva no encontrada');
 

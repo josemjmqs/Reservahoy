@@ -1,12 +1,12 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { Service } from '@prisma/client';
 import { randomBytes } from 'crypto';
+import { getMembership } from '../auth/membership';
 import { PrismaService } from '../prisma/prisma.service';
 import { detectImageType } from '../storage/image-type';
 import { StorageService } from '../storage/storage.service';
@@ -25,19 +25,9 @@ export class ServicesService {
     return { ...service, imageUrl: this.storage.urlFor(imageKey) };
   }
 
-  // El negocio sale de la membresía del usuario autenticado, nunca del body
-  private async getBusinessId(userId: string): Promise<string> {
-    const member = await this.prisma.member.findFirst({
-      where: { userId },
-      select: { businessId: true },
-    });
-    if (!member) throw new ForbiddenException('No perteneces a ningún negocio');
-    return member.businessId;
-  }
-
   async create(userId: string, dto: CreateServiceDto) {
     assertTotalCoversDuration(dto.durationMin, dto.totalMin);
-    const businessId = await this.getBusinessId(userId);
+    const { businessId } = await getMembership(this.prisma, userId);
     const owners = await this.prisma.member.findMany({
       where: { businessId, role: 'OWNER' },
       select: { id: true },
@@ -54,7 +44,7 @@ export class ServicesService {
   }
 
   async findAll(userId: string) {
-    const businessId = await this.getBusinessId(userId);
+    const { businessId } = await getMembership(this.prisma, userId);
     const services = await this.prisma.service.findMany({
       where: { businessId },
       orderBy: { createdAt: 'asc' },
@@ -68,7 +58,7 @@ export class ServicesService {
         'La subida de fotos todavía no está disponible',
       );
     }
-    const businessId = await this.getBusinessId(userId);
+    const { businessId } = await getMembership(this.prisma, userId);
     const service = await this.findOwned(id, businessId);
     if (!file) throw new BadRequestException('Falta la foto');
     const type = detectImageType(file.buffer);
@@ -88,7 +78,7 @@ export class ServicesService {
   }
 
   async removeImage(userId: string, id: string) {
-    const businessId = await this.getBusinessId(userId);
+    const { businessId } = await getMembership(this.prisma, userId);
     const service = await this.findOwned(id, businessId);
     const updated = await this.prisma.service.update({
       where: { id },
@@ -99,7 +89,7 @@ export class ServicesService {
   }
 
   async update(userId: string, id: string, dto: UpdateServiceDto) {
-    const businessId = await this.getBusinessId(userId);
+    const { businessId } = await getMembership(this.prisma, userId);
     const current = await this.findOwned(id, businessId);
     // Solo si se cambia alguno de los dos (activar un servicio no lo revisa);
     // el que no viene se toma de lo guardado
@@ -121,7 +111,7 @@ export class ServicesService {
 
   // Borrado lógico: se desactiva para no perder el historial de reservas
   async deactivate(userId: string, id: string) {
-    const businessId = await this.getBusinessId(userId);
+    const { businessId } = await getMembership(this.prisma, userId);
     await this.findOwned(id, businessId);
     return this.prisma.service.update({
       where: { id },
