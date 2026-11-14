@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { loginAsDemo, loginAsStaff } from "./helpers";
+import { bookFirstSlot, loginAsDemo, loginAsStaff, workdayFrom } from "./helpers";
 
 // El panel en un celular (375 px, el ancho de un iPhone chico): la navegación
 // es una barra fija abajo con todas las pestañas a la vista, y ninguna
@@ -67,4 +67,59 @@ test("el dueño ve sus 6 pestañas en la barra de abajo", async ({ page }) => {
 test("el profesional ve sus 4 pestañas en la barra de abajo", async ({ page }) => {
   await loginAsStaff(page);
   await checkTabs(page, STAFF_TABS);
+});
+
+test("en la Agenda el día cabe en una fila y los botones de la reserva son cómodos", async ({
+  page,
+}) => {
+  const date = workdayFrom(17);
+  const customer = `Celular E2E ${Date.now().toString(36)}`;
+  await bookFirstSlot(page, {
+    category: "Pelo",
+    service: "Lavado y peinado",
+    date,
+    customer,
+  });
+
+  await loginAsDemo(page);
+  await page.goto(`/dashboard/agenda?date=${date}`);
+  const card = page.getByRole("listitem").filter({ hasText: customer });
+  const filterSelect = page.getByRole("combobox", { name: "Profesional" });
+  await expect(card).toBeVisible();
+  await expect(filterSelect).toBeVisible();
+
+  // ← día → Hoy y Actualizar (solo el ícono) en una sola fila, dentro de la pantalla
+  const controls = [
+    page.getByRole("button", { name: "Día anterior" }),
+    page.getByLabel("Día", { exact: true }),
+    page.getByRole("button", { name: "Día siguiente" }),
+    page.getByRole("button", { name: "Hoy" }),
+    page.getByRole("button", { name: "Actualizar" }),
+  ];
+  const boxes = await Promise.all(controls.map(async (c) => (await c.boundingBox())!));
+  for (const box of boxes) {
+    expect(Math.abs(box.y - boxes[0].y)).toBeLessThanOrEqual(2);
+    expect(box.x + box.width).toBeLessThanOrEqual(375);
+  }
+  // El filtro de profesionales va debajo, a todo el ancho
+  const filter = (await filterSelect.boundingBox())!;
+  expect(filter.y).toBeGreaterThan(boxes[0].y + boxes[0].height);
+  expect(filter.width).toBeGreaterThan(300);
+
+  // Los tres botones de la reserva en una fila y de al menos 40 px de alto
+  const buttons = ["Completada", "No se presentó", "Cancelar"].map((name) =>
+    card.getByRole("button", { name }),
+  );
+  const first = (await buttons[0].boundingBox())!;
+  for (const button of buttons) {
+    const box = (await button.boundingBox())!;
+    expect(box.height).toBeGreaterThanOrEqual(40);
+    expect(Math.abs(box.y - first.y)).toBeLessThanOrEqual(1);
+    expect(box.x + box.width).toBeLessThanOrEqual(375);
+  }
+
+  // Deja la reserva cerrada (no se puede borrar desde la API)
+  await card.getByRole("button", { name: "Completada" }).click();
+  await expect(card).toContainText("Completada");
+  await expect(card.getByRole("button", { name: "Cancelar" })).toHaveCount(0);
 });
