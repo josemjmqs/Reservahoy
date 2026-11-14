@@ -1,7 +1,12 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type MemberRole } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
-import { assertOwner, getMembership, scopeMemberId } from './membership';
+import {
+  assertOwner,
+  getMembership,
+  isOwner,
+  scopeMemberId,
+} from './membership';
 
 const prisma = new PrismaClient();
 const db = prisma as unknown as PrismaService;
@@ -106,6 +111,19 @@ describe('scopeMemberId', () => {
   it('un profesional que pide a otro recibe 404', async () => {
     const m = await getMembership(db, userIds.staff);
     expect(() => scopeMemberId(m, 'otro')).toThrow(NotFoundException);
+  });
+});
+
+describe('un rol que no es dueño', () => {
+  // Si algún día se agrega un rol (ej. recepción), parte con permisos limitados
+  it('no se considera dueño y queda limitado a sí mismo', async () => {
+    const owner = await getMembership(db, userIds.owner);
+    const other = { ...owner, role: 'RECEPTION' as MemberRole };
+    expect(isOwner(owner)).toBe(true);
+    expect(isOwner(other)).toBe(false);
+    expect(() => assertOwner(other)).toThrow(ForbiddenException);
+    expect(scopeMemberId(other)).toBe(owner.memberId);
+    expect(() => scopeMemberId(other, 'otro')).toThrow(NotFoundException);
   });
 });
 

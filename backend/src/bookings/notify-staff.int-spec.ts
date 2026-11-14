@@ -158,3 +158,58 @@ describe('BookingsService.notifyStaff', () => {
     expect(sent).toEqual([]);
   });
 });
+
+// Un profesional con cuenta solo ve su agenda: tampoco debe recibir por correo
+// los datos de clientes que reservaron con otro
+describe('BookingsService.notifyStaff con profesionales con cuenta', () => {
+  let eliBookingId: string;
+
+  beforeAll(async () => {
+    const eliUser = await prisma.user.create({
+      data: {
+        email: `notify-eli-${run}@test.local`,
+        name: 'eli',
+        password: 'x',
+      },
+    });
+    userIds.push(eliUser.id);
+    const eli = await prisma.member.create({
+      data: {
+        role: 'STAFF',
+        displayName: 'Eli',
+        userId: eliUser.id,
+        businessId,
+      },
+    });
+    const { customerId, items } = await prisma.booking.findUniqueOrThrow({
+      where: { id: bookingId },
+      select: { customerId: true, items: { select: { serviceId: true } } },
+    });
+    const startsAt = DateTime.fromISO('2033-05-05T10:00', {
+      zone: 'America/Santiago',
+    });
+    eliBookingId = (
+      await prisma.booking.create({
+        data: {
+          startsAt: startsAt.toJSDate(),
+          endsAt: startsAt.plus({ hours: 1 }).toJSDate(),
+          businessId,
+          memberId: eli.id,
+          customerId,
+          items: { create: { serviceId: items[0].serviceId, position: 0 } },
+        },
+      })
+    ).id;
+  });
+
+  it('no recibe el aviso de una reserva de otro profesional', async () => {
+    await bookings.notifyStaff(bookingId); // reserva con Ana (la dueña)
+    expect(sent.map((s) => s.recipientName)).toEqual(['dueña']);
+  });
+
+  it('sí recibe el de su propia reserva, igual que los dueños', async () => {
+    await bookings.notifyStaff(eliBookingId);
+    expect(sent.map((s) => s.recipientName).sort()).toEqual(['dueña', 'eli']);
+    expect(sent.every((s) => s.memberName === 'Eli')).toBe(true);
+  });
+});

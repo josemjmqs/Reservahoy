@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { TimeBlock } from '@prisma/client';
-import { getMembership } from '../auth/membership';
+import { getMembership, isOwner } from '../auth/membership';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTimeBlockDto } from './dto/create-time-block.dto';
 import { exceedsDays, isAllDay, resolveBlockRange } from './block-range';
@@ -70,7 +70,7 @@ export class TimeBlocksService {
 
     // Un profesional (STAFF) solo bloquea su propio horario, nunca el de otro
     // ni el de todo el negocio
-    if (m.role === 'STAFF' && dto.memberId !== m.memberId) {
+    if (!isOwner(m) && dto.memberId !== m.memberId) {
       throw new ForbiddenException('Solo puedes bloquear tu propio horario');
     }
 
@@ -133,7 +133,7 @@ export class TimeBlocksService {
       where: {
         id,
         businessId: m.businessId,
-        ...(m.role === 'STAFF' && { memberId: m.memberId }),
+        ...(!isOwner(m) && { memberId: m.memberId }),
       },
       select: { id: true },
     });

@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DateTime } from 'luxon';
-import { getMembership, scopeMemberId } from '../auth/membership';
+import { getMembership, isOwner, scopeMemberId } from '../auth/membership';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -113,7 +113,7 @@ export class AgendaService {
       where: {
         id,
         businessId: m.businessId,
-        ...(m.role === 'STAFF' && { memberId: m.memberId }),
+        ...(!isOwner(m) && { memberId: m.memberId }),
       },
     });
     if (!booking) throw new NotFoundException('Reserva no encontrada');

@@ -35,11 +35,15 @@ export async function getMembership(
   };
 }
 
+// Único criterio de rol: todo lo que no es dueño tiene permisos limitados, así
+// un rol nuevo empieza sin acceso de dueño en vez de heredarlo por omisión
+export const isOwner = (m: Membership) => m.role === 'OWNER';
+
 export function assertOwner(
   m: Membership,
   message = 'Solo el dueño puede hacer esto',
 ) {
-  if (m.role !== 'OWNER') throw new ForbiddenException(message);
+  if (!isOwner(m)) throw new ForbiddenException(message);
 }
 
 // Profesional sobre el que se consulta. El dueño elige cualquiera (o ninguno:
@@ -49,7 +53,7 @@ export function scopeMemberId(
   m: Membership,
   requested?: string,
 ): string | undefined {
-  if (m.role === 'OWNER') return requested;
+  if (isOwner(m)) return requested;
   if (requested && requested !== m.memberId) {
     throw new NotFoundException('Profesional no encontrado');
   }
