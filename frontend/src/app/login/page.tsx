@@ -7,7 +7,8 @@ import { api } from "@/lib/api";
 import { Button, Card, Input } from "@/components/ui";
 
 // ?reset=1 viene de restablecer la contraseña; ?expired=1, de una petición
-// del panel que respondió 401 (lib/api.ts)
+// del panel que respondió 401 (lib/api.ts); ?revoked=1, del panel cuando
+// /auth/me responde 403 porque lo desactivaron (dashboard/layout.tsx)
 function LoginNotice() {
   const params = useSearchParams();
   if (params.get("reset") === "1") {
@@ -24,6 +25,17 @@ function LoginNotice() {
         className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"
       >
         Tu sesión expiró. Vuelve a iniciar sesión.
+      </p>
+    );
+  }
+  if (params.get("revoked") === "1") {
+    return (
+      <p
+        role="status"
+        className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"
+      >
+        Ya no tienes acceso al panel de este negocio. Si crees que es un error,
+        habla con el dueño.
       </p>
     );
   }

@@ -53,6 +53,15 @@ export async function createInvitation(
   return token;
 }
 
+// Activa o desactiva un miembro directo en la base, sin pasar por la API (que
+// además cierra sus sesiones): simula una sesión que quedó abierta sin acceso
+export async function setMemberActive(memberId: string, active: boolean) {
+  await db().query(`UPDATE "Member" SET active = $2 WHERE id = $1`, [
+    memberId,
+    active,
+  ]);
+}
+
 // Borra un profesional de prueba sin reservas (las invitaciones y sus
 // servicios se van en cascada; el horario y los bloqueos no)
 export async function deleteMember(memberId: string) {
