@@ -41,23 +41,40 @@ model User {
 }
 
 model Member {
-  id                String          @id @default(cuid())
+  id                String             @id @default(cuid())
   role              MemberRole
-  bookable          Boolean         @default(true)
-  active            Boolean         @default(true)
+  bookable          Boolean            @default(true)
+  active            Boolean            @default(true)
   // Recibe un correo por cada reserva nueva hecha desde la página pública
-  notifyNewBookings Boolean         @default(true)
+  notifyNewBookings Boolean            @default(true)
   displayName       String
   userId            String?
   businessId        String
-  user              User?           @relation(fields: [userId], references: [id])
-  business          Business        @relation(fields: [businessId], references: [id])
+  user              User?              @relation(fields: [userId], references: [id])
+  business          Business           @relation(fields: [businessId], references: [id])
   hours             WorkingHours[]
   bookings          Booking[]
   services          MemberService[]
+  invitations       MemberInvitation[]
 
   @@unique([userId, businessId])
   @@index([businessId])
+}
+
+// Invitación de un solo uso para que un profesional sin cuenta cree la suya.
+// Solo se guarda el hash del token, como los de reset y verificación
+model MemberInvitation {
+  id        String    @id @default(cuid())
+  email     String // normalizado (trim + minúsculas)
+  tokenHash String    @unique
+  expiresAt DateTime // 7 días
+  usedAt    DateTime? // aceptada
+  revokedAt DateTime? // anulada por el dueño o reemplazada por un reenvío
+  createdAt DateTime  @default(now())
+  memberId  String
+  member    Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, createdAt])
 }
 
 model MemberService {

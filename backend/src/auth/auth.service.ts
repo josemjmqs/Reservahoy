@@ -14,7 +14,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import type { SessionUser } from './session';
+import { signSession, type SessionUser } from './session';
 
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas
 const VERIFY_MAX_PER_HOUR = 3;
@@ -216,8 +216,8 @@ export class AuthService {
   }
 
   private async signToken(userId: string, email: string, sessionVersion: number) {
-    const accessToken = await this.jwt.signAsync({
-      sub: userId,
+    const accessToken = await signSession(this.jwt, {
+      userId,
       email,
       sv: sessionVersion,
     });

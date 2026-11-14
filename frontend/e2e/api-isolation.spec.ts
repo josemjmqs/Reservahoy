@@ -73,6 +73,8 @@ const PUBLIC_ROUTES = [
   "POST /public/:slug/bookings",
   "GET /public/bookings/:token",
   "POST /public/bookings/:token/cancel",
+  "GET /invitations/:token",
+  "POST /invitations/:token/accept",
 ];
 
 // Rutas del panel: cómo llamarlas apuntando a recursos de la dueña del negocio A
@@ -176,6 +178,20 @@ const PANEL_ROUTES: Record<
   "PATCH /members/:id": {
     call: (c, a) =>
       c.patch(`/members/${a.member}`, { data: { active: false } }),
+    other: 404,
+    staff: 403,
+  },
+  "POST /members/:id/invitation": {
+    // invitar a un miembro de A: solo su dueño puede (no sale ningún correo)
+    call: (c, a) =>
+      c.post(`/members/${a.member}/invitation`, {
+        data: { email: `e2e-invite-${run}@test.local` },
+      }),
+    other: 404,
+    staff: 403,
+  },
+  "DELETE /members/:id/invitation": {
+    call: (c, a) => c.delete(`/members/${a.member}/invitation`),
     other: 404,
     staff: 403,
   },
