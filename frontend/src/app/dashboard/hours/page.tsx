@@ -200,15 +200,26 @@ function HoursContent() {
         })}
       </ul>
 
-      {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
-      {saved && (
-        <p className="mb-3 text-sm text-green-700">Horario guardado.</p>
-      )}
-
-      {!readOnly && (
-        <Button onClick={save} disabled={saving || !loaded}>
-          {saving ? 'Guardando...' : 'Guardar horario'}
-        </Button>
+      {readOnly ? (
+        error && <p className="mb-3 text-sm text-red-600">{error}</p>
+      ) : (
+        // En el celular, el botón (con su aviso) queda fijo sobre la barra de
+        // navegación: los 7 días no caben en la pantalla. El espacio de abajo
+        // evita que tape al domingo
+        <>
+          <div className="h-16 sm:hidden" />
+          <div className="fixed inset-x-0 bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] z-10 border-t border-gray-200 bg-white px-4 py-3 sm:static sm:border-0 sm:bg-transparent sm:p-0">
+            <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-x-3 gap-y-1">
+              <Button onClick={save} disabled={saving || !loaded}>
+                {saving ? 'Guardando...' : 'Guardar horario'}
+              </Button>
+              {error && <p className="text-sm text-red-600">{error}</p>}
+              {saved && (
+                <p className="text-sm text-green-700">Horario guardado.</p>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

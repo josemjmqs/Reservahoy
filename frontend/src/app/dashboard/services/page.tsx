@@ -122,6 +122,9 @@ function ServiceFields({
 export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [form, setForm] = useState(empty);
+  // El formulario de servicio nuevo abre con un botón: cerrado, la lista queda
+  // arriba (en el celular el formulario ocupa más de una pantalla)
+  const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [edit, setEdit] = useState<ServiceForm>(empty);
   const [error, setError] = useState("");
@@ -158,6 +161,12 @@ export default function ServicesPage() {
     setNewPhoto(null);
   }
 
+  function closeNew() {
+    setAdding(false);
+    setForm(empty);
+    clearNewPhoto();
+  }
+
   async function create(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -181,6 +190,7 @@ export default function ServicesPage() {
       return;
     }
     setForm(empty);
+    setAdding(false);
     if (newPhoto) {
       try {
         await uploadServiceImage(created.id, newPhoto.file);
@@ -335,22 +345,32 @@ export default function ServicesPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold tracking-tight">Servicios</h1>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold tracking-tight">Servicios</h1>
+        {!adding && (
+          <Button onClick={() => setAdding(true)}>Nuevo servicio</Button>
+        )}
+      </div>
 
-      <Card className="my-4">
-        <form onSubmit={create} className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold text-gray-900">Nuevo servicio</h2>
-          <ServiceFields value={form} onChange={setForm} categories={categories} />
-          <PhotoPicker
-            imageUrl={newPhoto?.preview ?? null}
-            onPick={pickNewPhoto}
-            onRemove={clearNewPhoto}
-          />
-          <div>
-            <Button>Agregar</Button>
-          </div>
-        </form>
-      </Card>
+      {adding && (
+        <Card className="mb-4">
+          <form onSubmit={create} className="flex flex-col gap-3">
+            <h2 className="text-sm font-semibold text-gray-900">Nuevo servicio</h2>
+            <ServiceFields value={form} onChange={setForm} categories={categories} />
+            <PhotoPicker
+              imageUrl={newPhoto?.preview ?? null}
+              onPick={pickNewPhoto}
+              onRemove={clearNewPhoto}
+            />
+            <div className="flex gap-2">
+              <Button>Agregar</Button>
+              <Button type="button" variant="secondary" onClick={closeNew}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        </Card>
+      )}
 
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
 

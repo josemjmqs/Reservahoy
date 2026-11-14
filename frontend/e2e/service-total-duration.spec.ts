@@ -9,6 +9,7 @@ test("la duración total se elige en horas o días y se mantiene al editar", asy
   const name = `Duración E2E ${Date.now().toString(36)}`;
   await loginAsDemo(page);
   await page.goto("/dashboard/services");
+  await page.getByRole("button", { name: "Nuevo servicio" }).click();
 
   const form = page.locator("form").filter({ hasText: "Nuevo servicio" });
   await form.getByRole("textbox", { name: /^Nombre/ }).fill(name);

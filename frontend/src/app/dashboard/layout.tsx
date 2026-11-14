@@ -157,9 +157,9 @@ export default function DashboardLayout({
         </div>
         {/* Un solo menú que cambia de forma: en el celular es una barra fija
             abajo, una columna por pestaña con su ícono (como una app); desde
-            `sm`, pestañas debajo del encabezado. El relleno de abajo respeta
-            el borde del iPhone (safe-area) */}
-        <nav className="fixed inset-x-0 bottom-0 z-20 grid auto-cols-fr grid-flow-col border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] sm:static sm:mx-auto sm:flex sm:max-w-3xl sm:gap-6 sm:border-0 sm:px-6 sm:pb-0">
+            `sm`, pestañas debajo del encabezado. Su alto es --tabbar-h
+            (globals.css) más el borde del iPhone (safe-area) */}
+        <nav className="fixed inset-x-0 bottom-0 z-20 grid h-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] auto-cols-fr grid-flow-col border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] sm:static sm:mx-auto sm:flex sm:h-auto sm:max-w-3xl sm:gap-6 sm:border-0 sm:px-6 sm:pb-0">
           {TABS.filter((t) => owner || !t.ownerOnly).map((t) => {
             const active = pathname === t.href;
             return (
@@ -167,7 +167,7 @@ export default function DashboardLayout({
                 key={t.href}
                 href={t.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-w-0 flex-col items-center gap-0.5 pt-2 pb-1.5 text-[11px] font-medium transition sm:shrink-0 sm:border-b-2 sm:py-2 sm:text-sm ${
+                className={`flex min-w-0 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition sm:shrink-0 sm:border-b-2 sm:py-2 sm:text-sm ${
                   active
                     ? "text-indigo-600 sm:border-indigo-600"
                     : "text-gray-600 hover:text-gray-900 sm:border-transparent"
@@ -185,7 +185,7 @@ export default function DashboardLayout({
       {owner && !me.emailVerifiedAt && <VerifyEmailBanner email={me.email} />}
       <MeProvider value={me}>
         {/* En el celular deja lugar abajo para la barra de navegación */}
-        <main className="mx-auto max-w-3xl px-4 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-6">
+        <main className="mx-auto max-w-3xl px-4 pt-6 pb-[calc(var(--tabbar-h)+2.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-6">
           {redirecting ? null : children}
         </main>
       </MeProvider>

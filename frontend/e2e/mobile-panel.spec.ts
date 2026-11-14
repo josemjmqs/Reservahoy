@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { bookFirstSlot, loginAsDemo, loginAsStaff, workdayFrom } from "./helpers";
 
 // El panel en un celular (375 px, el ancho de un iPhone chico): la navegación
@@ -122,4 +122,58 @@ test("en la Agenda el día cabe en una fila y los botones de la reserva son cóm
   await card.getByRole("button", { name: "Completada" }).click();
   await expect(card).toContainText("Completada");
   await expect(card.getByRole("button", { name: "Cancelar" })).toHaveCount(0);
+});
+
+// Visible sin bajar: dentro de la pantalla y por encima de la barra de abajo
+async function expectAboveTabBar(page: Page, target: Locator) {
+  await expect(target).toBeVisible();
+  const box = (await target.boundingBox())!;
+  const barTop = (await page.getByRole("navigation").boundingBox())!.y;
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(barTop);
+}
+
+test("en Servicios la lista se ve sin bajar y el formulario abre y cierra", async ({
+  page,
+}) => {
+  await loginAsDemo(page);
+  await page.goto("/dashboard/services");
+
+  // Cerrado: el primer servicio del seed se ve sin bajar
+  const firstRow = page
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("button", { name: "Editar" }) })
+    .first();
+  await expectAboveTabBar(page, firstRow);
+  const form = page.locator("form").filter({ hasText: "Nuevo servicio" });
+  await expect(form).toHaveCount(0);
+
+  // Abre; "Cancelar" lo cierra y lo deja vacío
+  await page.getByRole("button", { name: "Nuevo servicio" }).click();
+  const name = form.getByRole("textbox", { name: /^Nombre/ });
+  await name.fill("No se guarda");
+  await form.getByRole("button", { name: "Cancelar" }).click();
+  await expect(form).toHaveCount(0);
+  await page.getByRole("button", { name: "Nuevo servicio" }).click();
+  await expect(name).toHaveValue("");
+  await form.getByRole("button", { name: "Cancelar" }).click();
+  await expectAboveTabBar(page, firstRow);
+});
+
+test("en Horario el dueño ve 'Guardar horario' sin bajar y no tapa al domingo", async ({
+  page,
+}) => {
+  await loginAsDemo(page);
+  await page.goto("/dashboard/hours");
+  const domingo = page.getByRole("listitem").filter({ hasText: "Domingo" });
+  await expect(domingo).toBeVisible();
+
+  const save = page.getByRole("button", { name: "Guardar horario" });
+  await expectAboveTabBar(page, save);
+
+  // Al final de la página, el domingo queda por encima de la barra del botón
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const sunday = (await domingo.boundingBox())!;
+  const saveTop = (await save.boundingBox())!.y;
+  expect(sunday.y + sunday.height).toBeLessThan(saveTop);
 });

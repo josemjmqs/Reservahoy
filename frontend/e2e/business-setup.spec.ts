@@ -23,6 +23,7 @@ test("un servicio y un horario nuevos del panel aparecen en la página pública"
 
   // Servicio nuevo (se asigna solo a la dueña)
   await page.goto("/dashboard/services");
+  await page.getByRole("button", { name: "Nuevo servicio" }).click();
   await page.getByLabel("Nombre").fill(service);
   await page.getByLabel("Categoría").fill("Bienestar");
   await page.getByLabel("Tiempo de atención (min)").fill("60");
