@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { isOwner, useMe } from "@/lib/me";
 import { CancelBookingDialog } from "@/components/CancelBookingDialog";
+import { RefreshIcon } from "@/components/icons";
 import { Button, Input } from "@/components/ui";
 import type {
   AgendaBooking,
@@ -30,6 +31,10 @@ const BADGE: Record<BookingStatus, string> = {
   CANCELLED: "bg-gray-100 text-gray-600 ring-gray-200",
   NO_SHOW: "bg-red-50 text-red-700 ring-red-200",
 };
+
+// Botones de una reserva: llenan la fila en el celular
+const ACTION =
+  "h-10 flex-1 whitespace-nowrap px-2 py-0 sm:h-auto sm:flex-none sm:px-3 sm:py-1";
 
 function iso(d: Date) {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -214,25 +219,27 @@ function AgendaContent() {
         </span>
       </div>
 
+      {/* En el celular, los tres en una fila y de 40 px de alto (cómodos
+          para el dedo); desde `sm`, más chicos */}
       {(b.status === "CONFIRMED" || b.status === "PENDING") && (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex gap-1.5 sm:gap-2">
           <Button
             variant="secondary"
-            className="px-3 py-1"
+            className={ACTION}
             onClick={() => setStatus(b.id, "COMPLETED")}
           >
             Completada
           </Button>
           <Button
             variant="secondary"
-            className="px-3 py-1"
+            className={ACTION}
             onClick={() => setStatus(b.id, "NO_SHOW")}
           >
             No se presentó
           </Button>
           <Button
             variant="danger"
-            className="px-3 py-1"
+            className={ACTION}
             onClick={() => setToCancel(b)}
           >
             Cancelar
@@ -246,27 +253,58 @@ function AgendaContent() {
     <div>
       <h1 className="text-xl font-semibold tracking-tight">Agenda</h1>
 
+      {/* En el celular: una fila con el día y otra con el filtro a todo el
+          ancho; "Actualizar" queda solo con su ícono (la agenda igual se
+          actualiza sola cada 30 s) */}
       <div className="my-4 flex flex-wrap items-center gap-2">
-        <Button variant="secondary" onClick={() => shift(-1)}>
-          ←
-        </Button>
-        <Input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="w-auto"
-        />
-        <Button variant="secondary" onClick={() => shift(1)}>
-          →
-        </Button>
-        <Button variant="secondary" onClick={() => setDate(iso(new Date()))}>
-          Hoy
-        </Button>
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <Button
+            variant="secondary"
+            aria-label="Día anterior"
+            className="px-3 sm:px-4"
+            onClick={() => shift(-1)}
+          >
+            ←
+          </Button>
+          <Input
+            type="date"
+            aria-label="Día"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="min-w-0 flex-1 sm:w-auto sm:flex-none"
+          />
+          <Button
+            variant="secondary"
+            aria-label="Día siguiente"
+            className="px-3 sm:px-4"
+            onClick={() => shift(1)}
+          >
+            →
+          </Button>
+          <Button
+            variant="secondary"
+            className="px-3 sm:px-4"
+            onClick={() => setDate(iso(new Date()))}
+          >
+            Hoy
+          </Button>
+          <Button
+            variant="secondary"
+            aria-label="Actualizar"
+            title="Actualizar"
+            className="flex items-center gap-1.5 px-2.5 sm:px-4"
+            onClick={load}
+          >
+            <RefreshIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Actualizar</span>
+          </Button>
+        </div>
         {members.length > 1 && (
           <select
+            aria-label="Profesional"
             value={memberId}
             onChange={(e) => setMemberId(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm sm:w-auto"
           >
             <option value="">Todos los profesionales</option>
             {members.map((m) => (
@@ -276,9 +314,6 @@ function AgendaContent() {
             ))}
           </select>
         )}
-        <Button variant="secondary" onClick={load}>
-          Actualizar
-        </Button>
       </div>
 
       <p className="mb-3 text-sm capitalize text-gray-600">{dayLabel}</p>

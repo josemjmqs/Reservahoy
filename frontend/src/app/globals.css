@@ -3,6 +3,9 @@
 :root {
   --background: #f9fafb;
   --foreground: #111827;
+  /* Alto de la barra de navegación de abajo del panel en el celular (sin el
+     borde del iPhone): la usan el panel y lo que va fijo sobre ella */
+  --tabbar-h: 3.5rem;
 }
 
 @theme inline {
