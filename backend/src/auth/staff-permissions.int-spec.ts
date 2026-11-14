@@ -8,6 +8,7 @@ import type {
 } from '../notifications/notifications.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import { ServicesService } from '../services/services.service';
+import { SettingsService } from '../settings/settings.service';
 import type { StorageService } from '../storage/storage.service';
 import { TimeBlocksService } from '../time-blocks/time-blocks.service';
 import { WorkingHoursService } from '../working-hours/working-hours.service';
@@ -37,6 +38,7 @@ const hours = new WorkingHoursService(db);
 const blocks = new TimeBlocksService(db);
 const services = new ServicesService(db, storage);
 const members = new MembersService(db);
+const settings = new SettingsService(db);
 const run = Date.now().toString(36);
 
 let businessId: string;
@@ -245,10 +247,24 @@ describe('horario de un profesional', () => {
     await notFound(hours.findAll(anaUserId, betoId));
   });
 
-  it('no puede cambiar horarios, ni el suyo', async () => {
+  it('no puede cambiar horarios, ni el suyo, y nada se guarda', async () => {
+    const saved = () =>
+      prisma.workingHours.findMany({
+        where: { member: { businessId } },
+        select: {
+          memberId: true,
+          weekday: true,
+          opensAt: true,
+          closesAt: true,
+        },
+        orderBy: [{ memberId: 'asc' }, { weekday: 'asc' }],
+      });
+    const before = await saved();
     const days = [{ weekday: 2, opensAt: '10:00', closesAt: '12:00' }];
     await forbidden(hours.replace(anaUserId, { days }));
     await forbidden(hours.replace(anaUserId, { memberId: anaId, days }));
+    await forbidden(hours.replace(anaUserId, { memberId: betoId, days }));
+    expect(await saved()).toEqual(before);
   });
 
   it('el dueño sí cambia el horario de un profesional', async () => {
@@ -291,6 +307,22 @@ describe('bloqueos de un profesional', () => {
     const created = await blocks.create(ownerUserId, day);
     expect(created.member).toBeNull();
     await blocks.remove(ownerUserId, created.id);
+  });
+});
+
+describe('ajustes de un profesional', () => {
+  // Con ellos decide si recibe el aviso de sus propias reservas nuevas
+  it('lee y cambia su propia preferencia, sin tocar la de la dueña', async () => {
+    expect(await settings.get(anaUserId)).toEqual({
+      newBookingEmail: true,
+      email: `staff-perms-ana-${run}@test.local`,
+    });
+    await settings.update(anaUserId, false);
+    expect((await settings.get(anaUserId)).newBookingEmail).toBe(false);
+    expect((await settings.get(ownerUserId)).newBookingEmail).toBe(true);
+    const ana = await prisma.member.findUniqueOrThrow({ where: { id: anaId } });
+    expect(ana.notifyNewBookings).toBe(false);
+    await settings.update(anaUserId, true);
   });
 });
 
