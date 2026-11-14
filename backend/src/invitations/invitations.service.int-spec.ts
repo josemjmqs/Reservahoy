@@ -328,6 +328,8 @@ describe('aceptar la invitación', () => {
     });
     expect(member.userId).toBe(user.id);
     expect(member.displayName).toBe('Eli'); // el nombre público no cambia
+    // como dueño, recibe los avisos de todas las reservas, igual que al registrarse
+    expect(member.newBookingsScope).toBe('ALL');
     // Por ahora quien acepta queda como dueño, con los mismos permisos
     expect((await getMembership(db, user.id)).role).toBe('OWNER');
 

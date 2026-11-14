@@ -80,6 +80,7 @@ beforeAll(async () => {
   await prisma.member.create({
     data: {
       role: 'OWNER',
+      newBookingsScope: 'ALL',
       displayName: 'Dueña',
       userId: ownerUserId,
       businessId,
@@ -320,15 +321,21 @@ describe('ajustes de un profesional', () => {
   // Con ellos decide si recibe el aviso de sus propias reservas nuevas
   it('lee y cambia su propia preferencia, sin tocar la de la dueña', async () => {
     expect(await settings.get(anaUserId)).toEqual({
-      newBookingEmail: true,
+      newBookings: 'OWN',
       email: `staff-perms-ana-${run}@test.local`,
     });
-    await settings.update(anaUserId, false);
-    expect((await settings.get(anaUserId)).newBookingEmail).toBe(false);
-    expect((await settings.get(ownerUserId)).newBookingEmail).toBe(true);
+    await settings.update(anaUserId, 'NONE');
+    expect((await settings.get(anaUserId)).newBookings).toBe('NONE');
+    expect((await settings.get(ownerUserId)).newBookings).toBe('ALL');
     const ana = await prisma.member.findUniqueOrThrow({ where: { id: anaId } });
-    expect(ana.notifyNewBookings).toBe(false);
-    await settings.update(anaUserId, true);
+    expect(ana.newBookingsScope).toBe('NONE');
+    await settings.update(anaUserId, 'OWN');
+  });
+
+  // Un profesional no recibe datos de clientes de otros
+  it('no puede pedir los avisos de todas las reservas del negocio (403)', async () => {
+    await forbidden(settings.update(anaUserId, 'ALL'));
+    expect((await settings.get(anaUserId)).newBookings).toBe('OWN');
   });
 });
 

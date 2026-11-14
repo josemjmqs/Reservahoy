@@ -26,6 +26,6 @@ export class SettingsController {
 
   @Patch()
   update(@Request() req: AuthenticatedRequest, @Body() dto: UpdateSettingsDto) {
-    return this.settings.update(req.user.userId, dto.newBookingEmail);
+    return this.settings.update(req.user.userId, dto.newBookings);
   }
 }

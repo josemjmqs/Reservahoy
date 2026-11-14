@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type NotifyScope } from '@prisma/client';
 import { DateTime } from 'luxon';
 import type { AvailabilityService } from '../availability/availability.service';
 import type {
@@ -28,6 +28,12 @@ let businessId: string;
 let bookingId: string;
 const userIds: string[] = [];
 
+const setScope = (displayName: string, newBookingsScope: NotifyScope) =>
+  prisma.member.updateMany({
+    where: { businessId, displayName },
+    data: { newBookingsScope },
+  });
+
 beforeAll(async () => {
   businessId = (
     await prisma.business.create({
@@ -45,7 +51,13 @@ beforeAll(async () => {
   userIds.push(owner.id, off.id, inactive.id);
 
   const ownerMember = await prisma.member.create({
-    data: { role: 'OWNER', displayName: 'Ana', userId: owner.id, businessId },
+    data: {
+      role: 'OWNER',
+      newBookingsScope: 'ALL',
+      displayName: 'Ana',
+      userId: owner.id,
+      businessId,
+    },
   });
   await prisma.member.createMany({
     data: [
@@ -55,7 +67,7 @@ beforeAll(async () => {
         displayName: 'Beto',
         userId: off.id,
         businessId,
-        notifyNewBookings: false,
+        newBookingsScope: 'NONE',
       },
       // ya no trabaja en el negocio
       {
@@ -143,13 +155,13 @@ describe('BookingsService.notifyStaff', () => {
   it('no escribe a nadie si todos desactivaron los avisos', async () => {
     await prisma.member.updateMany({
       where: { businessId },
-      data: { notifyNewBookings: false },
+      data: { newBookingsScope: 'NONE' },
     });
     await bookings.notifyStaff(bookingId);
     expect(sent).toEqual([]);
     await prisma.member.updateMany({
       where: { businessId, displayName: 'Ana' },
-      data: { notifyNewBookings: true },
+      data: { newBookingsScope: 'ALL' },
     });
   });
 
@@ -211,5 +223,40 @@ describe('BookingsService.notifyStaff con profesionales con cuenta', () => {
     await bookings.notifyStaff(eliBookingId);
     expect(sent.map((s) => s.recipientName).sort()).toEqual(['dueña', 'eli']);
     expect(sent.every((s) => s.memberName === 'Eli')).toBe(true);
+  });
+
+  it('con NONE no recibe ni las suyas', async () => {
+    await setScope('Eli', 'NONE');
+    await bookings.notifyStaff(eliBookingId);
+    expect(sent.map((s) => s.recipientName)).toEqual(['dueña']);
+    await setScope('Eli', 'OWN');
+  });
+
+  // ALL solo vale para un dueño; la API no deja elegirlo a un profesional,
+  // pero si lo tuviera (p. ej. un dueño que pasa a STAFF) recibe solo las suyas
+  it('un profesional con ALL sigue recibiendo solo las suyas', async () => {
+    await setScope('Eli', 'ALL');
+    await bookings.notifyStaff(bookingId); // reserva con Ana
+    expect(sent.map((s) => s.recipientName)).toEqual(['dueña']);
+    await setScope('Eli', 'OWN');
+  });
+});
+
+describe('BookingsService.notifyStaff con un dueño que elige solo las suyas', () => {
+  beforeAll(() => setScope('Ana', 'OWN'));
+  afterAll(() => setScope('Ana', 'ALL'));
+
+  it('recibe las reservas que atiende', async () => {
+    await bookings.notifyStaff(bookingId); // reserva con Ana
+    expect(sent.map((s) => s.recipientName)).toEqual(['dueña']);
+  });
+
+  it('no recibe las de otro profesional', async () => {
+    const other = await prisma.booking.findFirstOrThrow({
+      where: { businessId, member: { displayName: 'Eli' } },
+      select: { id: true },
+    });
+    await bookings.notifyStaff(other.id);
+    expect(sent.map((s) => s.recipientName)).toEqual(['eli']);
   });
 });

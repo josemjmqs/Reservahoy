@@ -155,10 +155,11 @@ export class BookingsService {
     }
   }
 
-  // Avisa por correo a los miembros con cuenta que tienen activados los avisos
-  // de reservas nuevas: los dueños y el profesional de la reserva (un
-  // profesional no recibe datos de clientes de otros). Nunca lanza: un fallo
-  // aquí no debe romper la reserva
+  // Avisa por correo a los miembros activos y con cuenta según su preferencia
+  // (newBookingsScope): los dueños con ALL reciben todas; el profesional de la
+  // reserva, con ALL u OWN. ALL solo vale para un dueño: un profesional no
+  // recibe datos de clientes de otros. Nunca lanza: un fallo aquí no debe
+  // romper la reserva
   async notifyStaff(bookingId: string): Promise<void> {
     try {
       const booking = await this.prisma.booking.findUniqueOrThrow({
@@ -181,9 +182,11 @@ export class BookingsService {
         where: {
           businessId: booking.businessId,
           active: true,
-          notifyNewBookings: true,
           userId: { not: null },
-          OR: [{ role: 'OWNER' }, { id: booking.memberId }],
+          OR: [
+            { role: 'OWNER', newBookingsScope: 'ALL' },
+            { id: booking.memberId, newBookingsScope: { in: ['ALL', 'OWN'] } },
+          ],
         },
         select: { user: { select: { email: true, name: true } } },
       });

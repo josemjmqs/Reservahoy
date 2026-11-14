@@ -274,7 +274,7 @@ const PANEL_ROUTES: Record<
   },
   "PATCH /settings": {
     // B cambia sus propios ajustes; al final se revisa que los de A sigan igual
-    call: (c) => c.patch("/settings", { data: { newBookingEmail: false } }),
+    call: (c) => c.patch("/settings", { data: { newBookings: "NONE" } }),
     other: 200,
     staff: 200, // sus propios ajustes; afterAll los deja como estaban
   },
@@ -379,7 +379,7 @@ test.afterAll(async () => {
   await ownerA?.delete(`/time-blocks/${a.block}`);
   await ownerA?.delete(`/time-blocks/${a.ownerBlock}`);
   // PATCH /settings del profesional cambió sus propios avisos: se restauran
-  await staffA?.patch("/settings", { data: { newBookingEmail: true } });
+  await staffA?.patch("/settings", { data: { newBookings: "OWN" } });
   await Promise.all([anon, ownerA, ownerB, staffA].map((c) => c?.dispose()));
 });
 
@@ -431,8 +431,8 @@ test("los datos del negocio A siguen intactos", async () => {
   expect(members.find((m: { id: string }) => m.id === a.member).active).toBe(
     true,
   );
-  expect((await (await ownerA.get("/settings")).json()).newBookingEmail).toBe(
-    true,
+  expect((await (await ownerA.get("/settings")).json()).newBookings).toBe(
+    "ALL",
   );
   expect(await (await ownerA.get("/business")).json()).toMatchObject({
     name: "Peluquería Demo",

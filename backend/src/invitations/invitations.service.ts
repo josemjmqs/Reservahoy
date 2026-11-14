@@ -113,7 +113,11 @@ export class InvitationsService {
         // Solo si nadie más la tomó en el intertanto (si no, se deshace todo)
         const linked = await tx.member.updateMany({
           where: { id: inv.member.id, userId: null, active: true },
-          data: { userId: created.id, role: 'OWNER' },
+          data: {
+            userId: created.id,
+            role: 'OWNER',
+            newBookingsScope: 'ALL',
+          },
         });
         const used = await tx.memberInvitation.updateMany({
           where: { id: inv.id, usedAt: null, revokedAt: null },

@@ -94,6 +94,7 @@ async function main() {
   const camila = await prisma.member.create({
     data: {
       role: 'OWNER',
+      newBookingsScope: 'ALL',
       displayName: 'Camila',
       userId: user.id,
       businessId,
