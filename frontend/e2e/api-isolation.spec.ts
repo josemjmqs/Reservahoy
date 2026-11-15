@@ -263,6 +263,18 @@ const PANEL_ROUTES: Record<
     other: 200,
     staff: 403,
   },
+  "POST /business/logo": {
+    // B sube a su propio negocio: sin R2 responde 503 y con R2, sin archivo, 400
+    call: (c) => c.post("/business/logo"),
+    other: [400, 503],
+    staff: 403, // el rol se revisa antes que R2
+  },
+  "DELETE /business/logo": {
+    // B quita su propio logo; el de A no tiene cómo apuntarse
+    call: (c) => c.delete("/business/logo"),
+    other: 200,
+    staff: 403,
+  },
   "GET /settings": {
     call: (c) => c.get("/settings"),
     other: async (res) => {

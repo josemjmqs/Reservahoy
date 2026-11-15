@@ -21,6 +21,8 @@ export interface PublicBusiness {
   slug: string;
   timezone: string;
   phone: string | null;
+  brandColor: string | null;
+  logoUrl: string | null;
   acceptsBookings: boolean;
   services: Omit<Service, "active">[];
   members: {
@@ -128,4 +130,6 @@ export interface BusinessInfo {
   name: string;
   slug: string;
   phone: string | null;
+  brandColor: string | null;
+  logoUrl: string | null;
 }

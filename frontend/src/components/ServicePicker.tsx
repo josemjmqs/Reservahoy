@@ -115,7 +115,7 @@ function ServiceButton({
       aria-pressed={selected}
       className={`rounded-lg border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
         selected
-          ? "border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600"
+          ? "border-brand bg-brand/10 ring-1 ring-brand"
           : "border-gray-200 bg-white hover:border-gray-300"
       }`}
     >
@@ -132,7 +132,7 @@ function ServiceButton({
           aria-hidden
           className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
             selected
-              ? "border-indigo-600 bg-indigo-600 text-white"
+              ? "border-brand bg-brand text-brand-fg"
               : "border-gray-300 bg-white"
           }`}
         >
@@ -148,7 +148,7 @@ function ServiceButton({
         </span>
       </span>
       {selected && (s.imageUrl || s.description) && (
-        <span className="mt-2 flex flex-col gap-2 border-t border-indigo-100 pt-2">
+        <span className="mt-2 flex flex-col gap-2 border-t border-brand/20 pt-2">
           {s.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element -- la foto ya viene reducida; no usamos el optimizador de Vercel
             <img

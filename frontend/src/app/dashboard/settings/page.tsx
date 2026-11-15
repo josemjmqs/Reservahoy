@@ -1,28 +1,128 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { PhotoPicker } from "@/components/PhotoPicker";
 import { Button, Field, Input } from "@/components/ui";
 import { api } from "@/lib/api";
+import { brandStyle, DEFAULT_BRAND } from "@/lib/brand";
+import { removeBusinessLogo, uploadBusinessLogo } from "@/lib/image";
 import { isOwner, useMe } from "@/lib/me";
 import type { BusinessInfo, NotifyScope, Settings } from "@/lib/types";
 
-// Nombre y teléfono del negocio: los ven los clientes en la página pública,
-// en su reserva y en los correos
-function BusinessSection() {
-  const [form, setForm] = useState<{ name: string; phone: string } | null>(
-    null,
+type BusinessForm = { name: string; phone: string; brandColor: string };
+
+const toForm = (b: BusinessInfo): BusinessForm => ({
+  name: b.name,
+  phone: b.phone ?? "",
+  brandColor: b.brandColor ?? "",
+});
+
+const isHex = (c: string) => /^#[0-9a-f]{6}$/i.test(c);
+
+// Color de los botones de la página pública, con paleta o escrito (#RRGGBB) y
+// una vista previa. Vacío = el color de Reservahoy
+function BrandColorField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (color: string) => void;
+}) {
+  const valid = isHex(value);
+  return (
+    <div className="flex flex-col gap-1">
+      <span
+        id="brand-color-label"
+        className="text-xs font-medium text-gray-700"
+      >
+        Color de tu página
+      </span>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="color"
+          aria-label="Elegir el color en la paleta"
+          value={valid ? value.toLowerCase() : DEFAULT_BRAND}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-gray-300 bg-white p-1"
+        />
+        <Input
+          aria-labelledby="brand-color-label"
+          value={value}
+          onChange={(e) => onChange(e.target.value.trim())}
+          placeholder={DEFAULT_BRAND}
+          pattern="#[0-9a-fA-F]{6}"
+          title="Formato #RRGGBB, por ejemplo #0f766e"
+          maxLength={7}
+          className="w-28 font-mono"
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="min-h-10 rounded-lg px-3 text-sm font-medium text-gray-600 transition hover:bg-gray-100"
+          >
+            Usar el de Reservahoy
+          </button>
+        )}
+      </div>
+      <span className="text-xs text-gray-500">
+        Lo usan los botones de tu página de reservas. Si es un color claro, el
+        texto de los botones se ve oscuro para que se lea bien.
+      </span>
+      <div
+        aria-hidden
+        style={brandStyle(valid ? value : null)}
+        className="mt-1 flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 p-3"
+      >
+        <span className="text-xs text-gray-500">Vista previa</span>
+        <span className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-brand-fg">
+          Confirmar reserva
+        </span>
+        <span className="rounded-lg border border-brand bg-brand px-3 py-2 text-sm tabular-nums text-brand-fg">
+          10:30
+        </span>
+        <span className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm tabular-nums">
+          11:00
+        </span>
+      </div>
+    </div>
   );
+}
+
+// Nombre, teléfono, logo y color del negocio: los ven los clientes en la
+// página pública (el nombre y el teléfono también en su reserva y en los correos)
+function BusinessSection() {
+  const [form, setForm] = useState<BusinessForm | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     api<BusinessInfo>("/business")
-      .then((b) => setForm({ name: b.name, phone: b.phone ?? "" }))
+      .then((b) => {
+        setForm(toForm(b));
+        setLogoUrl(b.logoUrl);
+      })
       .catch((e) =>
         setError(e instanceof Error ? e.message : "Error inesperado"),
       );
   }, []);
+
+  // El logo se sube (o se quita) al instante, como las fotos de los servicios
+  async function changeLogo(action: () => Promise<BusinessInfo>) {
+    setLogoBusy(true);
+    setLogoError("");
+    try {
+      setLogoUrl((await action()).logoUrl);
+    } catch (e) {
+      setLogoError(e instanceof Error ? e.message : "Error inesperado");
+    } finally {
+      setLogoBusy(false);
+    }
+  }
 
   async function save(e: FormEvent) {
     e.preventDefault();
@@ -33,9 +133,13 @@ function BusinessSection() {
     try {
       const b = await api<BusinessInfo>("/business", {
         method: "PATCH",
-        body: JSON.stringify({ name: form.name, phone: form.phone }),
+        body: JSON.stringify({
+          name: form.name,
+          phone: form.phone,
+          brandColor: form.brandColor,
+        }),
       });
-      setForm({ name: b.name, phone: b.phone ?? "" });
+      setForm(toForm(b));
       setSaved(true);
       window.dispatchEvent(new Event("business-updated"));
     } catch (e) {
@@ -77,6 +181,25 @@ function BusinessSection() {
                 maxLength={20}
               />
             </Field>
+            <div>
+              <PhotoPicker
+                noun="logo"
+                square
+                alt="Logo del negocio"
+                hint="Opcional. Aparece en tu página en vez de las iniciales. JPG, PNG o WebP; mejor cuadrado."
+                imageUrl={logoUrl}
+                busy={logoBusy}
+                onPick={(file) => changeLogo(() => uploadBusinessLogo(file))}
+                onRemove={() => changeLogo(removeBusinessLogo)}
+              />
+              {logoError && (
+                <p className="mt-1 text-sm text-red-600">{logoError}</p>
+              )}
+            </div>
+            <BrandColorField
+              value={form.brandColor}
+              onChange={(brandColor) => setForm({ ...form, brandColor })}
+            />
             <div className="flex items-center gap-3">
               <Button type="submit" disabled={saving}>
                 {saving ? "Guardando..." : "Guardar"}

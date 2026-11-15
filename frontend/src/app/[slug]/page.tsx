@@ -9,6 +9,7 @@ import { ServicePicker } from "@/components/ServicePicker";
 import { DayStrip, todayISO } from "@/components/DayStrip";
 import { CheckIcon, PhoneIcon } from "@/components/icons";
 import { formatTime, formatTotal, publicDuration } from "@/lib/format";
+import { brandStyle } from "@/lib/brand";
 
 const MAX_SERVICES = 5; // igual que MAX_SERVICES_PER_BOOKING en el backend
 
@@ -24,7 +25,7 @@ const longDate = (iso: string, timeZone: string) =>
 // la pondría en cada palabra
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-// "Peluquería Demo" -> "PD": la marca del negocio mientras no pueda subir un logo
+// "Peluquería Demo" -> "PD": la marca del negocio mientras no suba un logo
 const initials = (name: string) =>
   name
     .split(/\s+/)
@@ -36,19 +37,30 @@ const initials = (name: string) =>
 function BusinessHeader({
   name,
   phone,
+  logoUrl,
 }: {
   name: string;
   phone?: string | null;
+  logoUrl?: string | null;
 }) {
   return (
     <header>
       <div className="flex items-center gap-4">
-        <div
-          aria-hidden
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-xl font-semibold text-white"
-        >
-          {initials(name)}
-        </div>
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- el logo ya viene reducido; no usamos el optimizador de Vercel
+          <img
+            src={logoUrl}
+            alt={`Logo de ${name}`}
+            className="h-14 w-14 shrink-0 rounded-2xl border border-gray-200 bg-white object-contain"
+          />
+        ) : (
+          <div
+            aria-hidden
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand text-xl font-semibold text-brand-fg"
+          >
+            {initials(name)}
+          </div>
+        )}
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">{name}</h1>
           <p className="text-gray-600">Reserva tu hora online</p>
@@ -59,7 +71,7 @@ function BusinessHeader({
           href={`tel:${phone.replace(/[^\d+]/g, "")}`}
           className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
         >
-          <PhoneIcon className="h-4 w-4 text-indigo-600" />
+          <PhoneIcon className="h-4 w-4 text-gray-500" />
           {phone}
         </a>
       )}
@@ -222,8 +234,15 @@ export default function PublicPage({
 
   if (!business.acceptsBookings)
     return (
-      <main className="mx-auto w-full max-w-md px-6 py-10">
-        <BusinessHeader name={business.name} phone={business.phone} />
+      <main
+        style={brandStyle(business.brandColor)}
+        className="mx-auto w-full max-w-md px-6 py-10"
+      >
+        <BusinessHeader
+          name={business.name}
+          phone={business.phone}
+          logoUrl={business.logoUrl}
+        />
         <p className="mt-6 text-gray-600">
           Este negocio todavía no recibe reservas online. Vuelve a intentarlo
           pronto.
@@ -273,7 +292,10 @@ export default function PublicPage({
     const link = `${window.location.origin}/reserva/${done.manageToken}`;
 
     return (
-      <main className="mx-auto w-full max-w-md px-6 py-12">
+      <main
+        style={brandStyle(business.brandColor)}
+        className="mx-auto w-full max-w-md px-6 py-12"
+      >
         <Card className="p-6 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-700">
             <CheckIcon className="h-6 w-6" />
@@ -298,7 +320,7 @@ export default function PublicPage({
             <div className="mt-3 flex gap-2">
               <Link
                 href={`/reserva/${done.manageToken}`}
-                className="inline-flex min-h-10 items-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700"
+                className="inline-flex min-h-10 items-center rounded-lg bg-brand px-3 text-sm font-medium text-brand-fg hover:bg-brand-hover"
               >
                 Abrir mi reserva
               </Link>
@@ -327,9 +349,16 @@ export default function PublicPage({
 
   return (
     <main
+      // El color de marca del negocio reemplaza al índigo en lo elegido y en
+      // los botones principales (clases `bg-brand`, `text-brand-fg`...)
+      style={brandStyle(business.brandColor)}
       className={`mx-auto w-full max-w-md px-6 py-10 ${showBar ? "pb-32" : ""}`}
     >
-      <BusinessHeader name={business.name} phone={business.phone} />
+      <BusinessHeader
+        name={business.name}
+        phone={business.phone}
+        logoUrl={business.logoUrl}
+      />
 
       <SectionTitle
         aside={
@@ -365,7 +394,7 @@ export default function PublicPage({
                 </div>
                 <a
                   href="#dia-y-hora"
-                  className="inline-flex min-h-10 shrink-0 items-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700"
+                  className="inline-flex min-h-10 shrink-0 items-center rounded-lg bg-brand px-3 text-sm font-medium text-brand-fg hover:bg-brand-hover"
                 >
                   Ver horas
                 </a>
@@ -393,8 +422,8 @@ export default function PublicPage({
                       }}
                       className={`min-h-10 rounded-lg border px-3 text-sm transition ${
                         memberId === m.id
-                          ? "border-indigo-600 bg-indigo-600 text-white"
-                          : "border-gray-200 bg-white hover:border-indigo-300"
+                          ? "border-brand bg-brand text-brand-fg"
+                          : "border-gray-200 bg-white hover:border-brand/40"
                       }`}
                     >
                       {m.displayName}
@@ -440,8 +469,8 @@ export default function PublicPage({
                   onClick={() => setStartsAt(s)}
                   className={`h-10 rounded-lg border text-sm tabular-nums transition ${
                     startsAt === s
-                      ? "border-indigo-600 bg-indigo-600 text-white"
-                      : "border-gray-200 bg-white hover:border-indigo-300"
+                      ? "border-brand bg-brand text-brand-fg"
+                      : "border-gray-200 bg-white hover:border-brand/40"
                   }`}
                 >
                   {fmt(s)}
@@ -461,7 +490,7 @@ export default function PublicPage({
       {startsAt && (
         <form onSubmit={submit}>
           <SectionTitle>Tus datos</SectionTitle>
-          <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-sm">
+          <div className="mb-4 rounded-lg border border-brand/20 bg-brand/5 p-3 text-sm">
             <p className="font-medium text-gray-900">
               {selected.map((s) => s.name).join(" + ")}
             </p>
@@ -498,7 +527,10 @@ export default function PublicPage({
               />
             </Field>
             {error && <p className="text-sm text-red-600">{error}</p>}
-            <Button disabled={loading} className="mt-1 h-11 w-full">
+            <Button
+              disabled={loading}
+              className="mt-1 h-11 w-full bg-brand text-brand-fg hover:bg-brand-hover"
+            >
               {loading ? "Reservando..." : "Confirmar reserva"}
             </Button>
             <p className="text-xs text-gray-500">
