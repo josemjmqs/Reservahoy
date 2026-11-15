@@ -23,13 +23,36 @@ interface DayState {
   enabled: boolean;
   opensAt: string;
   closesAt: string;
+  // Almuerzo: al quitarlo se conservan las horas por si se vuelve a agregar
+  hasBreak: boolean;
+  breakStartsAt: string;
+  breakEndsAt: string;
 }
 
 const defaultDay: DayState = {
   enabled: false,
   opensAt: '09:00',
   closesAt: '18:00',
+  hasBreak: false,
+  breakStartsAt: '13:00',
+  breakEndsAt: '14:00',
 };
+
+// Mismas reglas que el backend (dayHoursError), para avisar qué día está mal
+// antes de guardar. Las horas HH:MM se comparan como texto
+function dayError(d: DayState): string | null {
+  if (d.opensAt >= d.closesAt) {
+    return 'la hora de apertura debe ser anterior al cierre';
+  }
+  if (!d.hasBreak) return null;
+  if (d.breakStartsAt >= d.breakEndsAt) {
+    return 'el almuerzo debe empezar antes de terminar';
+  }
+  if (d.breakStartsAt <= d.opensAt || d.breakEndsAt >= d.closesAt) {
+    return 'el almuerzo debe quedar dentro del horario, después de abrir y antes de cerrar';
+  }
+  return null;
+}
 
 const emptyWeek = () =>
   Object.fromEntries(DAYS.map((d) => [d.weekday, defaultDay])) as Record<
@@ -70,6 +93,9 @@ function HoursContent() {
             enabled: true,
             opensAt: r.opensAt,
             closesAt: r.closesAt,
+            hasBreak: !!(r.breakStartsAt && r.breakEndsAt),
+            breakStartsAt: r.breakStartsAt ?? defaultDay.breakStartsAt,
+            breakEndsAt: r.breakEndsAt ?? defaultDay.breakEndsAt,
           };
         }
         setDays(next);
@@ -94,13 +120,26 @@ function HoursContent() {
   async function save() {
     setError('');
     setSaved(false);
+    const open = DAYS.filter((d) => days[d.weekday].enabled);
+    for (const { weekday, label } of open) {
+      const problem = dayError(days[weekday]);
+      if (problem) {
+        setError(`${label}: ${problem}.`);
+        return;
+      }
+    }
     setSaving(true);
     try {
-      const payload = DAYS.filter((d) => days[d.weekday].enabled).map((d) => ({
-        weekday: d.weekday,
-        opensAt: days[d.weekday].opensAt,
-        closesAt: days[d.weekday].closesAt,
-      }));
+      const payload = open.map(({ weekday }) => {
+        const day = days[weekday];
+        return {
+          weekday,
+          opensAt: day.opensAt,
+          closesAt: day.closesAt,
+          breakStartsAt: day.hasBreak ? day.breakStartsAt : null,
+          breakEndsAt: day.hasBreak ? day.breakEndsAt : null,
+        };
+      });
       await api('/working-hours', {
         method: 'PUT',
         body: JSON.stringify({ ...(memberId && { memberId }), days: payload }),
@@ -138,7 +177,9 @@ function HoursContent() {
         </p>
       ) : (
         <p className="mt-1 text-sm text-gray-600">
-          Marca los días en que atiende y define el horario de cada uno.
+          Marca los días en que atiende y define el horario de cada uno. Con
+          &quot;+ Almuerzo&quot; puedes cortar el día: esa franja no se ofrece a
+          los clientes.
         </p>
       )}
 
@@ -171,26 +212,81 @@ function HoursContent() {
                 {label}
               </label>
               {day.enabled ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="time"
-                    value={day.opensAt}
-                    disabled={readOnly}
-                    onChange={(e) =>
-                      update(weekday, { opensAt: e.target.value })
-                    }
-                    className="w-auto"
-                  />
-                  <span className="text-sm text-gray-500">a</span>
-                  <Input
-                    type="time"
-                    value={day.closesAt}
-                    disabled={readOnly}
-                    onChange={(e) =>
-                      update(weekday, { closesAt: e.target.value })
-                    }
-                    className="w-auto"
-                  />
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="time"
+                      aria-label={`${label}: apertura`}
+                      value={day.opensAt}
+                      disabled={readOnly}
+                      onChange={(e) =>
+                        update(weekday, { opensAt: e.target.value })
+                      }
+                      className="w-auto"
+                    />
+                    <span className="text-sm text-gray-500">a</span>
+                    <Input
+                      type="time"
+                      aria-label={`${label}: cierre`}
+                      value={day.closesAt}
+                      disabled={readOnly}
+                      onChange={(e) =>
+                        update(weekday, { closesAt: e.target.value })
+                      }
+                      className="w-auto"
+                    />
+                  </div>
+                  {day.hasBreak ? (
+                    // El almuerzo corta el día en dos: esa franja no se
+                    // ofrece a los clientes
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="w-full text-xs font-medium text-gray-600">
+                        Almuerzo
+                      </span>
+                      <Input
+                        type="time"
+                        aria-label={`${label}: inicio del almuerzo`}
+                        value={day.breakStartsAt}
+                        disabled={readOnly}
+                        onChange={(e) =>
+                          update(weekday, { breakStartsAt: e.target.value })
+                        }
+                        className="w-auto"
+                      />
+                      <span className="text-sm text-gray-500">a</span>
+                      <Input
+                        type="time"
+                        aria-label={`${label}: término del almuerzo`}
+                        value={day.breakEndsAt}
+                        disabled={readOnly}
+                        onChange={(e) =>
+                          update(weekday, { breakEndsAt: e.target.value })
+                        }
+                        className="w-auto"
+                      />
+                      {!readOnly && (
+                        <Button
+                          variant="secondary"
+                          aria-label={`Quitar almuerzo del ${label.toLowerCase()}`}
+                          onClick={() => update(weekday, { hasBreak: false })}
+                          className="h-10 px-3 sm:h-auto"
+                        >
+                          Quitar
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    !readOnly && (
+                      <Button
+                        variant="secondary"
+                        aria-label={`Agregar almuerzo al ${label.toLowerCase()}`}
+                        onClick={() => update(weekday, { hasBreak: true })}
+                        className="h-10 self-start px-3 sm:h-auto sm:py-1.5"
+                      >
+                        + Almuerzo
+                      </Button>
+                    )
+                  )}
                 </div>
               ) : (
                 <span className="text-sm text-gray-400">Cerrado</span>

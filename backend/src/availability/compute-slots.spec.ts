@@ -56,6 +56,38 @@ describe('computeSlots', () => {
     expect(slots).toHaveLength(2);
   });
 
+  describe('con almuerzo', () => {
+    // 09:00–18:00 con almuerzo de 13:00 a 14:00 (UTC-3 en noviembre)
+    const lunch = {
+      ...base,
+      closesAt: '18:00',
+      breakStartsAt: '13:00',
+      breakEndsAt: '14:00',
+    };
+    const local = (slots: Date[]) =>
+      slots.map((s) => `${s.getUTCHours() - 3}:${s.getUTCMinutes()}`);
+
+    it('no ofrece horas que crucen el almuerzo', () => {
+      const slots = local(computeSlots(lunch));
+      expect(slots).toContain('12:0');
+      expect(slots).not.toContain('13:0');
+      expect(slots).toContain('14:0');
+      expect(slots).toHaveLength(8); // 4 en la mañana y 4 en la tarde
+    });
+
+    it('la tarde parte al terminar el almuerzo aunque no calce con la grilla', () => {
+      // 45 min: la mañana 9:00, 9:45, 10:30, 11:15, 12:00; la tarde desde 14:00
+      const slots = local(computeSlots({ ...lunch, durationMin: 45 }));
+      expect(slots).toContain('12:0');
+      expect(slots).not.toContain('12:45');
+      expect(slots[5]).toBe('14:0');
+    });
+
+    it('sin las dos horas del almuerzo se ignora', () => {
+      expect(computeSlots({ ...lunch, breakEndsAt: null })).toHaveLength(9);
+    });
+  });
+
   it('respeta la zona horaria: 09:00 local es 12:00 UTC en noviembre', () => {
     const [first] = computeSlots(base);
     expect(first.toISOString()).toBe('2026-11-02T12:00:00.000Z');

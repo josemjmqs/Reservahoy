@@ -14,6 +14,8 @@ export interface WorkingHour {
   weekday: number;
   opensAt: string;
   closesAt: string;
+  breakStartsAt: string | null;
+  breakEndsAt: string | null;
 }
 
 export interface PublicBusiness {
