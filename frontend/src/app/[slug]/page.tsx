@@ -371,7 +371,7 @@ export default function PublicPage({
       // El color de marca del negocio reemplaza al índigo en lo elegido y en
       // los botones principales (clases `bg-brand`, `text-brand-fg`...)
       style={brandStyle(business.brandColor)}
-      className={`mx-auto w-full max-w-md px-6 py-10 ${showBar ? "pb-32" : ""}`}
+      className={`mx-auto w-full max-w-md px-6 py-10 ${showBar ? "pb-[calc(8rem+env(safe-area-inset-bottom))]" : ""}`}
     >
       <BusinessHeader
         name={business.name}
