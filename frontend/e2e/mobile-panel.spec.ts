@@ -10,6 +10,14 @@ test.use({ viewport: { width: 375, height: 812 } });
 const OWNER_TABS = ["Agenda", "Servicios", "Equipo", "Horario", "Bloqueos", "Ajustes"];
 const STAFF_TABS = ["Agenda", "Horario", "Bloqueos", "Ajustes"];
 
+// En el celular se desplaza el contenido del panel (#panel-scroll), no la página
+async function scrollToBottom(page: Page) {
+  await page.evaluate(() => {
+    const el = document.getElementById("panel-scroll")!;
+    el.scrollTo(0, el.scrollHeight);
+  });
+}
+
 async function checkTabs(page: Page, names: string[]) {
   // En local (`npm run dev`) el indicador de Next queda sobre la primera
   // pestaña y no deja hacer clic; en CI se usa `next start` y no aparece. Las
@@ -43,14 +51,26 @@ async function checkTabs(page: Page, names: string[]) {
       expect(await other.evaluate((a) => a.scrollWidth <= a.clientWidth)).toBe(true);
     }
 
-    // Sin scroll horizontal de la página
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    // Sin scroll horizontal, ni de la página ni del contenido del panel
+    const overflow = await page.evaluate(() =>
+      [document.documentElement, document.getElementById("panel-scroll")!].map(
+        (el) => el.scrollWidth - el.clientWidth,
+      ),
     );
-    expect(overflow, `scroll horizontal en ${name}`).toBeLessThanOrEqual(0);
+    for (const o of overflow) {
+      expect(o, `scroll horizontal en ${name}`).toBeLessThanOrEqual(0);
+    }
 
-    // Al final de la página, la barra no tapa el contenido
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    // La página misma no se desplaza, solo el contenido del panel: si se
+    // desplazara, Chrome en Android mostraría su barra de direcciones al subir
+    // y empujaría hacia abajo la barra de navegación, tapándola en parte
+    const pageScroll = await page.evaluate(
+      () => document.documentElement.scrollHeight - document.documentElement.clientHeight,
+    );
+    expect(pageScroll, `la página se desplaza en ${name}`).toBeLessThanOrEqual(0);
+
+    // Al final del contenido, la barra no lo tapa
+    await scrollToBottom(page);
     const contentBottom = await page
       .getByRole("main")
       .evaluate((el) => (el.lastElementChild ?? el).getBoundingClientRect().bottom);
@@ -181,7 +201,7 @@ test("en Horario el dueño ve 'Guardar horario' sin bajar y no tapa al domingo",
   await expectAboveTabBar(page, save);
 
   // Al final de la página, el domingo queda por encima de la barra del botón
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await scrollToBottom(page);
   const sunday = (await domingo.boundingBox())!;
   const saveTop = (await save.boundingBox())!.y;
   expect(sunday.y + sunday.height).toBeLessThan(saveTop);
