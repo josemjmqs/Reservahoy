@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { isOwner, useMe } from '@/lib/me';
 import { Button, Card, Input } from '@/components/ui';
+import { TimeSelect } from '@/components/TimeSelect';
 import type { TeamMember, TimeBlock, TimeBlockList } from '@/lib/types';
 
 function today() {
@@ -212,12 +213,10 @@ export default function BlocksPage() {
                   required
                 />
                 {!allDay && (
-                  <Input
-                    type="time"
+                  <TimeSelect
+                    aria-label="Hora de inicio"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="w-auto"
-                    required
                   />
                 )}
               </div>
@@ -235,12 +234,10 @@ export default function BlocksPage() {
                   required
                 />
                 {!allDay && (
-                  <Input
-                    type="time"
+                  <TimeSelect
+                    aria-label="Hora de término"
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
-                    className="w-auto"
-                    required
                   />
                 )}
               </div>
