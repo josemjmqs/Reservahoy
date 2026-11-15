@@ -14,7 +14,7 @@ import {
 } from "./helpers";
 
 // Almuerzo en el horario: el dueño corta el día y la página pública no ofrece
-// esa franja. También copiar el lunes (con su almuerzo) a toda la semana.
+// esa franja. También copiar el lunes (con su almuerzo) a los días marcados.
 // Cada prueba deja el horario demo como estaba
 
 const TZ = "America/Santiago";
@@ -177,11 +177,15 @@ test("quitar el almuerzo desde la pantalla lo borra al guardar", async ({
   }
 });
 
-test("copiar el lunes abre todos los días con su horario y almuerzo", async ({
+test("copiar el lunes pone su horario y almuerzo solo en los días marcados", async ({
   page,
 }) => {
   await loginAsDemo(page);
   const original = await getHours(page.request);
+  // Los días abiertos del seed (el domingo está cerrado), menos el sábado, que
+  // se desmarca antes de copiar
+  const open = original.map((d) => d.weekday).filter((w) => w !== 6).sort();
+  expect(open).not.toContain(0);
 
   try {
     await openHours(page);
@@ -191,20 +195,29 @@ test("copiar el lunes abre todos los días con su horario y almuerzo", async ({
     await lunes.getByRole("button", { name: "Agregar almuerzo al lunes" }).click();
     await pickTime(page, lunes.getByLabel("Lunes: inicio del almuerzo"), "13:30");
     await pickTime(page, lunes.getByLabel("Lunes: término del almuerzo"), "14:15");
+    await page
+      .getByRole("listitem")
+      .filter({ hasText: "Sábado" })
+      .getByRole("checkbox")
+      .uncheck();
     await lunes
-      .getByRole("button", { name: "Copiar el horario del lunes a todos los días" })
+      .getByRole("button", { name: "Copiar el horario del lunes a los días marcados" })
       .click();
 
-    // El domingo del seed está cerrado: ahora queda abierto como el lunes
-    const domingo = page.getByRole("listitem").filter({ hasText: "Domingo" });
-    await expect(domingo.getByRole("checkbox")).toBeChecked();
-    await expect(domingo.getByLabel("Domingo: apertura")).toHaveText("10:00");
+    // El domingo y el sábado, desmarcados, siguen cerrados
+    for (const label of ["Domingo", "Sábado"]) {
+      const day = page.getByRole("listitem").filter({ hasText: label });
+      await expect(day.getByRole("checkbox")).not.toBeChecked();
+      await expect(day.getByLabel(`${label}: apertura`)).toHaveCount(0);
+    }
+    const martes = page.getByRole("listitem").filter({ hasText: "Martes" });
+    await expect(martes.getByLabel("Martes: apertura")).toHaveText("10:00");
 
     await page.getByRole("button", { name: "Guardar horario" }).click();
     await expect(page.getByText("Horario guardado.")).toBeVisible();
 
     const saved = await getHours(page.request);
-    expect(saved.map((d) => d.weekday).sort()).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(saved.map((d) => d.weekday).sort()).toEqual(open);
     for (const d of saved) {
       expect(d).toMatchObject({
         opensAt: "10:00",
@@ -273,7 +286,7 @@ test("en el celular los botones del almuerzo y de copiar miden al menos 40 px", 
   const remove = lunes.getByRole("button", { name: "Quitar almuerzo del lunes" });
   expect((await remove.boundingBox())!.height).toBeGreaterThanOrEqual(40);
   const copy = lunes.getByRole("button", {
-    name: "Copiar el horario del lunes a todos los días",
+    name: "Copiar el horario del lunes a los días marcados",
   });
   expect((await copy.boundingBox())!.height).toBeGreaterThanOrEqual(40);
 });
