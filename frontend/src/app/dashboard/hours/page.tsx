@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, type ComponentProps } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
@@ -41,9 +41,22 @@ const defaultDay: DayState = {
   breakEndsAt: '14:00',
 };
 
+// Las horas van de 15 en 15 minutos: así las que se ofrecen a los clientes
+// parten en :00, :15, :30 o :45. El selector de Chrome muestra solo esos
+// minutos (step), pero a mano o en el iPhone (que ignora step) se puede poner
+// otro: lo rechaza dayError
+const STEP_MIN = 15;
+const offStep = (hhmm: string) => Number(hhmm.slice(3, 5)) % STEP_MIN !== 0;
+
 // Mismas reglas que el backend (dayHoursError), para avisar qué día está mal
-// antes de guardar. Las horas HH:MM se comparan como texto
+// antes de guardar, más los minutos de 15 en 15 (solo aquí: la API acepta
+// cualquier minuto). Las horas HH:MM se comparan como texto
 function dayError(d: DayState): string | null {
+  const times = [d.opensAt, d.closesAt];
+  if (d.hasBreak) times.push(d.breakStartsAt, d.breakEndsAt);
+  if (times.some(offStep)) {
+    return 'usa horas en punto, y cuarto, y media o menos cuarto';
+  }
   if (d.opensAt >= d.closesAt) {
     return 'la hora de apertura debe ser anterior al cierre';
   }
@@ -55,6 +68,26 @@ function dayError(d: DayState): string | null {
     return 'el almuerzo debe quedar dentro del horario, después de abrir y antes de cerrar';
   }
   return null;
+}
+
+// Campo de hora del horario: de 15 en 15 minutos y con el selector abriéndose
+// al tocar cualquier parte del campo (Chrome solo lo abre desde el reloj)
+function TimeInput(props: ComponentProps<'input'>) {
+  return (
+    <Input
+      type="time"
+      step={STEP_MIN * 60}
+      onClick={(e) => {
+        try {
+          e.currentTarget.showPicker();
+        } catch {
+          // Navegador sin showPicker: queda el selector propio del campo
+        }
+      }}
+      className="w-auto"
+      {...props}
+    />
+  );
 }
 
 const emptyWeek = () =>
@@ -235,26 +268,22 @@ function HoursContent() {
               {day.enabled ? (
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
-                    <Input
-                      type="time"
+                    <TimeInput
                       aria-label={`${label}: apertura`}
                       value={day.opensAt}
                       disabled={readOnly}
                       onChange={(e) =>
                         update(weekday, { opensAt: e.target.value })
                       }
-                      className="w-auto"
                     />
                     <span className="text-sm text-gray-500">a</span>
-                    <Input
-                      type="time"
+                    <TimeInput
                       aria-label={`${label}: cierre`}
                       value={day.closesAt}
                       disabled={readOnly}
                       onChange={(e) =>
                         update(weekday, { closesAt: e.target.value })
                       }
-                      className="w-auto"
                     />
                   </div>
                   {day.hasBreak ? (
@@ -265,26 +294,22 @@ function HoursContent() {
                       <span className="w-full text-xs font-medium text-gray-600">
                         Almuerzo
                       </span>
-                      <Input
-                        type="time"
+                      <TimeInput
                         aria-label={`${label}: inicio del almuerzo`}
                         value={day.breakStartsAt}
                         disabled={readOnly}
                         onChange={(e) =>
                           update(weekday, { breakStartsAt: e.target.value })
                         }
-                        className="w-auto"
                       />
                       <span className="self-center text-sm text-gray-500">a</span>
-                      <Input
-                        type="time"
+                      <TimeInput
                         aria-label={`${label}: término del almuerzo`}
                         value={day.breakEndsAt}
                         disabled={readOnly}
                         onChange={(e) =>
                           update(weekday, { breakEndsAt: e.target.value })
                         }
-                        className="w-auto"
                       />
                       {!readOnly && (
                         <Button

@@ -217,6 +217,21 @@ test("copiar el lunes abre todos los días con su horario y almuerzo", async ({
   }
 });
 
+test("las horas van de 15 en 15 minutos", async ({ page }) => {
+  await loginAsDemo(page);
+  await openHours(page);
+  const lunes = page.getByRole("listitem").filter({ hasText: "Lunes" });
+  // El selector de Chrome muestra solo :00, :15, :30 y :45
+  await expect(lunes.getByLabel("Lunes: apertura")).toHaveAttribute("step", "900");
+
+  // Escrita a mano, otra hora no se guarda (sin guardar: el horario no cambia)
+  await lunes.getByLabel("Lunes: apertura").fill("10:07");
+  await page.getByRole("button", { name: "Guardar horario" }).click();
+  await expect(
+    page.getByText("Lunes: usa horas en punto, y cuarto, y media o menos cuarto."),
+  ).toBeVisible();
+});
+
 test("en el celular los botones del almuerzo y de copiar miden al menos 40 px", async ({
   page,
 }) => {

@@ -6,6 +6,10 @@
   /* Alto de la barra de navegación de abajo del panel en el celular (sin el
      borde del iPhone): la usan el panel y lo que va fijo sobre ella */
   --tabbar-h: 3.5rem;
+  /* La app es solo clara: sin esto, con el equipo en modo oscuro los controles
+     del navegador (selector de hora y fecha, barras de desplazamiento) salen
+     oscuros sobre la página clara */
+  color-scheme: light;
 }
 
 @theme inline {
