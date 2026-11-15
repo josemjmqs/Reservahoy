@@ -3,17 +3,90 @@
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { Button, Card, Input } from "@/components/ui";
+import { Button, Card, Field, Input } from "@/components/ui";
 import type { BookingResult, PublicBusiness } from "@/lib/types";
 import { ServicePicker } from "@/components/ServicePicker";
+import { DayStrip, todayISO } from "@/components/DayStrip";
+import { CheckIcon, PhoneIcon } from "@/components/icons";
 import { formatTime, formatTotal, publicDuration } from "@/lib/format";
 
 const MAX_SERVICES = 5; // igual que MAX_SERVICES_PER_BOOKING en el backend
 
-function todayISO() {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+const longDate = (iso: string, timeZone: string) =>
+  new Date(iso).toLocaleDateString("es-CL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone,
+  });
+
+// Mayúscula solo al inicio ("Lunes, 16 de noviembre"); la clase `capitalize`
+// la pondría en cada palabra
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+// "Peluquería Demo" -> "PD": la marca del negocio mientras no pueda subir un logo
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("");
+
+function BusinessHeader({
+  name,
+  phone,
+}: {
+  name: string;
+  phone?: string | null;
+}) {
+  return (
+    <header>
+      <div className="flex items-center gap-4">
+        <div
+          aria-hidden
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-xl font-semibold text-white"
+        >
+          {initials(name)}
+        </div>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">{name}</h1>
+          <p className="text-gray-600">Reserva tu hora online</p>
+        </div>
+      </div>
+      {phone && (
+        <a
+          href={`tel:${phone.replace(/[^\d+]/g, "")}`}
+          className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+        >
+          <PhoneIcon className="h-4 w-4 text-indigo-600" />
+          {phone}
+        </a>
+      )}
+    </header>
+  );
+}
+
+function SectionTitle({
+  id,
+  children,
+  aside,
+}: {
+  id?: string;
+  children: React.ReactNode;
+  aside?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-3 mt-8 flex items-baseline justify-between gap-3">
+      <h2
+        id={id}
+        className="scroll-mt-6 text-base font-semibold text-gray-900"
+      >
+        {children}
+      </h2>
+      {aside && <p className="text-right text-xs text-gray-500">{aside}</p>}
+    </div>
+  );
 }
 
 export default function PublicPage({
@@ -37,6 +110,7 @@ export default function PublicPage({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState<BookingResult | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     api<PublicBusiness>(`/public/${slug}`)
@@ -114,21 +188,51 @@ export default function PublicPage({
   }
 
   if (notFound)
-    return <p className="p-6 text-gray-600">Negocio no encontrado.</p>;
-  if (!business) return <p className="p-6 text-gray-600">Cargando...</p>;
+    return (
+      <main className="mx-auto w-full max-w-md px-6 py-16 text-center">
+        <h1 className="text-xl font-semibold tracking-tight">
+          No encontramos este negocio
+        </h1>
+        <p className="mt-2 text-gray-600">
+          Revisa que el enlace esté bien escrito o pídeselo de nuevo al negocio.
+        </p>
+      </main>
+    );
+
+  if (!business)
+    return (
+      <main
+        className="mx-auto w-full max-w-md px-6 py-10"
+        aria-busy="true"
+        aria-label="Cargando"
+      >
+        <div className="flex animate-pulse items-center gap-4">
+          <div className="h-14 w-14 rounded-2xl bg-gray-200" />
+          <div className="flex flex-col gap-2">
+            <div className="h-6 w-44 rounded bg-gray-200" />
+            <div className="h-4 w-32 rounded bg-gray-200" />
+          </div>
+        </div>
+        <div className="mt-10 flex animate-pulse flex-col gap-2">
+          <div className="h-16 rounded-lg bg-gray-200/70" />
+          <div className="h-16 rounded-lg bg-gray-200/70" />
+        </div>
+      </main>
+    );
 
   if (!business.acceptsBookings)
     return (
       <main className="mx-auto w-full max-w-md px-6 py-10">
-        <h1 className="text-2xl font-semibold tracking-tight">{business.name}</h1>
-        <p className="mt-2 text-gray-600">
+        <BusinessHeader name={business.name} phone={business.phone} />
+        <p className="mt-6 text-gray-600">
           Este negocio todavía no recibe reservas online. Vuelve a intentarlo
           pronto.
         </p>
       </main>
     );
 
-  const fmt = (iso: string) => formatTime(iso, business.timezone);
+  const tz = business.timezone;
+  const fmt = (iso: string) => formatTime(iso, tz);
   const slotsLoading = slotsFor !== slotsKey;
 
   const selected = serviceIds
@@ -143,6 +247,15 @@ export default function PublicPage({
   const totalPrice = selected.every((s) => s.price !== null)
     ? selected.reduce((sum, s) => sum + (s.price ?? 0), 0)
     : null;
+  const summary = [
+    selected.length === 1
+      ? publicDuration(selected[0].durationMin, selected[0].totalMin)
+      : `${selected.length} servicios seguidos · ${formatTotal(totalMin)}`,
+    totalPrice !== null && `$${totalPrice.toLocaleString("es-CL")}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const member = eligible.find((m) => m.id === memberId);
 
   function toggleService(id: string) {
     setServiceIds((ids) =>
@@ -162,21 +275,19 @@ export default function PublicPage({
     return (
       <main className="mx-auto w-full max-w-md px-6 py-12">
         <Card className="p-6 text-center">
-          <p className="text-3xl">✓</p>
-          <h1 className="mt-2 text-xl font-semibold tracking-tight">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-700">
+            <CheckIcon className="h-6 w-6" />
+          </div>
+          <h1 className="mt-3 text-xl font-semibold tracking-tight">
             ¡Reserva confirmada!
           </h1>
           <p className="mt-2 text-gray-600">
-            {new Date(done.startsAt).toLocaleDateString("es-CL", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              timeZone: business.timezone,
-            })}{" "}
-            a las {fmt(done.startsAt)} en {business.name}.
+            {capitalize(longDate(done.startsAt, tz))}, a las{" "}
+            {fmt(done.startsAt)}, en {business.name}.
           </p>
           <p className="mt-1 text-sm text-gray-500">
             {selected.map((s) => s.name).join(" + ")}
+            {member && ` · con ${member.displayName}`}
           </p>
 
           <div className="mt-5 rounded-lg bg-gray-50 p-3 text-left">
@@ -187,16 +298,21 @@ export default function PublicPage({
             <div className="mt-3 flex gap-2">
               <Link
                 href={`/reserva/${done.manageToken}`}
-                className="text-sm font-medium text-indigo-600 hover:underline"
+                className="inline-flex min-h-10 items-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700"
               >
                 Abrir mi reserva
               </Link>
               <button
                 type="button"
-                onClick={() => navigator.clipboard.writeText(link)}
-                className="text-sm font-medium text-gray-600 hover:underline"
+                onClick={() =>
+                  navigator.clipboard
+                    .writeText(link)
+                    .then(() => setCopied(true))
+                    .catch(() => {})
+                }
+                className="inline-flex min-h-10 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                Copiar enlace
+                {copied ? "Copiado" : "Copiar enlace"}
               </button>
             </div>
           </div>
@@ -205,30 +321,25 @@ export default function PublicPage({
     );
   }
 
-  return (
-    <main className="mx-auto w-full max-w-md px-6 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">{business.name}</h1>
-      {business.phone && (
-        <p className="mt-1 text-sm text-gray-600">
-          Teléfono:{" "}
-          <a
-            href={`tel:${business.phone.replace(/[^\d+]/g, "")}`}
-            className="text-indigo-600 hover:underline"
-          >
-            {business.phone}
-          </a>
-        </p>
-      )}
-      <p className="mb-6 text-gray-600">Reserva tu hora online</p>
+  // La barra de abajo acompaña mientras se elige; con la hora elegida se
+  // oculta para no tapar el formulario (que ya muestra el resumen)
+  const showBar = selected.length > 0 && !startsAt;
 
-      <div className="mb-2 flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-medium text-gray-700">Servicios</h2>
-        <p className="text-xs text-gray-500">
-          {serviceIds.length >= MAX_SERVICES
+  return (
+    <main
+      className={`mx-auto w-full max-w-md px-6 py-10 ${showBar ? "pb-32" : ""}`}
+    >
+      <BusinessHeader name={business.name} phone={business.phone} />
+
+      <SectionTitle
+        aside={
+          serviceIds.length >= MAX_SERVICES
             ? `Máximo ${MAX_SERVICES} por reserva`
-            : "Puedes elegir más de uno"}
-        </p>
-      </div>
+            : "Puedes elegir más de uno"
+        }
+      >
+        Servicios
+      </SectionTitle>
       <ServicePicker
         services={business.services}
         selectedIds={serviceIds}
@@ -236,47 +347,39 @@ export default function PublicPage({
         maxReached={serviceIds.length >= MAX_SERVICES}
       />
 
-      {/* Barra fija abajo mientras se elige: muestra lo elegido aunque la
-          lista de servicios sea larga y el resumen quede fuera de la pantalla */}
-      {selected.length > 0 && (
-        <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t border-gray-200 bg-white/95 px-6 py-3 backdrop-blur">
-          {noOneDoesAll ? (
-            <p className="text-sm text-amber-800">
-              Ningún profesional hace todos estos servicios en una misma
-              visita. Quita alguno o resérvalos por separado.
-            </p>
-          ) : (
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-gray-900">
-                  {selected.map((s) => s.name).join(" + ")}
-                </p>
-                <p className="text-sm text-gray-600">
-                  {selected.length === 1
-                    ? publicDuration(selected[0].durationMin, selected[0].totalMin)
-                    : `${selected.length} servicios seguidos · ${formatTotal(totalMin)}`}
-                  {totalPrice !== null &&
-                    ` · $${totalPrice.toLocaleString("es-CL")}`}
-                </p>
+      {showBar && (
+        <div className="fixed inset-x-0 bottom-0 z-10 border-t border-gray-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+          <div className="mx-auto w-full max-w-md px-6 py-3">
+            {noOneDoesAll ? (
+              <p className="text-sm text-amber-800">
+                Ningún profesional hace todos estos servicios en una misma
+                visita. Quita alguno o resérvalos por separado.
+              </p>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-gray-900">
+                    {selected.map((s) => s.name).join(" + ")}
+                  </p>
+                  <p className="text-sm text-gray-600">{summary}</p>
+                </div>
+                <a
+                  href="#dia-y-hora"
+                  className="inline-flex min-h-10 shrink-0 items-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700"
+                >
+                  Ver horas
+                </a>
               </div>
-              <a
-                href="#dia-y-hora"
-                className="inline-flex min-h-10 shrink-0 items-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700"
-              >
-                Ver horas
-              </a>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
       {selected.length > 0 && !noOneDoesAll && (
-        <div id="dia-y-hora" className="scroll-mt-6">
+        <>
           {eligible.length > 1 && (
             <>
-              <h2 className="mb-2 mt-6 text-sm font-medium text-gray-700">
-                Profesional
-              </h2>
+              <SectionTitle>Profesional</SectionTitle>
               <div className="flex flex-wrap gap-2">
                 {[{ id: "", displayName: "Sin preferencia" }, ...eligible].map(
                   (m) => (
@@ -302,21 +405,17 @@ export default function PublicPage({
             </>
           )}
 
-          <h2 className="mb-2 mt-6 text-sm font-medium text-gray-700">
-            Día y hora
-          </h2>
+          <SectionTitle id="dia-y-hora">Día y hora</SectionTitle>
           {selected.some((s) => s.totalMin && s.totalMin !== s.durationMin) && (
-            <p className="mb-2 text-xs text-gray-500">
+            <p className="mb-3 text-sm text-gray-600">
               Elige la hora en que llegarás al local.
             </p>
           )}
-          <Input
-            type="date"
-            value={date}
-            min={todayISO()}
-            onChange={(e) => setDate(e.target.value)}
-            className="mb-3 w-auto"
-          />
+          <DayStrip value={date} onChange={setDate} />
+          <p className="mb-3 mt-4 text-sm font-medium text-gray-700">
+            {capitalize(longDate(`${date}T12:00:00`, tz))}
+          </p>
+
           {slotsLoading ? (
             // mismo tamaño que los botones: la página no salta al llegar las horas
             <div
@@ -351,47 +450,66 @@ export default function PublicPage({
             </div>
           ) : (
             !error && (
-              <p className="text-sm text-gray-600">
-                No hay horas disponibles ese día.
+              <p className="rounded-lg border border-dashed border-gray-300 p-4 text-center text-sm text-gray-600">
+                No hay horas disponibles ese día. Prueba con otro.
               </p>
             )
           )}
-        </div>
+        </>
       )}
 
       {startsAt && (
-        <form onSubmit={submit} className="mt-6 flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-gray-700">Tus datos</h2>
-          <Input
-            placeholder="Nombre"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-          />
-          <Input
-            type="email"
-            placeholder="Correo"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            required
-          />
-          <Input
-            placeholder="Teléfono (opcional)"
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-          />
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button disabled={loading}>
-            {loading ? "Reservando..." : "Confirmar reserva"}
-          </Button>
-          <p className="text-xs text-gray-500">
-            Al reservar aceptas que {business.name} use tus datos para gestionar
-            tu reserva. Más información en la{" "}
-            <Link href="/privacidad" className="underline">
-              política de privacidad
-            </Link>
-            .
-          </p>
+        <form onSubmit={submit}>
+          <SectionTitle>Tus datos</SectionTitle>
+          <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-sm">
+            <p className="font-medium text-gray-900">
+              {selected.map((s) => s.name).join(" + ")}
+            </p>
+            <p className="mt-0.5 text-gray-700">
+              {capitalize(longDate(startsAt, tz))}, a las {fmt(startsAt)}
+              {member && ` · con ${member.displayName}`}
+            </p>
+            <p className="mt-0.5 text-gray-600">{summary}</p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <Field label="Nombre">
+              <Input
+                autoComplete="name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
+              />
+            </Field>
+            <Field label="Correo" hint="Te enviaremos la confirmación">
+              <Input
+                type="email"
+                autoComplete="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                required
+              />
+            </Field>
+            <Field label="Teléfono (opcional)">
+              <Input
+                type="tel"
+                autoComplete="tel"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
+            </Field>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <Button disabled={loading} className="mt-1 h-11 w-full">
+              {loading ? "Reservando..." : "Confirmar reserva"}
+            </Button>
+            <p className="text-xs text-gray-500">
+              Al reservar aceptas que {business.name} use tus datos para
+              gestionar tu reserva. Más información en la{" "}
+              <Link href="/privacidad" className="underline">
+                política de privacidad
+              </Link>
+              .
+            </p>
+          </div>
         </form>
       )}
       {!startsAt && error && (
