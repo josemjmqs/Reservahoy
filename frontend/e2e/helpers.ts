@@ -1,5 +1,5 @@
 import { readFileSync } from "fs";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 // Utilidades compartidas por las pruebas e2e (negocio demo del seed)
 
@@ -134,4 +134,16 @@ export async function bookFirstSlot(
   await page.getByRole("button", { name: "Confirmar reserva" }).click();
   await expect(page.getByText("¡Reserva confirmada!")).toBeVisible();
   return time;
+}
+
+// Elige una hora (HH:MM, minutos de 5 en 5) con el panel de TimePicker: abre
+// el panel desde `field`, toca la hora, los minutos y "Listo"
+export async function pickTime(page: Page, field: Locator, hhmm: string) {
+  await field.click();
+  const panel = page.getByRole("dialog");
+  await panel.getByRole("button", { name: hhmm.slice(0, 2), exact: true }).click();
+  await panel.getByRole("button", { name: `:${hhmm.slice(3)}`, exact: true }).click();
+  await panel.getByRole("button", { name: "Listo" }).click();
+  await expect(panel).toBeHidden();
+  await expect(field).toHaveText(hhmm);
 }

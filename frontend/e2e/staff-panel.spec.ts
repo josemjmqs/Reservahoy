@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { AUTH_FILE, loginAsDemo, loginAsStaff, STAFF } from "./helpers";
+import { AUTH_FILE, loginAsDemo, loginAsStaff, pickTime, STAFF } from "./helpers";
 
 // El panel según el rol: el profesional demo (Diego, STAFF) ve solo lo que
 // puede hacer; el dueño sigue viendo todo
@@ -118,17 +118,17 @@ test("el profesional bloquea y borra solo lo suyo, y ve los bloqueos del negocio
     await expect(shared).toBeVisible();
     await expect(shared.getByRole("button", { name: "Eliminar" })).toHaveCount(0);
 
-    // Bloquea unas horas suyas (elegidas de la lista de 15 en 15 minutos):
+    // Bloquea unas horas suyas (elegidas en el panel, minutos de 5 en 5):
     // queda con su nombre y lo puede eliminar
     await page.getByPlaceholder("Vacaciones, feriado, trámite...").fill(`E2E propio ${run}`);
     await page.locator('input[type="date"]').first().fill("2032-03-11");
     await page.getByLabel("Día completo").uncheck();
-    await page.getByLabel("Hora de inicio").selectOption("14:15");
-    await page.getByLabel("Hora de término").selectOption("16:30");
+    await pickTime(page, page.getByLabel("Hora de inicio"), "14:15");
+    await pickTime(page, page.getByLabel("Hora de término"), "16:35");
     await page.getByRole("button", { name: "Bloquear" }).click();
     const own = rows.filter({ hasText: `${STAFF.name} · E2E propio ${run}` });
     await expect(own).toBeVisible();
-    await expect(own).toContainText("14:15 a 16:30");
+    await expect(own).toContainText("14:15 a 16:35");
     await own.getByRole("button", { name: "Eliminar" }).click();
     await own.getByRole("button", { name: "Sí, eliminar" }).click();
     await expect(own).toHaveCount(0);

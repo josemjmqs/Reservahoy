@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { isOwner, useMe } from '@/lib/me';
 import { Button, Card, Input } from '@/components/ui';
-import { TimeSelect } from '@/components/TimeSelect';
+import { TimePicker } from '@/components/TimePicker';
 import type { TeamMember, TimeBlock, TimeBlockList } from '@/lib/types';
 
 function today() {
@@ -213,10 +213,10 @@ export default function BlocksPage() {
                   required
                 />
                 {!allDay && (
-                  <TimeSelect
-                    aria-label="Hora de inicio"
+                  <TimePicker
+                    label="Hora de inicio"
                     value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
+                    onChange={setStartTime}
                   />
                 )}
               </div>
@@ -234,10 +234,10 @@ export default function BlocksPage() {
                   required
                 />
                 {!allDay && (
-                  <TimeSelect
-                    aria-label="Hora de término"
+                  <TimePicker
+                    label="Hora de término"
                     value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
+                    onChange={setEndTime}
                   />
                 )}
               </div>
