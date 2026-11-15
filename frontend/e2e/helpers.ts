@@ -86,16 +86,21 @@ export async function openSlots(
     category,
     service,
     date,
-  }: { category: string; service: string; date: string },
+    member,
+  }: { category: string; service: string; date: string; member?: string },
 ): Promise<string[]> {
   await page.goto(`/${DEMO.slug}`);
   await page.getByRole("button", { name: new RegExp(`^${category}`) }).click();
   await page.getByRole("button", { name: new RegExp(service) }).click();
-  // Espera la respuesta de ese día: mientras carga, la página muestra
-  // "No hay horas disponibles" y la lista se leería vacía
+  if (member)
+    await page.getByRole("button", { name: member, exact: true }).click();
+  // Espera la respuesta de ese día (y de ese profesional): las horas que haya
+  // en pantalla antes pueden ser de otra búsqueda
   const loaded = page.waitForResponse(
     (r) =>
-      r.url().includes("/availability") && r.url().includes(`date=${date}`),
+      r.url().includes("/availability") &&
+      r.url().includes(`date=${date}`) &&
+      (!member || r.url().includes("memberId=")),
   );
   await page.locator('input[type="date"]').fill(date);
   await loaded;
@@ -108,7 +113,13 @@ export async function openSlots(
 // Reserva la primera hora libre y devuelve esa hora (tal como se mostró)
 export async function bookFirstSlot(
   page: Page,
-  opts: { category: string; service: string; date: string; customer: string },
+  opts: {
+    category: string;
+    service: string;
+    date: string;
+    customer: string;
+    member?: string;
+  },
 ): Promise<string> {
   const [time] = await openSlots(page, opts);
   expect(time, "debería haber horas libres ese día").toBeTruthy();

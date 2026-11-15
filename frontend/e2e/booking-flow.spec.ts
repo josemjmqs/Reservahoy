@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { bookFirstSlot, loginAsDemo, workdayFrom } from "./helpers";
+import { bookFirstSlot, loginAsDemo, STAFF, workdayFrom } from "./helpers";
 
 // Lo que de verdad le importa a un negocio: un cliente reserva desde la página
 // pública y el dueño la ve en su agenda. Usa el negocio demo del seed.
@@ -25,4 +25,23 @@ test("un cliente reserva desde la página pública y el dueño la ve en su agend
   await expect(card).toContainText("Corte de pelo");
   await expect(card).toContainText("Confirmada");
   await expect(card).toContainText(time);
+});
+
+// Si más de un profesional hace el servicio, el cliente puede elegir con quién
+test("el cliente elige con qué profesional reserva", async ({ page }) => {
+  const date = workdayFrom(11);
+  const customer = `Con Diego E2E ${Date.now().toString(36)}`;
+
+  await bookFirstSlot(page, {
+    category: "Pelo",
+    service: "Corte de pelo",
+    date,
+    customer,
+    member: STAFF.name,
+  });
+
+  await loginAsDemo(page);
+  await page.goto(`/dashboard/agenda?date=${date}`);
+  const card = page.getByRole("listitem").filter({ hasText: customer });
+  await expect(card).toContainText(`Con ${STAFF.name}`);
 });

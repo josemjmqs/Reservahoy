@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { Button, Card } from '@/components/ui';
-import { formatTotal } from '@/lib/format';
+import { formatTime, formatTotal } from '@/lib/format';
 import type { BookingStatus, ManagedBooking } from '@/lib/types';
 
 const LABELS: Record<BookingStatus, string> = {
@@ -75,11 +75,7 @@ export default function ManageBookingPage({
     month: 'long',
     timeZone: tz,
   });
-  const time = new Date(booking.startsAt).toLocaleTimeString('es-CL', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: tz,
-  });
+  const time = formatTime(booking.startsAt, tz);
   const canCancel =
     (booking.status === 'CONFIRMED' || booking.status === 'PENDING') &&
     new Date(booking.startsAt).getTime() > now;
