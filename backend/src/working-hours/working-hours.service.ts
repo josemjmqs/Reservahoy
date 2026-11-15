@@ -10,7 +10,10 @@ import {
   type Membership,
 } from '../auth/membership';
 import { PrismaService } from '../prisma/prisma.service';
-import { SetWorkingHoursDto } from './dto/set-working-hours.dto';
+import {
+  dayHoursError,
+  SetWorkingHoursDto,
+} from './dto/set-working-hours.dto';
 
 @Injectable()
 export class WorkingHoursService {
@@ -54,17 +57,21 @@ export class WorkingHoursService {
       throw new BadRequestException('Hay días repetidos');
     }
     for (const d of dto.days) {
-      if (d.opensAt >= d.closesAt) {
-        throw new BadRequestException(
-          'La hora de apertura debe ser anterior al cierre',
-        );
-      }
+      const error = dayHoursError(d);
+      if (error) throw new BadRequestException(error);
     }
 
     await this.prisma.$transaction([
       this.prisma.workingHours.deleteMany({ where: { memberId } }),
       this.prisma.workingHours.createMany({
-        data: dto.days.map((d) => ({ ...d, memberId })),
+        data: dto.days.map((d) => ({
+          weekday: d.weekday,
+          opensAt: d.opensAt,
+          closesAt: d.closesAt,
+          breakStartsAt: d.breakStartsAt ?? null,
+          breakEndsAt: d.breakEndsAt ?? null,
+          memberId,
+        })),
       }),
     ]);
     return this.findAll(userId, memberId);

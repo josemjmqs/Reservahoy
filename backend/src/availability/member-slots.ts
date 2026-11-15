@@ -53,6 +53,8 @@ export async function findMemberSlots(
     timezone: input.timezone,
     opensAt: hours.opensAt,
     closesAt: hours.closesAt,
+    breakStartsAt: hours.breakStartsAt,
+    breakEndsAt: hours.breakEndsAt,
     durationMin: input.durationMin,
     stepMin: input.stepMin,
     busy: [...bookings, ...blocks],

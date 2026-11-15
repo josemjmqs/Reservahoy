@@ -96,6 +96,45 @@ describe('WorkingHoursService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  describe('almuerzo', () => {
+    const lunch = (
+      breakStartsAt: string | null,
+      breakEndsAt: string | null,
+    ) => ({ ...day(1, '09:00', '19:00'), breakStartsAt, breakEndsAt });
+
+    it('guarda el almuerzo del día y lo devuelve', async () => {
+      const [saved] = await hours.replace(userId, {
+        days: [lunch('13:00', '14:00')],
+      });
+      expect(saved).toMatchObject({
+        breakStartsAt: '13:00',
+        breakEndsAt: '14:00',
+      });
+    });
+
+    it('sin almuerzo quedan los dos en null', async () => {
+      await hours.replace(userId, { days: [lunch('13:00', '14:00')] });
+      const [saved] = await hours.replace(userId, { days: [day(1)] });
+      expect(saved).toMatchObject({ breakStartsAt: null, breakEndsAt: null });
+    });
+
+    it.each([
+      ['solo con inicio', '13:00', null],
+      ['solo con término', null, '14:00'],
+      ['que termina antes de empezar', '14:00', '13:00'],
+      ['de duración cero', '13:00', '13:00'],
+      ['que empieza al abrir (mañana vacía)', '09:00', '10:00'],
+      ['que empieza antes de abrir', '08:00', '10:00'],
+      ['que termina al cerrar (tarde vacía)', '18:00', '19:00'],
+      ['que termina después de cerrar', '18:00', '20:00'],
+      ['fuera del horario', '20:00', '21:00'],
+    ])('rechaza un almuerzo %s', async (_, start, end) => {
+      await expect(
+        hours.replace(userId, { days: [lunch(start, end)] }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
   it('un horario rechazado no borra el que había', async () => {
     await hours.replace(userId, { days: [day(4)] });
     await expect(

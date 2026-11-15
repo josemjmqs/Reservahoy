@@ -125,6 +125,9 @@ model WorkingHours {
   weekday  Int // 0 = domingo ... 6 = sábado
   opensAt  String // "09:00"
   closesAt String // "18:00"
+  // Descanso opcional (almuerzo): los dos o ninguno, dentro del horario
+  breakStartsAt String? // "13:00"
+  breakEndsAt   String? // "14:00"
   memberId String
   member   Member @relation(fields: [memberId], references: [id])
 
