@@ -1,6 +1,10 @@
 import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
-import { isTransient, NotificationsService } from './notifications.service';
+import {
+  isTransient,
+  mapsUrl,
+  NotificationsService,
+} from './notifications.service';
 
 type Result = {
   error: { name: string; message: string; statusCode: number | null } | null;
@@ -8,7 +12,7 @@ type Result = {
 
 // Resend simulado: devuelve las respuestas en orden y anota cada llamada
 function setup(responses: (Result | Error)[]) {
-  const calls: { to: unknown; idempotencyKey?: string }[] = [];
+  const calls: { to: unknown; html?: string; idempotencyKey?: string }[] = [];
   const service = new NotificationsService({
     get: () => undefined,
   } as unknown as ConfigService);
@@ -16,8 +20,15 @@ function setup(responses: (Result | Error)[]) {
     retryDelaysMs: [0, 0],
     resend: {
       emails: {
-        send: (email: { to: unknown }, opts: { idempotencyKey?: string }) => {
-          calls.push({ to: email.to, idempotencyKey: opts?.idempotencyKey });
+        send: (
+          email: { to: unknown; html?: string },
+          opts: { idempotencyKey?: string },
+        ) => {
+          calls.push({
+            to: email.to,
+            html: email.html,
+            idempotencyKey: opts?.idempotencyKey,
+          });
           const next = responses.shift() ?? { error: null };
           return next instanceof Error
             ? Promise.reject(next)
@@ -68,6 +79,45 @@ describe('NotificationsService: reintentos de correo', () => {
     await reset(service);
     await reset(service);
     expect(calls[0].idempotencyKey).not.toBe(calls[1].idempotencyKey);
+  });
+});
+
+describe('NotificationsService: confirmación de reserva', () => {
+  const booking = {
+    to: 'cliente@test.local',
+    customerName: 'Ana',
+    businessName: 'Taller',
+    serviceName: 'Corte',
+    startsAt: new Date('2026-12-01T15:00:00Z'),
+    timezone: 'America/Santiago',
+    manageToken: 'tok',
+  };
+
+  it('incluye la dirección con su enlace a Google Maps, escapada', async () => {
+    const { service, calls } = setup([]);
+    await service.bookingConfirmed({
+      ...booking,
+      businessAddress: 'Av. Matta & Lira 100, Ñuñoa',
+    });
+    const html = calls[0].html ?? '';
+    expect(html).toContain(
+      'href="https://www.google.com/maps/search/?api=1&amp;query=Av.%20Matta%20%26%20Lira%20100%2C%20%C3%91u%C3%B1oa"',
+    );
+    expect(html).toContain('>Av. Matta &amp; Lira 100, Ñuñoa</a>');
+  });
+
+  it('sin dirección no muestra la línea', async () => {
+    const { service, calls } = setup([]);
+    await service.bookingConfirmed({ ...booking, businessAddress: null });
+    expect(calls[0].html).not.toContain('Dirección');
+  });
+});
+
+describe('mapsUrl', () => {
+  it('arma la búsqueda de Google Maps con la dirección codificada', () => {
+    expect(mapsUrl('Av. Providencia 1234, Providencia')).toBe(
+      'https://www.google.com/maps/search/?api=1&query=Av.%20Providencia%201234%2C%20Providencia',
+    );
   });
 });
 

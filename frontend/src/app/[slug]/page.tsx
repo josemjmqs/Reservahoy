@@ -7,7 +7,8 @@ import { Button, Card, Field, Input } from "@/components/ui";
 import type { BookingResult, PublicBusiness } from "@/lib/types";
 import { ServicePicker } from "@/components/ServicePicker";
 import { DayStrip, todayISO } from "@/components/DayStrip";
-import { CheckIcon, PhoneIcon } from "@/components/icons";
+import { CheckIcon, MapPinIcon, PhoneIcon } from "@/components/icons";
+import { mapsUrl } from "@/lib/maps";
 import { formatTime, formatTotal, publicDuration } from "@/lib/format";
 import { brandStyle } from "@/lib/brand";
 
@@ -37,12 +38,16 @@ const initials = (name: string) =>
 function BusinessHeader({
   name,
   phone,
+  address,
   logoUrl,
 }: {
   name: string;
   phone?: string | null;
+  address?: string | null;
   logoUrl?: string | null;
 }) {
+  const chip =
+    "inline-flex min-h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50";
   return (
     <header>
       <div className="flex items-center gap-4">
@@ -66,14 +71,27 @@ function BusinessHeader({
           <p className="text-gray-600">Reserva tu hora online</p>
         </div>
       </div>
-      {phone && (
-        <a
-          href={`tel:${phone.replace(/[^\d+]/g, "")}`}
-          className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-        >
-          <PhoneIcon className="h-4 w-4 text-gray-500" />
-          {phone}
-        </a>
+      {(phone || address) && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {phone && (
+            <a href={`tel:${phone.replace(/[^\d+]/g, "")}`} className={chip}>
+              <PhoneIcon className="h-4 w-4 shrink-0 text-gray-500" />
+              {phone}
+            </a>
+          )}
+          {address && (
+            <a
+              href={mapsUrl(address)}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Ver en Google Maps"
+              className={`${chip} min-w-0 max-w-full`}
+            >
+              <MapPinIcon className="h-4 w-4 shrink-0 text-gray-500" />
+              <span className="min-w-0 break-words">{address}</span>
+            </a>
+          )}
+        </div>
       )}
     </header>
   );
@@ -241,6 +259,7 @@ export default function PublicPage({
         <BusinessHeader
           name={business.name}
           phone={business.phone}
+          address={business.address}
           logoUrl={business.logoUrl}
         />
         <p className="mt-6 text-gray-600">
@@ -357,6 +376,7 @@ export default function PublicPage({
       <BusinessHeader
         name={business.name}
         phone={business.phone}
+        address={business.address}
         logoUrl={business.logoUrl}
       />
 

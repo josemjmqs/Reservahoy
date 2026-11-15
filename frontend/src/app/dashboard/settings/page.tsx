@@ -9,11 +9,17 @@ import { removeBusinessLogo, uploadBusinessLogo } from "@/lib/image";
 import { isOwner, useMe } from "@/lib/me";
 import type { BusinessInfo, NotifyScope, Settings } from "@/lib/types";
 
-type BusinessForm = { name: string; phone: string; brandColor: string };
+type BusinessForm = {
+  name: string;
+  phone: string;
+  address: string;
+  brandColor: string;
+};
 
 const toForm = (b: BusinessInfo): BusinessForm => ({
   name: b.name,
   phone: b.phone ?? "",
+  address: b.address ?? "",
   brandColor: b.brandColor ?? "",
 });
 
@@ -89,8 +95,9 @@ function BrandColorField({
   );
 }
 
-// Nombre, teléfono, logo y color del negocio: los ven los clientes en la
-// página pública (el nombre y el teléfono también en su reserva y en los correos)
+// Nombre, teléfono, dirección, logo y color del negocio: los ven los clientes
+// en la página pública (nombre, teléfono y dirección también en su reserva y
+// en los correos)
 function BusinessSection() {
   const [form, setForm] = useState<BusinessForm | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -136,6 +143,7 @@ function BusinessSection() {
         body: JSON.stringify({
           name: form.name,
           phone: form.phone,
+          address: form.address,
           brandColor: form.brandColor,
         }),
       });
@@ -179,6 +187,19 @@ function BusinessSection() {
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 placeholder="+56 9 1234 5678"
                 maxLength={20}
+              />
+            </Field>
+            <Field
+              label="Dirección"
+              hint="Tus clientes la ven con un enlace a Google Maps en tu página y en el correo de su reserva. Incluye la comuna; déjala vacía para no mostrarla."
+            >
+              <Input
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                placeholder="Av. Providencia 1234, local 5, Providencia"
+                minLength={5}
+                maxLength={150}
+                autoComplete="street-address"
               />
             </Field>
             <div>

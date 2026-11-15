@@ -33,7 +33,13 @@ export interface BookingEmailData {
   startsAt: Date;
   timezone: string;
   manageToken: string;
+  businessAddress: string | null;
 }
+
+// Enlace de búsqueda de Google Maps: no necesita clave y en el celular abre la
+// app de Maps
+export const mapsUrl = (address: string) =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 
 export interface CancelledByBusinessEmailData {
   to: string;
@@ -133,6 +139,9 @@ export class NotificationsService {
       .setLocale('es')
       .toFormat("cccc d 'de' LLLL 'a las' HH:mm");
     const link = `${this.frontendUrl}/reserva/${data.manageToken}`;
+    const address = data.businessAddress
+      ? `<p>Dirección: <a href="${escapeHtml(mapsUrl(data.businessAddress))}">${escapeHtml(data.businessAddress)}</a> (ver en Google Maps)</p>`
+      : '';
 
     await this.send('confirmación de reserva', {
       from: this.from,
@@ -143,6 +152,7 @@ export class NotificationsService {
           <p>Tu reserva de <strong>${escapeHtml(data.serviceName)}</strong> en
           <strong>${escapeHtml(data.businessName)}</strong> quedó confirmada para
           el <strong>${when}</strong>.</p>
+          ${address}
           <p>Si necesitas verla o cancelarla: <a href="${link}">administrar mi reserva</a>.</p>
         `,
     });

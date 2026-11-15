@@ -108,6 +108,7 @@ describe('BusinessService', () => {
       name: 'Taller a',
       slug: `int-business-a-${run}`,
       phone: null,
+      address: null,
       brandColor: null,
       logoUrl: null,
     });
@@ -128,6 +129,18 @@ describe('BusinessService', () => {
     expect((await service.get(userIds.owner)).name).toBe('Taller Pérez');
     await service.update(userIds.owner, { phone: null });
     expect((await service.get(userIds.owner)).phone).toBeNull();
+  });
+
+  it('el dueño guarda la dirección sin tocar lo demás, y null la borra', async () => {
+    const address = 'Av. Providencia 1234, local 5, Providencia';
+    expect(await service.update(userIds.owner, { address })).toMatchObject({
+      name: 'Taller Pérez',
+      address,
+    });
+    expect((await service.get(userIds.owner)).address).toBe(address);
+    expect((await service.get(userIds.other)).address).toBeNull();
+    await service.update(userIds.owner, { address: null });
+    expect((await service.get(userIds.owner)).address).toBeNull();
   });
 
   it('un miembro que no es dueño no puede cambiarlos', async () => {

@@ -28,6 +28,31 @@ describe('UpdateBusinessDto', () => {
     expect(dto.phone).toBeNull();
   });
 
+  it('acepta una dirección con tildes, números y signos, sin espacios de sobra', async () => {
+    const { dto, errors } = await parse({
+      address: '  Av. Irarrázaval 2401, depto. 3-B, Ñuñoa #2 ',
+    });
+    expect(errors).toEqual([]);
+    expect(dto.address).toBe('Av. Irarrázaval 2401, depto. 3-B, Ñuñoa #2');
+  });
+
+  it.each([
+    'Av.',
+    'a'.repeat(151),
+    'Calle 1\nSantiago',
+    'Calle <b>1</b>, Santiago',
+    42,
+  ])('rechaza la dirección %p', async (address) => {
+    expect((await parse({ address })).errors).toEqual(['address']);
+  });
+
+  it('una dirección vacía o null se guarda como null (la borra)', async () => {
+    expect((await parse({ address: '  ' })).dto.address).toBeNull();
+    const { dto, errors } = await parse({ address: null });
+    expect(errors).toEqual([]);
+    expect(dto.address).toBeNull();
+  });
+
   it('acepta un color #RRGGBB y lo guarda en minúsculas', async () => {
     const { dto, errors } = await parse({ brandColor: ' #0F766E ' });
     expect(errors).toEqual([]);

@@ -87,7 +87,12 @@ async function main() {
   });
 
   const business = await prisma.business.create({
-    data: { name: 'Peluquería Demo', slug: SLUG, phone: '+56 9 1234 5678' },
+    data: {
+      name: 'Peluquería Demo',
+      slug: SLUG,
+      phone: '+56 9 1234 5678',
+      address: 'Av. Providencia 1234, Providencia',
+    },
   });
   const businessId = business.id;
 

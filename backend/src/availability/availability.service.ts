@@ -133,6 +133,7 @@ export class AvailabilityService {
         slug: true,
         timezone: true,
         phone: true,
+        address: true,
         brandColor: true,
         logoKey: true,
         services: {

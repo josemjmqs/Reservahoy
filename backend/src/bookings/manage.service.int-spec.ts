@@ -44,6 +44,7 @@ beforeAll(async () => {
         name: 'Taller',
         slug: `int-manage-${run}`,
         phone: '+56 2 2222 2222',
+        address: 'Av. Matta 100, Santiago',
       },
     })
   ).id;
@@ -88,6 +89,7 @@ describe('ManageBookingService', () => {
       name: 'Taller',
       timezone: 'America/Santiago',
       phone: '+56 2 2222 2222',
+      address: 'Av. Matta 100, Santiago',
     });
     expect(view).not.toHaveProperty('customer');
     expect(view).not.toHaveProperty('manageToken');
