@@ -192,10 +192,8 @@ function HoursContent() {
         </p>
       ) : (
         <p className="mt-1 text-sm text-gray-600">
-          Marca los días en que atiende y define el horario de cada uno. Con
-          &quot;+ Almuerzo&quot; puedes cortar el día: esa franja no se ofrece a
-          los clientes. Con &quot;Copiar a todos los días&quot; el horario del
-          lunes pasa al resto de la semana.
+          Marca los días en que atiende y define su horario. El almuerzo corta
+          el día: esa franja no se ofrece a los clientes.
         </p>
       )}
 
@@ -209,24 +207,31 @@ function HoursContent() {
         {DAYS.map(({ weekday, label }) => {
           const day = days[weekday];
           return (
+            // El día va arriba, a la altura de la primera fila de horas
+            // (sm:h-9.75 = alto del campo de hora), aunque haya almuerzo
             <li
               key={weekday}
-              className="flex flex-wrap items-center gap-3 p-4"
+              className="flex flex-wrap items-start gap-3 p-4"
             >
-              <label
-                className={`flex w-36 items-center gap-3 font-medium ${readOnly ? '' : 'cursor-pointer'}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={day.enabled}
-                  disabled={readOnly}
-                  onChange={(e) =>
-                    update(weekday, { enabled: e.target.checked })
-                  }
-                  className="h-4 w-4 rounded border-gray-300 accent-indigo-600"
-                />
-                {label}
-              </label>
+              {readOnly ? (
+                // Sin casilla: deshabilitada se ve gris y parece "apagado"
+                // aunque el día se atienda; las horas ya lo dicen
+                <span className="flex w-36 items-center font-medium sm:h-9.75">
+                  {label}
+                </span>
+              ) : (
+                <label className="flex w-36 cursor-pointer items-center gap-3 font-medium sm:h-9.75">
+                  <input
+                    type="checkbox"
+                    checked={day.enabled}
+                    onChange={(e) =>
+                      update(weekday, { enabled: e.target.checked })
+                    }
+                    className="h-4 w-4 rounded border-gray-300 accent-indigo-600"
+                  />
+                  {label}
+                </label>
+              )}
               {day.enabled ? (
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
@@ -254,8 +259,9 @@ function HoursContent() {
                   </div>
                   {day.hasBreak ? (
                     // El almuerzo corta el día en dos: esa franja no se
-                    // ofrece a los clientes
-                    <div className="flex flex-wrap items-center gap-2">
+                    // ofrece a los clientes. items-stretch: "Quitar" mide
+                    // lo mismo que los campos
+                    <div className="flex flex-wrap items-stretch gap-2">
                       <span className="w-full text-xs font-medium text-gray-600">
                         Almuerzo
                       </span>
@@ -269,7 +275,7 @@ function HoursContent() {
                         }
                         className="w-auto"
                       />
-                      <span className="text-sm text-gray-500">a</span>
+                      <span className="self-center text-sm text-gray-500">a</span>
                       <Input
                         type="time"
                         aria-label={`${label}: término del almuerzo`}
@@ -318,7 +324,9 @@ function HoursContent() {
                   )}
                 </div>
               ) : (
-                <span className="text-sm text-gray-400">Cerrado</span>
+                <span className="text-sm leading-6 text-gray-500 sm:leading-9.75">
+                  Cerrado
+                </span>
               )}
             </li>
           );
