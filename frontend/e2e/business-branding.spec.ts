@@ -52,6 +52,12 @@ test("el color de marca reemplaza al índigo en la página pública, con texto l
   const color = page.getByLabel("Color de tu página");
   await expect(color).toHaveValue("");
 
+  // Un color sugerido llena el campo y queda marcado (sin guardar)
+  const sage = page.getByRole("button", { name: "Salvia" });
+  await sage.click();
+  await expect(color).toHaveValue("#5b7560");
+  await expect(sage).toHaveAttribute("aria-pressed", "true");
+
   try {
     await color.fill(TEAL.toUpperCase());
     await page.getByRole("button", { name: "Guardar", exact: true }).click();

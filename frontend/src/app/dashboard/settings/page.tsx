@@ -25,8 +25,23 @@ const toForm = (b: BusinessInfo): BusinessForm => ({
 
 const isHex = (c: string) => /^#[0-9a-f]{6}$/i.test(c);
 
-// Color de los botones de la página pública, con paleta o escrito (#RRGGBB) y
-// una vista previa. Vacío = el color de Reservahoy
+// Colores sugeridos: tonos apagados (la paleta del sistema solo trae colores
+// muy saturados) y todos con texto blanco legible (4,5:1 o más)
+const SUGGESTED_COLORS = [
+  { name: "Salvia", hex: "#5b7560" },
+  { name: "Verde agua", hex: "#4e7c78" },
+  { name: "Petróleo", hex: "#4f6d7a" },
+  { name: "Pizarra", hex: "#5a6b8c" },
+  { name: "Lavanda", hex: "#6d6593" },
+  { name: "Malva", hex: "#8a5a6e" },
+  { name: "Rosa viejo", hex: "#9b5f5f" },
+  { name: "Terracota", hex: "#a0583f" },
+  { name: "Café", hex: "#8a6a4a" },
+  { name: "Grafito", hex: "#4b5563" },
+];
+
+// Color de los botones de la página pública: uno sugerido, o con paleta o
+// escrito (#RRGGBB), y una vista previa. Vacío = el color de Reservahoy
 function BrandColorField({
   value,
   onChange,
@@ -43,6 +58,32 @@ function BrandColorField({
       >
         Color de tu página
       </span>
+      <div
+        role="group"
+        aria-label="Colores sugeridos"
+        className="flex flex-wrap gap-2"
+      >
+        {SUGGESTED_COLORS.map((c) => {
+          const selected = value.toLowerCase() === c.hex;
+          return (
+            <button
+              key={c.hex}
+              type="button"
+              aria-label={c.name}
+              aria-pressed={selected}
+              title={c.name}
+              onClick={() => onChange(c.hex)}
+              style={{ backgroundColor: c.hex }}
+              className={`h-10 w-10 rounded-full transition ${
+                selected
+                  ? "ring-2 ring-gray-900 ring-offset-2"
+                  : "hover:scale-110"
+              }`}
+            />
+          );
+        })}
+      </div>
+      <span className="mt-1 text-xs text-gray-500">O elige otro:</span>
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="color"
