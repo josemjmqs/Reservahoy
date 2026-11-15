@@ -69,7 +69,7 @@ const bookings = new BookingsService(
   {} as AvailabilityService,
   notifications,
 );
-const business = new BusinessService(db);
+const business = new BusinessService(db, storage);
 const hours = new WorkingHoursService(db);
 const blocks = new TimeBlocksService(db);
 const services = new ServicesService(db, storage);

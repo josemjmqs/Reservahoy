@@ -28,6 +28,26 @@ describe('UpdateBusinessDto', () => {
     expect(dto.phone).toBeNull();
   });
 
+  it('acepta un color #RRGGBB y lo guarda en minúsculas', async () => {
+    const { dto, errors } = await parse({ brandColor: ' #0F766E ' });
+    expect(errors).toEqual([]);
+    expect(dto.brandColor).toBe('#0f766e');
+  });
+
+  it.each(['0f766e', '#0f7', '#0f766e00', 'red', 'rgb(0,0,0)', '#gggggg', 7])(
+    'rechaza el color %p',
+    async (brandColor) => {
+      expect((await parse({ brandColor })).errors).toEqual(['brandColor']);
+    },
+  );
+
+  it('un color vacío o null vuelve al de Reservahoy (null)', async () => {
+    expect((await parse({ brandColor: '' })).dto.brandColor).toBeNull();
+    const { dto, errors } = await parse({ brandColor: null });
+    expect(errors).toEqual([]);
+    expect(dto.brandColor).toBeNull();
+  });
+
   it('quita espacios al nombre y exige al menos 2 letras', async () => {
     expect((await parse({ name: '  Taller Pérez ' })).dto.name).toBe(
       'Taller Pérez',
