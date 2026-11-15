@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { isOwner, useMe } from '@/lib/me';
-import { Button, Input } from '@/components/ui';
+import { Button } from '@/components/ui';
 import type { TeamMember, WorkingHour } from '@/lib/types';
 
 // Orden de la semana para mostrar: lunes primero (weekday 0 = domingo)
@@ -42,15 +42,22 @@ const defaultDay: DayState = {
 };
 
 // Las horas van de 15 en 15 minutos: así las que se ofrecen a los clientes
-// parten en :00, :15, :30 o :45. El selector de Chrome muestra solo esos
-// minutos (step), pero a mano o en el iPhone (que ignora step) se puede poner
-// otro: lo rechaza dayError
+// parten en :00, :15, :30 o :45. Se eligen de una lista (TimeSelect), no con
+// <input type="time">: en Android ese abre el reloj del sistema, que no
+// respeta step y en pantallas angostas corta el botón "Establecer"
 const STEP_MIN = 15;
 const offStep = (hhmm: string) => Number(hhmm.slice(3, 5)) % STEP_MIN !== 0;
+// 00:00, 00:15 … 23:45
+const TIMES = Array.from({ length: (24 * 60) / STEP_MIN }, (_, i) => {
+  const min = i * STEP_MIN;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(Math.floor(min / 60))}:${pad(min % 60)}`;
+});
 
 // Mismas reglas que el backend (dayHoursError), para avisar qué día está mal
 // antes de guardar, más los minutos de 15 en 15 (solo aquí: la API acepta
-// cualquier minuto). Las horas HH:MM se comparan como texto
+// cualquier minuto, y una hora guardada antes, como 10:07, se muestra igual
+// en la lista). Las horas HH:MM se comparan como texto
 function dayError(d: DayState): string | null {
   const times = [d.opensAt, d.closesAt];
   if (d.hasBreak) times.push(d.breakStartsAt, d.breakEndsAt);
@@ -70,23 +77,23 @@ function dayError(d: DayState): string | null {
   return null;
 }
 
-// Campo de hora del horario: de 15 en 15 minutos y con el selector abriéndose
-// al tocar cualquier parte del campo (Chrome solo lo abre desde el reloj)
-function TimeInput(props: ComponentProps<'input'>) {
+// Hora del horario elegida de la lista de 15 en 15 minutos. Una hora que no
+// está en la lista (guardada antes con otros minutos) se agrega para que se
+// vea, y dayError pide cambiarla
+function TimeSelect({ value, ...props }: ComponentProps<'select'> & { value: string }) {
+  const options = TIMES.includes(value) ? TIMES : [...TIMES, value].sort();
   return (
-    <Input
-      type="time"
-      step={STEP_MIN * 60}
-      onClick={(e) => {
-        try {
-          e.currentTarget.showPicker();
-        } catch {
-          // Navegador sin showPicker: queda el selector propio del campo
-        }
-      }}
-      className="w-auto"
+    <select
+      value={value}
       {...props}
-    />
+      className="h-10 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm tabular-nums sm:h-auto focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:cursor-default disabled:bg-gray-50 disabled:text-gray-600"
+    >
+      {options.map((t) => (
+        <option key={t} value={t}>
+          {t}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -241,7 +248,7 @@ function HoursContent() {
           const day = days[weekday];
           return (
             // El día va arriba, a la altura de la primera fila de horas
-            // (sm:h-9.75 = alto del campo de hora), aunque haya almuerzo
+            // (sm:h-9.5 = alto de la lista de horas), aunque haya almuerzo
             <li
               key={weekday}
               className="flex flex-wrap items-start gap-3 p-4"
@@ -249,11 +256,11 @@ function HoursContent() {
               {readOnly ? (
                 // Sin casilla: deshabilitada se ve gris y parece "apagado"
                 // aunque el día se atienda; las horas ya lo dicen
-                <span className="flex w-36 items-center font-medium sm:h-9.75">
+                <span className="flex w-36 items-center font-medium sm:h-9.5">
                   {label}
                 </span>
               ) : (
-                <label className="flex w-36 cursor-pointer items-center gap-3 font-medium sm:h-9.75">
+                <label className="flex w-36 cursor-pointer items-center gap-3 font-medium sm:h-9.5">
                   <input
                     type="checkbox"
                     checked={day.enabled}
@@ -268,7 +275,7 @@ function HoursContent() {
               {day.enabled ? (
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
-                    <TimeInput
+                    <TimeSelect
                       aria-label={`${label}: apertura`}
                       value={day.opensAt}
                       disabled={readOnly}
@@ -277,7 +284,7 @@ function HoursContent() {
                       }
                     />
                     <span className="text-sm text-gray-500">a</span>
-                    <TimeInput
+                    <TimeSelect
                       aria-label={`${label}: cierre`}
                       value={day.closesAt}
                       disabled={readOnly}
@@ -294,7 +301,7 @@ function HoursContent() {
                       <span className="w-full text-xs font-medium text-gray-600">
                         Almuerzo
                       </span>
-                      <TimeInput
+                      <TimeSelect
                         aria-label={`${label}: inicio del almuerzo`}
                         value={day.breakStartsAt}
                         disabled={readOnly}
@@ -303,7 +310,7 @@ function HoursContent() {
                         }
                       />
                       <span className="self-center text-sm text-gray-500">a</span>
-                      <TimeInput
+                      <TimeSelect
                         aria-label={`${label}: término del almuerzo`}
                         value={day.breakEndsAt}
                         disabled={readOnly}
@@ -349,7 +356,7 @@ function HoursContent() {
                   )}
                 </div>
               ) : (
-                <span className="text-sm leading-6 text-gray-500 sm:leading-9.75">
+                <span className="text-sm leading-6 text-gray-500 sm:leading-9.5">
                   Cerrado
                 </span>
               )}

@@ -97,15 +97,15 @@ test("el dueño marca el almuerzo y la página pública no ofrece esas horas", a
       .click();
 
     // Un almuerzo que se sale del horario (cierra a las 19:00) no se guarda
-    await day.getByLabel(`${label}: inicio del almuerzo`).fill("18:30");
-    await day.getByLabel(`${label}: término del almuerzo`).fill("19:30");
+    await day.getByLabel(`${label}: inicio del almuerzo`).selectOption("18:30");
+    await day.getByLabel(`${label}: término del almuerzo`).selectOption("19:30");
     await page.getByRole("button", { name: "Guardar horario" }).click();
     await expect(
       page.getByText(`${label}: el almuerzo debe quedar dentro del horario`),
     ).toBeVisible();
 
-    await day.getByLabel(`${label}: inicio del almuerzo`).fill("13:00");
-    await day.getByLabel(`${label}: término del almuerzo`).fill("14:00");
+    await day.getByLabel(`${label}: inicio del almuerzo`).selectOption("13:00");
+    await day.getByLabel(`${label}: término del almuerzo`).selectOption("14:00");
     await page.getByRole("button", { name: "Guardar horario" }).click();
     await expect(page.getByText("Horario guardado.")).toBeVisible();
 
@@ -185,11 +185,11 @@ test("copiar el lunes abre todos los días con su horario y almuerzo", async ({
   try {
     await openHours(page);
     const lunes = page.getByRole("listitem").filter({ hasText: "Lunes" });
-    await lunes.getByLabel("Lunes: apertura").fill("10:00");
-    await lunes.getByLabel("Lunes: cierre").fill("17:00");
+    await lunes.getByLabel("Lunes: apertura").selectOption("10:00");
+    await lunes.getByLabel("Lunes: cierre").selectOption("17:00");
     await lunes.getByRole("button", { name: "Agregar almuerzo al lunes" }).click();
-    await lunes.getByLabel("Lunes: inicio del almuerzo").fill("13:30");
-    await lunes.getByLabel("Lunes: término del almuerzo").fill("14:15");
+    await lunes.getByLabel("Lunes: inicio del almuerzo").selectOption("13:30");
+    await lunes.getByLabel("Lunes: término del almuerzo").selectOption("14:15");
     await lunes
       .getByRole("button", { name: "Copiar el horario del lunes a todos los días" })
       .click();
@@ -217,19 +217,39 @@ test("copiar el lunes abre todos los días con su horario y almuerzo", async ({
   }
 });
 
-test("las horas van de 15 en 15 minutos", async ({ page }) => {
+test("las horas se eligen de 15 en 15 minutos", async ({ page }) => {
   await loginAsDemo(page);
-  await openHours(page);
-  const lunes = page.getByRole("listitem").filter({ hasText: "Lunes" });
-  // El selector de Chrome muestra solo :00, :15, :30 y :45
-  await expect(lunes.getByLabel("Lunes: apertura")).toHaveAttribute("step", "900");
+  const original = await getHours(page.request);
+  const lunes = original.find((d) => d.weekday === 1)!;
 
-  // Escrita a mano, otra hora no se guarda (sin guardar: el horario no cambia)
-  await lunes.getByLabel("Lunes: apertura").fill("10:07");
-  await page.getByRole("button", { name: "Guardar horario" }).click();
-  await expect(
-    page.getByText("Lunes: usa horas en punto, y cuarto, y media o menos cuarto."),
-  ).toBeVisible();
+  try {
+    // Una hora guardada antes con otros minutos (la API la acepta) se ve en la
+    // lista, pero no se puede guardar hasta cambiarla
+    await putHours(
+      page.request,
+      original.map((d) => (d.weekday === 1 ? { ...d, opensAt: "10:07" } : d)),
+    );
+    await openHours(page);
+    const opens = page.getByLabel("Lunes: apertura");
+    await expect(opens).toHaveValue("10:07");
+    // La lista: las 96 horas del día de 15 en 15, más la guardada
+    await expect(opens.locator("option")).toHaveCount(97);
+    await expect(opens.locator('option[value="10:15"]')).toHaveCount(1);
+
+    await page.getByRole("button", { name: "Guardar horario" }).click();
+    await expect(
+      page.getByText("Lunes: usa horas en punto, y cuarto, y media o menos cuarto."),
+    ).toBeVisible();
+
+    await opens.selectOption("10:15");
+    await expect(opens.locator("option")).toHaveCount(96);
+    await page.getByRole("button", { name: "Guardar horario" }).click();
+    await expect(page.getByText("Horario guardado.")).toBeVisible();
+    const saved = (await getHours(page.request)).find((d) => d.weekday === 1);
+    expect(saved).toMatchObject({ opensAt: "10:15", closesAt: lunes.closesAt });
+  } finally {
+    await putHours(page.request, original);
+  }
 });
 
 test("en el celular los botones del almuerzo y de copiar miden al menos 40 px", async ({

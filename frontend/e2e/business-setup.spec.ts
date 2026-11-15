@@ -39,8 +39,8 @@ test("un servicio y un horario nuevos del panel aparecen en la página pública"
   await openHours(page);
   const domingo = page.getByRole("listitem").filter({ hasText: "Domingo" });
   await domingo.getByRole("checkbox").check();
-  await domingo.locator('input[type="time"]').first().fill("10:00");
-  await domingo.locator('input[type="time"]').last().fill("13:00");
+  await domingo.getByLabel("Domingo: apertura").selectOption("10:00");
+  await domingo.getByLabel("Domingo: cierre").selectOption("13:00");
   await page.getByRole("button", { name: "Guardar horario" }).click();
   await expect(page.getByText("Horario guardado.")).toBeVisible();
 
