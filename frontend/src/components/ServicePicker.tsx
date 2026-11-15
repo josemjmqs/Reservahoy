@@ -1,12 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { ServiceThumb } from "@/components/ServiceThumb";
 import { publicDuration } from "@/lib/format";
 import { groupByCategory } from "@/lib/services";
 import type { PublicBusiness } from "@/lib/types";
 
 type PublicService = PublicBusiness["services"][number];
 
+// Foco del teclado dentro de la tarjeta (que recorta lo que sobresale)
+const focusRing =
+  "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-ring";
+
+// Servicios de la página pública: una tarjeta por categoría (una sola, sin
+// título, si no hay categorías) con los servicios como filas
 export function ServicePicker({
   services,
   selectedIds,
@@ -18,14 +25,18 @@ export function ServicePicker({
   onToggle: (id: string) => void;
   maxReached?: boolean; // ya se eligió el máximo: no se pueden sumar más
 }) {
-  const button = (s: PublicService) => (
-    <ServiceButton
-      key={s.id}
-      service={s}
-      selected={selectedIds.includes(s.id)}
-      disabled={maxReached && !selectedIds.includes(s.id)}
-      onToggle={onToggle}
-    />
+  const rows = (items: PublicService[]) => (
+    <div className="divide-y divide-gray-100">
+      {items.map((s) => (
+        <ServiceRow
+          key={s.id}
+          service={s}
+          selected={selectedIds.includes(s.id)}
+          disabled={maxReached && !selectedIds.includes(s.id)}
+          onToggle={onToggle}
+        />
+      ))}
+    </div>
   );
 
   const groups = groupByCategory(services, "Otros");
@@ -39,33 +50,41 @@ export function ServicePicker({
 
   if (!collapsible)
     return (
-      <div className="flex flex-col gap-2">{services.map(button)}</div>
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        {rows(services)}
+      </div>
     );
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       {groups.map(([name, items]) => {
         const isOpen = open === name;
-        const chosen = items.filter((s) => selectedIds.includes(s.id));
+        const chosen = items.filter((s) => selectedIds.includes(s.id)).length;
         const panelId = `category-${name.replace(/\W+/g, "-")}`;
         return (
           <div
             key={name}
-            className="overflow-hidden rounded-lg border border-gray-200 bg-white"
+            className="overflow-hidden rounded-xl border border-gray-200 bg-white"
           >
             <button
               type="button"
               aria-expanded={isOpen}
               aria-controls={panelId}
               onClick={() => setOpen(isOpen ? null : name)}
-              className="flex w-full items-center justify-between gap-3 p-3 text-left transition hover:bg-gray-50"
+              className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-gray-50 ${focusRing}`}
             >
-              <span>
-                <span className="font-medium">{name}</span>
-                <span className="block text-sm text-gray-600">
-                  {chosen.length > 0 && !isOpen
-                    ? `Elegido: ${chosen.map((s) => s.name).join(", ")}`
-                    : `${items.length} ${items.length === 1 ? "servicio" : "servicios"}`}
+              <span className="min-w-0">
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="font-semibold text-gray-900">{name}</span>
+                  {/* cerrada, deja ver que adentro hay algo elegido */}
+                  {chosen > 0 && !isOpen && (
+                    <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-medium text-brand-fg">
+                      {chosen} {chosen === 1 ? "elegido" : "elegidos"}
+                    </span>
+                  )}
+                </span>
+                <span className="block text-sm text-gray-500">
+                  {items.length} {items.length === 1 ? "servicio" : "servicios"}
                 </span>
               </span>
               <svg
@@ -82,11 +101,8 @@ export function ServicePicker({
               </svg>
             </button>
             {isOpen && (
-              <div
-                id={panelId}
-                className="flex flex-col gap-2 border-t border-gray-100 bg-gray-50 p-2"
-              >
-                {items.map(button)}
+              <div id={panelId} className="border-t border-gray-100">
+                {rows(items)}
               </div>
             )}
           </div>
@@ -96,7 +112,7 @@ export function ServicePicker({
   );
 }
 
-function ServiceButton({
+function ServiceRow({
   service: s,
   selected,
   disabled,
@@ -113,26 +129,33 @@ function ServiceButton({
       onClick={() => onToggle(s.id)}
       disabled={disabled}
       aria-pressed={selected}
-      className={`rounded-lg border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
+      className={`block w-full px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${focusRing} ${
         selected
-          ? "border-brand bg-brand/10 ring-1 ring-brand"
-          : "border-gray-200 bg-white hover:border-gray-300"
+          ? // franja a la izquierda: se ve aunque el color de marca sea claro
+            // (--brand-ring directo: la variable del tema se resuelve en :root)
+            "bg-brand/10 shadow-[inset_4px_0_0_var(--brand-ring,#4f46e5)]"
+          : "hover:bg-gray-50"
       }`}
     >
-      <span className="flex items-start justify-between gap-3">
-        <span>
-          <span className="font-medium">{s.name}</span>
-          <span className="block text-sm text-gray-600">
+      <span className="flex items-center gap-3">
+        {s.imageUrl && <ServiceThumb src={s.imageUrl} className="h-12 w-12" />}
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium text-gray-900">{s.name}</span>
+          <span className="block text-sm text-gray-500">
             {publicDuration(s.durationMin, s.totalMin)}
-            {s.price !== null && ` · $${s.price.toLocaleString("es-CL")}`}
           </span>
         </span>
+        {s.price !== null && (
+          <span className="shrink-0 font-semibold tabular-nums text-gray-900">
+            ${s.price.toLocaleString("es-CL")}
+          </span>
+        )}
         {/* check: deja claro que se pueden marcar varios */}
         <span
           aria-hidden
-          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
             selected
-              ? "border-brand bg-brand text-brand-fg"
+              ? "border-brand-ring bg-brand text-brand-fg"
               : "border-gray-300 bg-white"
           }`}
         >
@@ -148,7 +171,7 @@ function ServiceButton({
         </span>
       </span>
       {selected && (s.imageUrl || s.description) && (
-        <span className="mt-2 flex flex-col gap-2 border-t border-brand/20 pt-2">
+        <span className="mt-3 flex flex-col gap-2">
           {s.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element -- la foto ya viene reducida; no usamos el optimizador de Vercel
             <img
@@ -156,7 +179,7 @@ function ServiceButton({
               alt={s.name}
               // foto completa en su proporción; el alto máximo evita que una
               // foto vertical ocupe toda la pantalla del celular
-              className="mx-auto h-auto max-h-[60vh] w-auto max-w-full rounded-md"
+              className="mx-auto h-auto max-h-[60vh] w-auto max-w-full rounded-lg"
             />
           )}
           {s.description && (
