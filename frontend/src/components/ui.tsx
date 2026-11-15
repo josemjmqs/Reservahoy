@@ -5,27 +5,30 @@ import { twMerge } from 'tailwind-merge';
 // (ej. `w-48`) reemplaza a la del componente (`w-full`) en vez de competir con ella
 const cx = (...c: (string | false | undefined)[]) => twMerge(c.filter(Boolean).join(' '));
 
+type ButtonVariant = 'primary' | 'secondary' | 'danger';
+
+// Estilo de botón, también para un <Link> que debe verse como botón
+// (nunca un <button> dentro de un <Link>: son dos controles anidados). En un
+// enlace agregar `inline-flex items-center` para que el alto fijo centre el texto
+export const buttonClass = (variant: ButtonVariant = 'primary', className?: string) =>
+  cx(
+    'rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50',
+    variant === 'primary' && 'bg-indigo-600 text-white hover:bg-indigo-700',
+    variant === 'secondary' &&
+      'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50',
+    variant === 'danger' &&
+      'border border-red-300 bg-white text-red-600 hover:bg-red-50',
+    className,
+  );
+
 export function Button({
   variant = 'primary',
   className,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'danger';
+  variant?: ButtonVariant;
 }) {
-  return (
-    <button
-      {...props}
-      className={cx(
-        'rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50',
-        variant === 'primary' && 'bg-indigo-600 text-white hover:bg-indigo-700',
-        variant === 'secondary' &&
-          'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50',
-        variant === 'danger' &&
-          'border border-red-300 bg-white text-red-600 hover:bg-red-50',
-        className,
-      )}
-    />
-  );
+  return <button {...props} className={buttonClass(variant, className)} />;
 }
 
 export function Input({
