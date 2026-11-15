@@ -22,6 +22,10 @@ test("el cliente cancela con su enlace y la hora vuelve a quedar libre", async (
   await expect(page.getByRole("heading", { name: "Tu reserva" })).toBeVisible();
   await expect(page.getByText("Lavado y peinado")).toBeVisible();
   await expect(page.getByText(time)).toBeVisible();
+  // La dirección del negocio (la del seed), con su enlace a Google Maps
+  await expect(
+    page.getByRole("link", { name: "Av. Providencia 1234, Providencia" }),
+  ).toHaveAttribute("href", /^https:\/\/www\.google\.com\/maps\/search\//);
   const manageUrl = page.url();
 
   // Mientras está reservada, esa hora no se ofrece

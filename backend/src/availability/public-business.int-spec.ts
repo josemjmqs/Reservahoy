@@ -28,6 +28,7 @@ beforeAll(async () => {
         name: 'Barbería Pública',
         slug,
         phone: '+56 9 1234 5678',
+        address: 'Av. Irarrázaval 742, Ñuñoa',
         brandColor: '#0f766e',
         logoKey: `logos/${run}.png`,
       },
@@ -109,6 +110,7 @@ describe('AvailabilityService.getBusiness (página pública)', () => {
     expect(Object.keys(page).sort()).toEqual(
       [
         'acceptsBookings',
+        'address',
         'brandColor',
         'logoUrl',
         'members',

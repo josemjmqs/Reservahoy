@@ -14,6 +14,7 @@ const SELECT = {
   name: true,
   slug: true,
   phone: true,
+  address: true,
   brandColor: true,
   logoKey: true,
 } as const;
@@ -57,6 +58,7 @@ export class BusinessService {
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
         ...(dto.phone !== undefined && { phone: dto.phone }),
+        ...(dto.address !== undefined && { address: dto.address }),
         ...(dto.brandColor !== undefined && { brandColor: dto.brandColor }),
       },
       select: SELECT,

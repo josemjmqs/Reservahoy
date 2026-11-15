@@ -49,4 +49,17 @@ export class UpdateBusinessDto {
     message: 'El color debe tener el formato #RRGGBB',
   })
   brandColor?: string | null;
+
+  // Dirección que ven los clientes, con un enlace a Google Maps armado con
+  // este texto. Una sola línea. Vacía o null la borra
+  @IsOptional()
+  @Transform(emptyToNull)
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  @MinLength(5)
+  @MaxLength(150)
+  @Matches(/^[^\r\n<>]*$/, {
+    message: 'La dirección debe ser una sola línea, sin < ni >',
+  })
+  address?: string | null;
 }

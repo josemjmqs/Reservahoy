@@ -21,7 +21,9 @@ export class ManageBookingService {
           orderBy: { position: 'asc' },
           select: { service: { select: { name: true, durationMin: true } } },
         },
-        business: { select: { name: true, timezone: true, phone: true } },
+        business: {
+          select: { name: true, timezone: true, phone: true, address: true },
+        },
       },
     });
     if (!booking) throw new NotFoundException('Reserva no encontrada');

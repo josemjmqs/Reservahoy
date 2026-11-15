@@ -137,6 +137,7 @@ export class BookingsService {
         startsAt: booking.startsAt,
         timezone: business.timezone,
         manageToken: booking.manageToken,
+        businessAddress: business.address,
       });
       void this.notifyStaff(booking.id);
 

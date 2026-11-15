@@ -21,6 +21,7 @@ export interface PublicBusiness {
   slug: string;
   timezone: string;
   phone: string | null;
+  address: string | null;
   brandColor: string | null;
   logoUrl: string | null;
   acceptsBookings: boolean;
@@ -65,7 +66,12 @@ export interface ManagedBooking {
   endsAt: string;
   status: BookingStatus;
   services: { name: string; durationMin: number }[];
-  business: { name: string; timezone: string; phone: string | null };
+  business: {
+    name: string;
+    timezone: string;
+    phone: string | null;
+    address: string | null;
+  };
 }
 
 export interface TeamMember {
@@ -130,6 +136,7 @@ export interface BusinessInfo {
   name: string;
   slug: string;
   phone: string | null;
+  address: string | null;
   brandColor: string | null;
   logoUrl: string | null;
 }

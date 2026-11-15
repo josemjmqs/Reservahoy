@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { Button, Card } from '@/components/ui';
 import { formatTime, formatTotal } from '@/lib/format';
+import { mapsUrl } from '@/lib/maps';
 import type { BookingStatus, ManagedBooking } from '@/lib/types';
 
 const LABELS: Record<BookingStatus, string> = {
@@ -113,8 +114,23 @@ export default function ManageBookingPage({
           <p className="text-2xl font-semibold tracking-tight">{time}</p>
         </div>
 
-        {booking.business.phone && (
+        {booking.business.address && (
           <p className="mt-4 text-sm text-gray-600">
+            Dirección:{' '}
+            <a
+              href={mapsUrl(booking.business.address)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-indigo-700 underline underline-offset-2 hover:text-indigo-900"
+            >
+              {booking.business.address}
+            </a>
+          </p>
+        )}
+        {booking.business.phone && (
+          <p
+            className={`${booking.business.address ? 'mt-1' : 'mt-4'} text-sm text-gray-600`}
+          >
             Contacto: {booking.business.phone}
           </p>
         )}
