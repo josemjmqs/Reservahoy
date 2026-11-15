@@ -27,8 +27,20 @@ export function textOn(brand: string) {
   return white >= 4.5 || white > contrast(DARK, brand) ? WHITE : DARK;
 }
 
+// Bordes y marcas sobre fondo claro (`border-brand-ring`): el color de marca si
+// contrasta 3:1 con el blanco (WCAG para lo que no es texto); si es claro, más oscuro
+export function ringOn(brand: string) {
+  return contrast(WHITE, brand) >= 3
+    ? brand
+    : `color-mix(in oklab, ${brand} 55%, black)`;
+}
+
 // Variables CSS que usan las clases `bg-brand`, `text-brand-fg`, etc. (globals.css)
 export function brandStyle(color: string | null | undefined): CSSProperties {
   const brand = color ?? DEFAULT_BRAND;
-  return { "--brand": brand, "--brand-fg": textOn(brand) } as CSSProperties;
+  return {
+    "--brand": brand,
+    "--brand-fg": textOn(brand),
+    "--brand-ring": ringOn(brand),
+  } as CSSProperties;
 }

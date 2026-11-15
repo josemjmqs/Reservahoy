@@ -18,6 +18,9 @@
   --color-brand: var(--brand, #4f46e5);
   --color-brand-fg: var(--brand-fg, #ffffff);
   --color-brand-hover: color-mix(in oklab, var(--brand, #4f46e5) 85%, black);
+  /* Bordes y marcas de lo elegido sobre fondo claro: el color de marca, u
+     oscurecido si es claro (amarillo, celeste...) para que se vea (brandStyle) */
+  --color-brand-ring: var(--brand-ring, var(--brand, #4f46e5));
 }
 
 /* Reserva el espacio de la barra de desplazamiento: el contenido no se corre
