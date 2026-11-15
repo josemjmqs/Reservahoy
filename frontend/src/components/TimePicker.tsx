@@ -89,7 +89,7 @@ export function TimePicker({
           onClick={(e) => e.target === e.currentTarget && close()}
           className="m-0 mt-auto w-full max-w-none rounded-t-2xl bg-white p-0 text-gray-900 backdrop:bg-black/40 sm:m-auto sm:max-w-sm sm:rounded-2xl"
         >
-          <div className="px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="px-4 pt-4 pb-[max(1rem,var(--safe-bottom-max))]">
             <div className="mb-3 flex items-baseline justify-between gap-3">
               <h2 className="text-sm font-medium text-gray-600">{label}</h2>
               <p className="text-3xl font-semibold tabular-nums">

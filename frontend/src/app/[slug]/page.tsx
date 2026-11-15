@@ -371,7 +371,7 @@ export default function PublicPage({
       // El color de marca del negocio reemplaza al índigo en lo elegido y en
       // los botones principales (clases `bg-brand`, `text-brand-fg`...)
       style={brandStyle(business.brandColor)}
-      className={`mx-auto w-full max-w-md px-6 py-10 ${showBar ? "pb-[calc(8rem+env(safe-area-inset-bottom))]" : ""}`}
+      className={`mx-auto w-full max-w-md px-6 py-10 ${showBar ? "pb-[calc(8rem+var(--safe-bottom-max))]" : ""}`}
     >
       <BusinessHeader
         name={business.name}
@@ -397,7 +397,7 @@ export default function PublicPage({
       />
 
       {showBar && (
-        <div className="fixed inset-x-0 bottom-0 z-10 border-t border-gray-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+        <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)-var(--safe-bottom-max))] z-10 border-t border-gray-200 bg-white/95 pb-[var(--safe-bottom-max)] backdrop-blur">
           <div className="mx-auto w-full max-w-md px-6 py-3">
             {noOneDoesAll ? (
               <p className="text-sm text-amber-800">

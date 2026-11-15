@@ -25,8 +25,8 @@ export const metadata: Metadata = {
 // env(safe-area-inset-*) mide lo que tapa el sistema. Sin esto, Chrome en
 // Android (135+, navegación por gestos) muestra una franja abajo que se esconde
 // al desplazar, y lo fijo con bottom-0 queda debajo de la barra de gestos (la
-// barra del panel se veía cortada). Todo lo fijo abajo suma
-// env(safe-area-inset-bottom)
+// barra del panel se veía cortada). Cómo dejarle lugar a lo fijo abajo:
+// --safe-bottom-max en globals.css
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
