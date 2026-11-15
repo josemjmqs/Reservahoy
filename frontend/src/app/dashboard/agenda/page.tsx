@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
+import { formatTime } from "@/lib/format";
 import { isOwner, useMe } from "@/lib/me";
 import { CancelBookingDialog } from "@/components/CancelBookingDialog";
 import { RefreshIcon } from "@/components/icons";
@@ -169,12 +170,7 @@ function AgendaContent() {
     }
   }
 
-  const time = (s: string) =>
-    new Date(s).toLocaleTimeString("es-CL", {
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: TZ,
-    });
+  const time = (s: string) => formatTime(s, TZ);
 
   const dayLabel = new Date(`${date}T12:00:00`).toLocaleDateString("es-CL", {
     weekday: "long",

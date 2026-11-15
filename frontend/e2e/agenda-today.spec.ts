@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { bookFirstSlot, loginAsDemo, workdayFrom, zonedTime } from "./helpers";
 
-// "10:00 a. m." / "01:30 p. m." (como lo muestra la página pública) -> "HH:MM"
-// un minuto después, en 24 horas
+// "13:30" (como lo muestra la página pública; también acepta "01:30 p. m.")
+// -> "HH:MM" un minuto después, en 24 horas
 function oneMinuteAfter(label: string): string {
   const match = label.match(/(\d{1,2}):(\d{2})\s*([ap])?/i);
   if (!match) throw new Error(`Hora inesperada: ${label}`);

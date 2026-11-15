@@ -7,6 +7,17 @@ export function formatTotal(min: number): string {
   return `${min} min`;
 }
 
+// Hora en formato de 24 horas ("13:45"), en la zona del negocio. Sin
+// `hourCycle`, es-CL da "01:45 p. m."
+export function formatTime(iso: string, timeZone: string): string {
+  return new Date(iso).toLocaleTimeString('es-CL', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone,
+  });
+}
+
 // Duración que se muestra al cliente en la página pública
 export function publicDuration(durationMin: number, totalMin: number | null): string {
   return formatTotal(

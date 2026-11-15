@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { Button, Card, Input } from "@/components/ui";
 import type { BookingResult, PublicBusiness } from "@/lib/types";
 import { ServicePicker } from "@/components/ServicePicker";
-import { formatTotal, publicDuration } from "@/lib/format";
+import { formatTime, formatTotal, publicDuration } from "@/lib/format";
 
 const MAX_SERVICES = 5; // igual que MAX_SERVICES_PER_BOOKING en el backend
 
@@ -29,6 +29,9 @@ export default function PublicPage({
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [date, setDate] = useState(todayISO());
   const [slots, setSlots] = useState<string[]>([]);
+  // Para qué búsqueda son las horas de `slots`: si no es la actual, se están
+  // cargando (así no se muestra "No hay horas" mientras llega la respuesta)
+  const [slotsFor, setSlotsFor] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
   const [error, setError] = useState("");
@@ -42,6 +45,7 @@ export default function PublicPage({
   }, [slug]);
 
   const serviceKey = serviceIds.join(",");
+  const slotsKey = `${serviceKey}|${date}|${memberId}`;
 
   const fetchSlots = useCallback(
     (signal?: AbortSignal) =>
@@ -70,15 +74,18 @@ export default function PublicPage({
     fetchSlots(controller.signal)
       .then((r) => {
         setSlots(r.slots);
+        setSlotsFor(slotsKey);
         setStartsAt("");
         setError("");
       })
       .catch((err) => {
         if (controller.signal.aborted) return;
+        setSlots([]);
+        setSlotsFor(slotsKey);
         setError(err instanceof Error ? err.message : "Error inesperado");
       });
     return () => controller.abort();
-  }, [fetchSlots, serviceKey, date]);
+  }, [fetchSlots, serviceKey, date, slotsKey]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -121,12 +128,8 @@ export default function PublicPage({
       </main>
     );
 
-  const fmt = (iso: string) =>
-    new Date(iso).toLocaleTimeString("es-CL", {
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: business.timezone,
-    });
+  const fmt = (iso: string) => formatTime(iso, business.timezone);
+  const slotsLoading = slotsFor !== slotsKey;
 
   const selected = serviceIds
     .map((id) => business.services.find((s) => s.id === id))
@@ -258,7 +261,7 @@ export default function PublicPage({
               </div>
               <a
                 href="#dia-y-hora"
-                className="shrink-0 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                className="inline-flex min-h-10 shrink-0 items-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700"
               >
                 Ver horas
               </a>
@@ -268,11 +271,38 @@ export default function PublicPage({
       )}
 
       {selected.length > 0 && !noOneDoesAll && (
-        <>
-          <h2
-            id="dia-y-hora"
-            className="mb-2 mt-6 scroll-mt-6 text-sm font-medium text-gray-700"
-          >
+        <div id="dia-y-hora" className="scroll-mt-6">
+          {eligible.length > 1 && (
+            <>
+              <h2 className="mb-2 mt-6 text-sm font-medium text-gray-700">
+                Profesional
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {[{ id: "", displayName: "Sin preferencia" }, ...eligible].map(
+                  (m) => (
+                    <button
+                      key={m.id || "any"}
+                      type="button"
+                      aria-pressed={memberId === m.id}
+                      onClick={() => {
+                        setMemberId(m.id);
+                        setStartsAt("");
+                      }}
+                      className={`min-h-10 rounded-lg border px-3 text-sm transition ${
+                        memberId === m.id
+                          ? "border-indigo-600 bg-indigo-600 text-white"
+                          : "border-gray-200 bg-white hover:border-indigo-300"
+                      }`}
+                    >
+                      {m.displayName}
+                    </button>
+                  ),
+                )}
+              </div>
+            </>
+          )}
+
+          <h2 className="mb-2 mt-6 text-sm font-medium text-gray-700">
             Día y hora
           </h2>
           {selected.some((s) => s.totalMin && s.totalMin !== s.durationMin) && (
@@ -287,28 +317,46 @@ export default function PublicPage({
             onChange={(e) => setDate(e.target.value)}
             className="mb-3 w-auto"
           />
-          <div className="flex flex-wrap gap-2">
-            {slots.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setStartsAt(s)}
-                className={`rounded-lg border px-3 py-1.5 text-sm transition ${
-                  startsAt === s
-                    ? "border-indigo-600 bg-indigo-600 text-white"
-                    : "border-gray-200 bg-white hover:border-indigo-300"
-                }`}
-              >
-                {fmt(s)}
-              </button>
-            ))}
-            {slots.length === 0 && (
+          {slotsLoading ? (
+            // mismo tamaño que los botones: la página no salta al llegar las horas
+            <div
+              className="grid grid-cols-4 gap-2 sm:grid-cols-5"
+              aria-busy="true"
+              aria-label="Buscando horas"
+            >
+              {Array.from({ length: 8 }, (_, i) => (
+                <div
+                  key={i}
+                  className="h-10 animate-pulse rounded-lg bg-gray-200/70"
+                />
+              ))}
+            </div>
+          ) : slots.length > 0 ? (
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+              {slots.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  aria-pressed={startsAt === s}
+                  onClick={() => setStartsAt(s)}
+                  className={`h-10 rounded-lg border text-sm tabular-nums transition ${
+                    startsAt === s
+                      ? "border-indigo-600 bg-indigo-600 text-white"
+                      : "border-gray-200 bg-white hover:border-indigo-300"
+                  }`}
+                >
+                  {fmt(s)}
+                </button>
+              ))}
+            </div>
+          ) : (
+            !error && (
               <p className="text-sm text-gray-600">
                 No hay horas disponibles ese día.
               </p>
-            )}
-          </div>
-        </>
+            )
+          )}
+        </div>
       )}
 
       {startsAt && (
