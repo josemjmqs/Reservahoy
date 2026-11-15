@@ -57,9 +57,11 @@ test("el profesional ve solo su agenda y su horario, sin poder cambiarlo", async
     page.getByRole("heading", { name: `Mi horario · ${STAFF.name}` }),
   ).toBeVisible();
   await expect(page.getByText("Tu horario lo define el dueño")).toBeVisible();
-  const days = page.getByRole("checkbox");
-  await expect(days).toHaveCount(7);
-  for (const day of await days.all()) await expect(day).toBeDisabled();
+  // Sin casillas para marcar días: las horas se ven pero no se cambian
+  await expect(page.getByRole("checkbox")).toHaveCount(0);
+  const opens = page.getByLabel("Lunes: apertura");
+  await expect(opens).toBeVisible();
+  await expect(opens).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Guardar horario" }),
   ).toHaveCount(0);
