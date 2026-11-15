@@ -1,11 +1,12 @@
 'use client';
 
-import { Suspense, useEffect, useState, type ComponentProps } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { isOwner, useMe } from '@/lib/me';
 import { Button } from '@/components/ui';
+import { offStep, TimeSelect } from '@/components/TimeSelect';
 import type { TeamMember, WorkingHour } from '@/lib/types';
 
 // Orden de la semana para mostrar: lunes primero (weekday 0 = domingo)
@@ -41,18 +42,8 @@ const defaultDay: DayState = {
   breakEndsAt: '14:00',
 };
 
-// Las horas van de 15 en 15 minutos: así las que se ofrecen a los clientes
-// parten en :00, :15, :30 o :45. Se eligen de una lista (TimeSelect), no con
-// <input type="time">: en Android ese abre el reloj del sistema, que no
-// respeta step y en pantallas angostas corta el botón "Establecer"
-const STEP_MIN = 15;
-const offStep = (hhmm: string) => Number(hhmm.slice(3, 5)) % STEP_MIN !== 0;
-// 00:00, 00:15 … 23:45
-const TIMES = Array.from({ length: (24 * 60) / STEP_MIN }, (_, i) => {
-  const min = i * STEP_MIN;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(Math.floor(min / 60))}:${pad(min % 60)}`;
-});
+// Las horas van de 15 en 15 minutos (TimeSelect): así las que se ofrecen a los
+// clientes parten en :00, :15, :30 o :45
 
 // Mismas reglas que el backend (dayHoursError), para avisar qué día está mal
 // antes de guardar, más los minutos de 15 en 15 (solo aquí: la API acepta
@@ -77,25 +68,6 @@ function dayError(d: DayState): string | null {
   return null;
 }
 
-// Hora del horario elegida de la lista de 15 en 15 minutos. Una hora que no
-// está en la lista (guardada antes con otros minutos) se agrega para que se
-// vea, y dayError pide cambiarla
-function TimeSelect({ value, ...props }: ComponentProps<'select'> & { value: string }) {
-  const options = TIMES.includes(value) ? TIMES : [...TIMES, value].sort();
-  return (
-    <select
-      value={value}
-      {...props}
-      className="h-10 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm tabular-nums sm:h-auto focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:cursor-default disabled:bg-gray-50 disabled:text-gray-600"
-    >
-      {options.map((t) => (
-        <option key={t} value={t}>
-          {t}
-        </option>
-      ))}
-    </select>
-  );
-}
 
 const emptyWeek = () =>
   Object.fromEntries(DAYS.map((d) => [d.weekday, defaultDay])) as Record<
