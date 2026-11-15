@@ -83,6 +83,11 @@ test("al desactivarlo pierde la sesión y no entra hasta que lo reactivan", asyn
     // Quien acepta una invitación queda como dueño, y aun así se le quita el acceso
     await expect(row.getByText("Dueño")).toBeVisible();
     await expect(row.getByText("Con acceso")).toBeVisible();
+    // Desactivar pide confirmación y dice qué pasa con su sesión
+    ownerPage.once("dialog", async (d) => {
+      expect(d.message()).toContain("se cerrará su sesión en el panel");
+      await d.accept();
+    });
     await row.getByRole("button", { name: "Desactivar" }).click();
     await expect(row.getByText("Inactivo")).toBeVisible();
 

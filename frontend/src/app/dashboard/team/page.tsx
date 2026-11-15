@@ -4,11 +4,17 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useMe } from '@/lib/me';
-import { Button, Card, Input } from '@/components/ui';
+import { Button, Card, Field, Input, buttonClass } from '@/components/ui';
 import type { Service, TeamMember } from '@/lib/types';
 
 const fetchTeam = () =>
   Promise.all([api<TeamMember[]>('/members'), api<Service[]>('/services')]);
+
+// Botones de una tarjeta: 40 px de alto en el celular, compactos desde sm
+const ACTION = 'h-10 px-3 py-0 sm:h-auto sm:py-1';
+
+const servicesLabel = (n: number) =>
+  n === 0 ? 'Sin servicios' : n === 1 ? '1 servicio' : `${n} servicios`;
 
 // "21 nov." en la zona del negocio
 const shortDate = (iso: string) =>
@@ -138,6 +144,19 @@ export default function TeamPage() {
   }
 
   async function toggleActive(m: TeamMember) {
+    // Desactivar cierra sus sesiones al instante: se confirma; activar no
+    if (m.active) {
+      const also =
+        m.account === 'active'
+          ? ' y se cerrará su sesión en el panel'
+          : m.account === 'invited'
+            ? ' y se anulará su invitación'
+            : '';
+      const ok = confirm(
+        `¿Desactivar a ${m.displayName}? Dejará de recibir reservas nuevas${also}.`,
+      );
+      if (!ok) return;
+    }
     setError('');
     try {
       await api(`/members/${m.id}`, {
@@ -179,51 +198,63 @@ export default function TeamPage() {
       <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white shadow-sm">
         {members.map((m) =>
           editingId === m.id ? (
-            <li key={m.id} className="space-y-3 p-4">
-              <Input
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-              />
-              <div>
-                <p className="mb-1 text-sm font-medium text-gray-700">
-                  Servicios que realiza
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  {services.map((s) => (
-                    <label key={s.id} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        className="accent-indigo-600"
-                        checked={editServices.includes(s.id)}
-                        onChange={() => toggleService(s.id)}
-                      />
-                      {s.name}
-                    </label>
-                  ))}
-                  {services.length === 0 && (
-                    <p className="text-sm text-gray-500">
-                      Primero crea servicios.
-                    </p>
-                  )}
+            <li key={m.id} className="p-4">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  save(m.id);
+                }}
+                className="space-y-3"
+              >
+                <Field label="Nombre">
+                  <Input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    required
+                  />
+                </Field>
+                <div>
+                  <p className="mb-1 text-sm font-medium text-gray-700">
+                    Servicios que realiza
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {services.map((s) => (
+                      <label key={s.id} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          className="accent-indigo-600"
+                          checked={editServices.includes(s.id)}
+                          onChange={() => toggleService(s.id)}
+                        />
+                        {s.name}
+                      </label>
+                    ))}
+                    {services.length === 0 && (
+                      <p className="text-sm text-gray-500">
+                        Primero crea servicios.
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <Button className="px-3 py-1" onClick={() => save(m.id)}>
-                  Guardar
-                </Button>
-                <Button
-                  variant="secondary"
-                  className="px-3 py-1"
-                  onClick={() => setEditingId(null)}
-                >
-                  Cancelar
-                </Button>
-              </div>
+                <div className="flex gap-2">
+                  <Button className={ACTION}>Guardar</Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className={ACTION}
+                    onClick={() => setEditingId(null)}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </form>
             </li>
           ) : (
             <li
               key={m.id}
-              className="flex flex-wrap items-center justify-between gap-3 p-4"
+              // En el celular los botones van siempre debajo, así todas las
+              // tarjetas se ven iguales; desde sm, al lado si caben
+              className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
             >
               <div className={m.active ? '' : 'opacity-50'}>
                 <p className="font-medium">
@@ -231,14 +262,26 @@ export default function TeamPage() {
                   {isMe(m) && (
                     <span className="font-normal text-gray-500"> (tú)</span>
                   )}
-                  {m.role === 'OWNER' && (
+                  {/* Igual que isOwner: cualquier rol que no sea dueño se
+                      muestra como profesional */}
+                  {m.role === 'OWNER' ? (
                     <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">
                       Dueño
+                    </span>
+                  ) : (
+                    <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+                      Profesional
                     </span>
                   )}
                 </p>
                 <p className="text-sm text-gray-600">
-                  {m.services.length} servicio(s)
+                  {m.services.length === 0 && m.active && m.bookable ? (
+                    <span className="text-amber-700">
+                      Sin servicios: no recibe reservas
+                    </span>
+                  ) : (
+                    servicesLabel(m.services.length)
+                  )}
                   {!m.active && ' · Inactivo'}
                 </p>
                 {!isMe(m) && m.active && (
@@ -265,7 +308,7 @@ export default function TeamPage() {
                 {m.active && m.account !== 'active' && (
                   <Button
                     variant="secondary"
-                    className="px-3 py-1"
+                    className={ACTION}
                     onClick={() => startInvite(m)}
                   >
                     {m.account === 'invited' ? 'Reenviar' : 'Invitar'}
@@ -274,20 +317,24 @@ export default function TeamPage() {
                 {m.account === 'invited' && m.invitation && (
                   <Button
                     variant="secondary"
-                    className="px-3 py-1"
+                    className={ACTION}
                     onClick={() => revokeInvite(m)}
                   >
                     Anular
                   </Button>
                 )}
-                <Link href={`/dashboard/hours?memberId=${m.id}`}>
-                  <Button variant="secondary" className="px-3 py-1">
-                    Horario
-                  </Button>
+                <Link
+                  href={`/dashboard/hours?memberId=${m.id}`}
+                  className={buttonClass(
+                    'secondary',
+                    `inline-flex items-center ${ACTION}`,
+                  )}
+                >
+                  Horario
                 </Link>
                 <Button
                   variant="secondary"
-                  className="px-3 py-1"
+                  className={ACTION}
                   onClick={() => startEdit(m)}
                 >
                   Editar
@@ -295,7 +342,7 @@ export default function TeamPage() {
                 {!isMe(m) && (
                   <Button
                     variant="secondary"
-                    className="px-3 py-1"
+                    className={ACTION}
                     onClick={() => toggleActive(m)}
                   >
                     {m.active ? 'Desactivar' : 'Activar'}
@@ -320,13 +367,13 @@ export default function TeamPage() {
                     autoFocus
                     required
                   />
-                  <Button className="px-3 py-1" disabled={sending}>
+                  <Button className={ACTION} disabled={sending}>
                     {sending ? 'Enviando...' : 'Enviar invitación'}
                   </Button>
                   <Button
                     type="button"
                     variant="secondary"
-                    className="px-3 py-1"
+                    className={ACTION}
                     onClick={() => setInvitingId(null)}
                   >
                     Cancelar

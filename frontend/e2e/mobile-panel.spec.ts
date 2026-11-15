@@ -177,3 +177,29 @@ test("en Horario el dueño ve 'Guardar horario' sin bajar y no tapa al domingo",
   const saveTop = (await save.boundingBox())!.y;
   expect(sunday.y + sunday.height).toBeLessThan(saveTop);
 });
+
+test("en Equipo los botones de cada tarjeta van debajo y son cómodos", async ({
+  page,
+}) => {
+  await loginAsDemo(page);
+  await page.goto("/dashboard/team");
+
+  // Camila (2 botones) y Diego (3) se ven iguales: botones bajo el nombre
+  for (const name of ["Camila", "Diego"]) {
+    const card = page.getByRole("listitem").filter({ hasText: name });
+    // La primera línea: nombre, "(tú)" y la etiqueta del rol
+    const title = (await card.locator("p").first().boundingBox())!;
+    // "Horario" es un enlace con forma de botón, no un botón dentro de un enlace
+    const actions = [
+      card.getByRole("link", { name: "Horario" }),
+      card.getByRole("button", { name: "Editar" }),
+    ];
+    for (const action of actions) {
+      const box = (await action.boundingBox())!;
+      expect(box.height).toBeGreaterThanOrEqual(40);
+      expect(box.y).toBeGreaterThan(title.y + title.height);
+      expect(box.x + box.width).toBeLessThanOrEqual(375);
+    }
+  }
+  await expect(page.locator("a button")).toHaveCount(0);
+});
