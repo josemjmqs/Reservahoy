@@ -132,7 +132,18 @@ export default function DashboardLayout({
   const redirecting = !owner && ownerOnly(pathname);
 
   return (
-    <div className="min-h-screen">
+    // En el celular la página no se desplaza: solo el contenido sobre la barra
+    // de abajo (#panel-scroll). Si se desplazara la página, Chrome en Android
+    // mostraría y escondería su barra de direcciones, y mientras lo hace empuja
+    // hacia abajo lo fijo, tapando en parte la barra de navegación. El
+    // contenedor es más bajo que la pantalla a propósito: si la llenara, Chrome
+    // lo trataría como la página (implicit root scroller) y volvería a pasar.
+    // Desde `sm`, la página se desplaza como siempre
+    <div className="h-dvh overflow-hidden sm:h-auto sm:min-h-screen sm:overflow-visible">
+      <div
+        id="panel-scroll"
+        className="h-[calc(100%-var(--tabbar-h)-env(safe-area-inset-bottom))] overflow-y-auto sm:h-auto sm:overflow-visible"
+      >
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-2 sm:px-6 sm:py-3">
           <div className="min-w-0">
@@ -184,11 +195,13 @@ export default function DashboardLayout({
           ni puede invitar (quien acepta una invitación entra ya verificado) */}
       {owner && !me.emailVerifiedAt && <VerifyEmailBanner email={me.email} />}
       <MeProvider value={me}>
-        {/* En el celular deja lugar abajo para la barra de navegación */}
-        <main className="mx-auto max-w-3xl px-4 pt-6 pb-[calc(var(--tabbar-h)+2.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-6">
+        {/* La barra de navegación queda fuera de #panel-scroll: no hace falta
+            dejarle lugar abajo */}
+        <main className="mx-auto max-w-3xl px-4 pt-6 pb-10 sm:px-6 sm:pb-6">
           {redirecting ? null : children}
         </main>
       </MeProvider>
+      </div>
     </div>
   );
 }
