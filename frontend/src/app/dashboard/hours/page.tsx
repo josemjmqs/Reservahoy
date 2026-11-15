@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { isOwner, useMe } from '@/lib/me';
 import { Button } from '@/components/ui';
-import { offStep, TimeSelect } from '@/components/TimeSelect';
+import { TimePicker } from '@/components/TimePicker';
 import type { TeamMember, WorkingHour } from '@/lib/types';
 
 // Orden de la semana para mostrar: lunes primero (weekday 0 = domingo)
@@ -42,19 +42,9 @@ const defaultDay: DayState = {
   breakEndsAt: '14:00',
 };
 
-// Las horas van de 15 en 15 minutos (TimeSelect): así las que se ofrecen a los
-// clientes parten en :00, :15, :30 o :45
-
 // Mismas reglas que el backend (dayHoursError), para avisar qué día está mal
-// antes de guardar, más los minutos de 15 en 15 (solo aquí: la API acepta
-// cualquier minuto, y una hora guardada antes, como 10:07, se muestra igual
-// en la lista). Las horas HH:MM se comparan como texto
+// antes de guardar. Las horas HH:MM se comparan como texto
 function dayError(d: DayState): string | null {
-  const times = [d.opensAt, d.closesAt];
-  if (d.hasBreak) times.push(d.breakStartsAt, d.breakEndsAt);
-  if (times.some(offStep)) {
-    return 'usa horas en punto, y cuarto, y media o menos cuarto';
-  }
   if (d.opensAt >= d.closesAt) {
     return 'la hora de apertura debe ser anterior al cierre';
   }
@@ -247,22 +237,18 @@ function HoursContent() {
               {day.enabled ? (
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
-                    <TimeSelect
-                      aria-label={`${label}: apertura`}
+                    <TimePicker
+                      label={`${label}: apertura`}
                       value={day.opensAt}
                       disabled={readOnly}
-                      onChange={(e) =>
-                        update(weekday, { opensAt: e.target.value })
-                      }
+                      onChange={(v) => update(weekday, { opensAt: v })}
                     />
                     <span className="text-sm text-gray-500">a</span>
-                    <TimeSelect
-                      aria-label={`${label}: cierre`}
+                    <TimePicker
+                      label={`${label}: cierre`}
                       value={day.closesAt}
                       disabled={readOnly}
-                      onChange={(e) =>
-                        update(weekday, { closesAt: e.target.value })
-                      }
+                      onChange={(v) => update(weekday, { closesAt: v })}
                     />
                   </div>
                   {day.hasBreak ? (
@@ -273,22 +259,18 @@ function HoursContent() {
                       <span className="w-full text-xs font-medium text-gray-600">
                         Almuerzo
                       </span>
-                      <TimeSelect
-                        aria-label={`${label}: inicio del almuerzo`}
+                      <TimePicker
+                        label={`${label}: inicio del almuerzo`}
                         value={day.breakStartsAt}
                         disabled={readOnly}
-                        onChange={(e) =>
-                          update(weekday, { breakStartsAt: e.target.value })
-                        }
+                        onChange={(v) => update(weekday, { breakStartsAt: v })}
                       />
                       <span className="self-center text-sm text-gray-500">a</span>
-                      <TimeSelect
-                        aria-label={`${label}: término del almuerzo`}
+                      <TimePicker
+                        label={`${label}: término del almuerzo`}
                         value={day.breakEndsAt}
                         disabled={readOnly}
-                        onChange={(e) =>
-                          update(weekday, { breakEndsAt: e.target.value })
-                        }
+                        onChange={(v) => update(weekday, { breakEndsAt: v })}
                       />
                       {!readOnly && (
                         <Button

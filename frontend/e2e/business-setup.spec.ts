@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { loginAsDemo, openSlots, sundayFrom } from "./helpers";
+import { loginAsDemo, openSlots, pickTime, sundayFrom } from "./helpers";
 
 // Abre el horario y espera a que llegue el guardado: antes de eso la página
 // muestra todos los días cerrados
@@ -39,8 +39,8 @@ test("un servicio y un horario nuevos del panel aparecen en la página pública"
   await openHours(page);
   const domingo = page.getByRole("listitem").filter({ hasText: "Domingo" });
   await domingo.getByRole("checkbox").check();
-  await domingo.getByLabel("Domingo: apertura").selectOption("10:00");
-  await domingo.getByLabel("Domingo: cierre").selectOption("13:00");
+  await pickTime(page, domingo.getByLabel("Domingo: apertura"), "10:00");
+  await pickTime(page, domingo.getByLabel("Domingo: cierre"), "13:00");
   await page.getByRole("button", { name: "Guardar horario" }).click();
   await expect(page.getByText("Horario guardado.")).toBeVisible();
 
