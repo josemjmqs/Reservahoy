@@ -25,6 +25,10 @@ model Business {
   slug      String      @unique
   timezone  String      @default("America/Santiago")
   phone     String?
+  // Ruta del logo en R2; la API responde logoUrl (StorageService.urlFor)
+  logoKey    String?
+  // Color de marca de la página pública, "#rrggbb" en minúsculas
+  brandColor String?
   createdAt DateTime    @default(now())
   members   Member[]
   services  Service[]

@@ -1,10 +1,42 @@
-import { ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
+import type { StorageService } from '../storage/storage.service';
 import { BusinessService } from './business.service';
 
+// Servicio real contra PostgreSQL; R2 se reemplaza por un registro en memoria
 const prisma = new PrismaClient();
-const service = new BusinessService(prisma as unknown as PrismaService);
+const bucket = new Map<string, string>(); // ruta -> content type
+const storage = {
+  enabled: true,
+  urlFor: (key: string | null) => (key ? `https://img.test/${key}` : null),
+  put: (key: string, _body: Buffer, contentType: string) => {
+    bucket.set(key, contentType);
+    return Promise.resolve();
+  },
+  remove: (key: string) => {
+    bucket.delete(key);
+    return Promise.resolve();
+  },
+} as unknown as StorageService;
+const service = new BusinessService(
+  prisma as unknown as PrismaService,
+  storage,
+);
+const withoutR2 = new BusinessService(
+  prisma as unknown as PrismaService,
+  {
+    ...storage,
+    enabled: false,
+  } as unknown as StorageService,
+);
+
+const JPG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10]);
+const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]);
 const run = Date.now().toString(36);
 
 let businessId: string;
@@ -76,6 +108,8 @@ describe('BusinessService', () => {
       name: 'Taller a',
       slug: `int-business-a-${run}`,
       phone: null,
+      brandColor: null,
+      logoUrl: null,
     });
   });
 
@@ -101,5 +135,75 @@ describe('BusinessService', () => {
       service.update(userIds.staff, { name: 'Mío' }),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect((await service.get(userIds.staff)).name).toBe('Taller Pérez');
+  });
+
+  it('el dueño elige el color de marca y null vuelve al de Reservahoy', async () => {
+    expect(
+      await service.update(userIds.owner, { brandColor: '#0f766e' }),
+    ).toMatchObject({ brandColor: '#0f766e', name: 'Taller Pérez' });
+    expect((await service.get(userIds.staff)).brandColor).toBe('#0f766e');
+    await service.update(userIds.owner, { brandColor: null });
+    expect((await service.get(userIds.owner)).brandColor).toBeNull();
+  });
+
+  it('un miembro que no es dueño no cambia el color', async () => {
+    await expect(
+      service.update(userIds.staff, { brandColor: '#000000' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+});
+
+describe('BusinessService: logo', () => {
+  it('guarda el logo con el tipo detectado por su contenido y devuelve la URL pública', async () => {
+    const b = await service.setLogo(userIds.owner, { buffer: JPG });
+    expect(b.logoUrl).toMatch(
+      new RegExp(`^https://img\\.test/logos/${businessId}/[0-9a-f]{16}\\.jpg$`),
+    );
+    expect(b).not.toHaveProperty('logoKey');
+    expect([...bucket.values()]).toEqual(['image/jpeg']);
+    expect((await service.get(userIds.owner)).logoUrl).toBe(b.logoUrl);
+  });
+
+  it('al reemplazarlo borra el logo anterior del bucket', async () => {
+    const before = [...bucket.keys()];
+    const b = await service.setLogo(userIds.owner, { buffer: PNG });
+    expect(b.logoUrl).toMatch(/\.png$/);
+    expect(bucket.size).toBe(1);
+    expect(bucket.has(before[0])).toBe(false);
+  });
+
+  it('rechaza archivos que no son JPG, PNG ni WebP, o sin archivo', async () => {
+    await expect(
+      service.setLogo(userIds.owner, { buffer: Buffer.from('<svg/>') }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.setLogo(userIds.owner)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('un miembro que no es dueño no sube ni quita el logo (403, también sin R2)', async () => {
+    await expect(
+      service.setLogo(userIds.staff, { buffer: JPG }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.removeLogo(userIds.staff)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    await expect(
+      withoutR2.setLogo(userIds.staff, { buffer: JPG }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(bucket.size).toBe(1);
+  });
+
+  it('sin R2 el dueño recibe 503', async () => {
+    await expect(
+      withoutR2.setLogo(userIds.owner, { buffer: JPG }),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+
+  it('quitar el logo lo borra del bucket, sin tocar el otro negocio', async () => {
+    const b = await service.removeLogo(userIds.owner);
+    expect(b.logoUrl).toBeNull();
+    expect(bucket.size).toBe(0);
+    expect((await service.get(userIds.other)).logoUrl).toBeNull();
   });
 });

@@ -133,6 +133,8 @@ export class AvailabilityService {
         slug: true,
         timezone: true,
         phone: true,
+        brandColor: true,
+        logoKey: true,
         services: {
           where: { active: true },
           orderBy: { createdAt: 'asc' },
@@ -164,7 +166,13 @@ export class AvailabilityService {
       ...s,
       imageUrl: this.storage.urlFor(imageKey),
     }));
-    return { ...business, services, acceptsBookings };
+    const { logoKey, ...rest } = business;
+    return {
+      ...rest,
+      logoUrl: this.storage.urlFor(logoKey),
+      services,
+      acceptsBookings,
+    };
   }
 
   // Un negocio recibe reservas solo cuando un dueño activo verificó el correo:

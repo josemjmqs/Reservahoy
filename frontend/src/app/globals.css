@@ -13,6 +13,11 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Color de marca del negocio en su página pública: `--brand` y `--brand-fg`
+     (texto encima) los define brandStyle (lib/brand.ts); sin ellos, el índigo */
+  --color-brand: var(--brand, #4f46e5);
+  --color-brand-fg: var(--brand-fg, #ffffff);
+  --color-brand-hover: color-mix(in oklab, var(--brand, #4f46e5) 85%, black);
 }
 
 /* Reserva el espacio de la barra de desplazamiento: el contenido no se corre

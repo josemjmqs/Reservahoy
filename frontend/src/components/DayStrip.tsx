@@ -49,12 +49,12 @@ export function DayStrip({
                 onClick={() => onChange(d.iso)}
                 className={`flex h-14 flex-col items-center justify-center rounded-lg border transition ${
                   selected
-                    ? "border-indigo-600 bg-indigo-600 text-white"
-                    : "border-gray-200 bg-white hover:border-indigo-300"
+                    ? "border-brand bg-brand text-brand-fg"
+                    : "border-gray-200 bg-white hover:border-brand/40"
                 }`}
               >
                 <span
-                  className={`text-xs capitalize ${selected ? "text-indigo-100" : "text-gray-500"}`}
+                  className={`text-xs capitalize ${selected ? "text-brand-fg/80" : "text-gray-500"}`}
                 >
                   {d.weekday}
                 </span>

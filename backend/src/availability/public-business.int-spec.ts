@@ -24,7 +24,13 @@ let staffUserId: string | undefined;
 beforeAll(async () => {
   businessId = (
     await prisma.business.create({
-      data: { name: 'Barbería Pública', slug, phone: '+56 9 1234 5678' },
+      data: {
+        name: 'Barbería Pública',
+        slug,
+        phone: '+56 9 1234 5678',
+        brandColor: '#0f766e',
+        logoKey: `logos/${run}.png`,
+      },
     })
   ).id;
   userId = (
@@ -86,6 +92,13 @@ describe('AvailabilityService.getBusiness (página pública)', () => {
     expect(page.services[0]).not.toHaveProperty('imageKey');
   });
 
+  it('muestra el color de marca y la URL pública del logo, nunca su ruta', async () => {
+    const page = await availability.getBusiness(slug);
+    expect(page.brandColor).toBe('#0f766e');
+    expect(page.logoUrl).toBe(`https://img.test/logos/${run}.png`);
+    expect(page).not.toHaveProperty('logoKey');
+  });
+
   it('muestra solo profesionales activos que atienden', async () => {
     const page = await availability.getBusiness(slug);
     expect(page.members.map((m) => m.displayName)).toEqual(['Dueña']);
@@ -96,6 +109,8 @@ describe('AvailabilityService.getBusiness (página pública)', () => {
     expect(Object.keys(page).sort()).toEqual(
       [
         'acceptsBookings',
+        'brandColor',
+        'logoUrl',
         'members',
         'name',
         'phone',
@@ -153,7 +168,9 @@ describe('AvailabilityService.getBusiness (página pública)', () => {
       data: { active: false },
     });
     try {
-      expect(await availability.acceptsBookings({ id: businessId })).toBe(false);
+      expect(await availability.acceptsBookings({ id: businessId })).toBe(
+        false,
+      );
     } finally {
       await prisma.member.updateMany({
         where: { businessId, userId },
