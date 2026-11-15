@@ -90,7 +90,12 @@ export async function openSlots(
   }: { category: string; service: string; date: string; member?: string },
 ): Promise<string[]> {
   await page.goto(`/${DEMO.slug}`);
-  await page.getByRole("button", { name: new RegExp(`^${category}`) }).click();
+  // la primera categoría parte abierta: un clic más la cerraría
+  const categoryButton = page.getByRole("button", {
+    name: new RegExp(`^${category}`),
+  });
+  if ((await categoryButton.getAttribute("aria-expanded")) === "false")
+    await categoryButton.click();
   await page.getByRole("button", { name: new RegExp(service) }).click();
   if (member)
     await page.getByRole("button", { name: member, exact: true }).click();
@@ -124,8 +129,8 @@ export async function bookFirstSlot(
   const [time] = await openSlots(page, opts);
   expect(time, "debería haber horas libres ese día").toBeTruthy();
   await slotButtons(page).first().click();
-  await page.getByPlaceholder("Nombre").fill(opts.customer);
-  await page.getByPlaceholder("Correo").fill(`e2e-${Date.now()}@ejemplo.cl`);
+  await page.getByLabel("Nombre").fill(opts.customer);
+  await page.getByLabel("Correo").fill(`e2e-${Date.now()}@ejemplo.cl`);
   await page.getByRole("button", { name: "Confirmar reserva" }).click();
   await expect(page.getByText("¡Reserva confirmada!")).toBeVisible();
   return time;
