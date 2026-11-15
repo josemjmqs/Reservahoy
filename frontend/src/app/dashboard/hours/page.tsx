@@ -20,7 +20,7 @@ const DAYS = [
   { weekday: 0, label: 'Domingo' },
 ];
 
-// Día que ofrece "Copiar a todos los días" (el primero de la lista)
+// Día que ofrece "Copiar a los días marcados" (el primero de la lista)
 const COPY_FROM = 1;
 
 interface DayState {
@@ -122,14 +122,18 @@ function HoursContent() {
     setDays((d) => ({ ...d, [weekday]: { ...d[weekday], ...patch } }));
   }
 
-  // Abre todos los días con el mismo horario (y almuerzo) del día elegido.
-  // Solo cambia la pantalla: se guarda con "Guardar horario"
-  function copyToAll(from: number) {
+  // Pone el horario (y almuerzo) del día elegido en los demás días marcados;
+  // los desmarcados quedan cerrados y con sus horas. Solo cambia la pantalla:
+  // se guarda con "Guardar horario"
+  function copyToChecked(from: number) {
     setSaved(false);
     setDays(
       (d) =>
         Object.fromEntries(
-          DAYS.map(({ weekday }) => [weekday, { ...d[from], enabled: true }]),
+          DAYS.map(({ weekday }) => [
+            weekday,
+            d[weekday].enabled ? { ...d[from] } : d[weekday],
+          ]),
         ) as Record<number, DayState>,
     );
   }
@@ -299,11 +303,11 @@ function HoursContent() {
                       {weekday === COPY_FROM && (
                         <Button
                           variant="secondary"
-                          aria-label={`Copiar el horario del ${label.toLowerCase()} a todos los días`}
-                          onClick={() => copyToAll(weekday)}
+                          aria-label={`Copiar el horario del ${label.toLowerCase()} a los días marcados`}
+                          onClick={() => copyToChecked(weekday)}
                           className="h-10 px-3 sm:h-auto sm:py-1.5"
                         >
-                          Copiar a todos los días
+                          Copiar a los días marcados
                         </Button>
                       )}
                     </div>
