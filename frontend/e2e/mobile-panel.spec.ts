@@ -88,13 +88,12 @@ test("en la Agenda el día cabe en una fila y los botones de la reserva son cóm
   await expect(card).toBeVisible();
   await expect(filterSelect).toBeVisible();
 
-  // ← día → Hoy y Actualizar (solo el ícono) en una sola fila, dentro de la pantalla
+  // ← día → Hoy en una sola fila, dentro de la pantalla
   const controls = [
     page.getByRole("button", { name: "Día anterior" }),
     page.getByLabel("Día", { exact: true }),
     page.getByRole("button", { name: "Día siguiente" }),
     page.getByRole("button", { name: "Hoy" }),
-    page.getByRole("button", { name: "Actualizar" }),
   ];
   const boxes = await Promise.all(controls.map(async (c) => (await c.boundingBox())!));
   for (const box of boxes) {
@@ -105,6 +104,16 @@ test("en la Agenda el día cabe en una fila y los botones de la reserva son cóm
   const filter = (await filterSelect.boundingBox())!;
   expect(filter.y).toBeGreaterThan(boxes[0].y + boxes[0].height);
   expect(filter.width).toBeGreaterThan(300);
+
+  // "Actualizar" con su texto, debajo del filtro, junto a la hora de la
+  // última carga (la agenda no está en vivo)
+  const refresh = page.getByRole("button", { name: "Actualizar" });
+  await expect(refresh).toHaveText("Actualizar");
+  const refreshBox = (await refresh.boundingBox())!;
+  expect(refreshBox.y).toBeGreaterThan(filter.y + filter.height);
+  expect(refreshBox.height).toBeGreaterThanOrEqual(40);
+  expect(refreshBox.x + refreshBox.width).toBeLessThanOrEqual(375);
+  await expect(page.getByText(/^Actualizada a las \d{2}:\d{2}$/)).toBeVisible();
 
   // Los tres botones de la reserva en una fila y de al menos 40 px de alto
   const buttons = ["Completada", "No se presentó", "Cancelar"].map((name) =>

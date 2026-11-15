@@ -67,6 +67,10 @@ function AgendaContent() {
   const [next, setNext] = useState<AgendaBooking | null>(null);
   // Reserva que el dueño está por cancelar (abre la confirmación)
   const [toCancel, setToCancel] = useState<AgendaBooking | null>(null);
+  // Hora de la última carga correcta: la agenda no está en vivo (se recarga
+  // cada 30 s y con "Actualizar"), así que se muestra de cuándo es
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Hoy, las reservas que ya terminaron bajan a "Ya pasaron"; las en curso
   // siguen arriba. Otros días se muestran todas juntas, por hora
@@ -82,11 +86,20 @@ function AgendaContent() {
   const load = useCallback(async () => {
     try {
       setBookings(await fetchAgenda(date, memberId));
+      setUpdatedAt(new Date().toISOString());
       setError("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     }
   }, [date, memberId]);
+
+  // Clic en "Actualizar": el ícono gira mientras carga (la recarga
+  // automática no lo hace girar, para no distraer)
+  async function refresh() {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }
 
   // Solo el dueño elige profesional: el profesional ve únicamente su agenda,
   // sin el filtro ni el "Con {nombre}" (ambos aparecen con más de un miembro)
@@ -105,6 +118,7 @@ function AgendaContent() {
       .then((list) => {
         if (stale) return;
         setBookings(list);
+        setUpdatedAt(new Date().toISOString());
         setError("");
       })
       .catch((e) => {
@@ -250,8 +264,7 @@ function AgendaContent() {
       <h1 className="text-xl font-semibold tracking-tight">Agenda</h1>
 
       {/* En el celular: una fila con el día y otra con el filtro a todo el
-          ancho; "Actualizar" queda solo con su ícono (la agenda igual se
-          actualiza sola cada 30 s) */}
+          ancho */}
       <div className="my-4 flex flex-wrap items-center gap-2">
         <div className="flex w-full items-center gap-2 sm:w-auto">
           <Button
@@ -284,16 +297,6 @@ function AgendaContent() {
           >
             Hoy
           </Button>
-          <Button
-            variant="secondary"
-            aria-label="Actualizar"
-            title="Actualizar"
-            className="flex items-center gap-1.5 px-2.5 sm:px-4"
-            onClick={load}
-          >
-            <RefreshIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline">Actualizar</span>
-          </Button>
         </div>
         {members.length > 1 && (
           <select
@@ -312,7 +315,29 @@ function AgendaContent() {
         )}
       </div>
 
-      <p className="mb-3 text-sm capitalize text-gray-600">{dayLabel}</p>
+      {/* "Actualizar" junto a la hora de la última carga, con color y texto
+          también en el celular: deja claro que la agenda no está en vivo */}
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm capitalize text-gray-600">{dayLabel}</p>
+          {updatedAt && (
+            <p className="mt-0.5 text-xs text-gray-500">
+              Actualizada a las {time(updatedAt)}
+            </p>
+          )}
+        </div>
+        <Button
+          variant="secondary"
+          className="flex h-10 shrink-0 items-center gap-1.5 border-indigo-200 bg-indigo-50 py-0 text-indigo-700 hover:bg-indigo-100 sm:h-9"
+          disabled={refreshing}
+          onClick={refresh}
+        >
+          <RefreshIcon
+            className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+          />
+          Actualizar
+        </Button>
+      </div>
 
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
 
