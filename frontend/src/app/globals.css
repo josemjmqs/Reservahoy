@@ -6,6 +6,15 @@
   /* Alto de la barra de navegación de abajo del panel en el celular (sin el
      borde del iPhone): la usan el panel y lo que va fijo sobre ella */
   --tabbar-h: 3.5rem;
+  /* Lo más que tapa el sistema abajo (barra de gestos de Android, borde del
+     iPhone). Con viewport-fit=cover, env(safe-area-inset-bottom) cambia
+     mientras Chrome en Android esconde su franja de abajo al desplazar: lo fijo
+     abajo usa este máximo como relleno y solo su `bottom` sigue al valor que
+     cambia, bottom: calc(env(safe-area-inset-bottom, 0px) - max). Nunca un
+     relleno con env(safe-area-inset-bottom): Chrome lo detecta y la barra queda
+     cortada (guía "edge-to-edge" de Chrome). 36px si el navegador no lo
+     conoce, como en la guía */
+  --safe-bottom-max: env(safe-area-max-inset-bottom, 36px);
   /* La app es solo clara: sin esto, con el equipo en modo oscuro los controles
      del navegador (selector de hora y fecha, barras de desplazamiento) salen
      oscuros sobre la página clara */

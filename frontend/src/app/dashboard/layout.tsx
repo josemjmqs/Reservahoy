@@ -158,8 +158,10 @@ export default function DashboardLayout({
         {/* Un solo menú que cambia de forma: en el celular es una barra fija
             abajo, una columna por pestaña con su ícono (como una app); desde
             `sm`, pestañas debajo del encabezado. Su alto es --tabbar-h
-            (globals.css) más el borde del iPhone (safe-area) */}
-        <nav className="fixed inset-x-0 bottom-0 z-20 grid h-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] auto-cols-fr grid-flow-col border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] sm:static sm:mx-auto sm:flex sm:h-auto sm:max-w-3xl sm:gap-6 sm:border-0 sm:px-6 sm:pb-0">
+            (globals.css) más lo que tapa el sistema abajo: el relleno es el
+            máximo (--safe-bottom-max) y `bottom` la baja lo que el sistema no
+            tapa en ese momento */}
+        <nav className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)-var(--safe-bottom-max))] z-20 grid h-[calc(var(--tabbar-h)+var(--safe-bottom-max))] auto-cols-fr grid-flow-col border-t border-gray-200 bg-white pb-[var(--safe-bottom-max)] sm:static sm:mx-auto sm:flex sm:h-auto sm:max-w-3xl sm:gap-6 sm:border-0 sm:px-6 sm:pb-0">
           {TABS.filter((t) => owner || !t.ownerOnly).map((t) => {
             const active = pathname === t.href;
             return (
@@ -185,7 +187,7 @@ export default function DashboardLayout({
       {owner && !me.emailVerifiedAt && <VerifyEmailBanner email={me.email} />}
       <MeProvider value={me}>
         {/* En el celular deja lugar abajo para la barra de navegación */}
-        <main className="mx-auto max-w-3xl px-4 pt-6 pb-[calc(var(--tabbar-h)+2.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-6">
+        <main className="mx-auto max-w-3xl px-4 pt-6 pb-[calc(var(--tabbar-h)+2.5rem+var(--safe-bottom-max))] sm:px-6 sm:pb-6">
           {redirecting ? null : children}
         </main>
       </MeProvider>

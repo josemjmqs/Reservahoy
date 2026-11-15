@@ -331,7 +331,7 @@ function HoursContent() {
         // evita que tape al domingo
         <>
           <div className="h-16 sm:hidden" />
-          <div className="fixed inset-x-0 bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] z-10 border-t border-gray-200 bg-white px-4 py-3 sm:static sm:border-0 sm:bg-transparent sm:p-0">
+          <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+var(--tabbar-h))] z-10 border-t border-gray-200 bg-white px-4 py-3 sm:static sm:border-0 sm:bg-transparent sm:p-0">
             <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-x-3 gap-y-1">
               <Button onClick={save} disabled={saving || !loaded}>
                 {saving ? 'Guardando...' : 'Guardar horario'}
