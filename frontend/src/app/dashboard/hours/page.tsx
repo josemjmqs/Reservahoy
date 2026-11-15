@@ -19,6 +19,9 @@ const DAYS = [
   { weekday: 0, label: 'Domingo' },
 ];
 
+// Día que ofrece "Copiar a todos los días" (el primero de la lista)
+const COPY_FROM = 1;
+
 interface DayState {
   enabled: boolean;
   opensAt: string;
@@ -117,6 +120,18 @@ function HoursContent() {
     setDays((d) => ({ ...d, [weekday]: { ...d[weekday], ...patch } }));
   }
 
+  // Abre todos los días con el mismo horario (y almuerzo) del día elegido.
+  // Solo cambia la pantalla: se guarda con "Guardar horario"
+  function copyToAll(from: number) {
+    setSaved(false);
+    setDays(
+      (d) =>
+        Object.fromEntries(
+          DAYS.map(({ weekday }) => [weekday, { ...d[from], enabled: true }]),
+        ) as Record<number, DayState>,
+    );
+  }
+
   async function save() {
     setError('');
     setSaved(false);
@@ -179,7 +194,8 @@ function HoursContent() {
         <p className="mt-1 text-sm text-gray-600">
           Marca los días en que atiende y define el horario de cada uno. Con
           &quot;+ Almuerzo&quot; puedes cortar el día: esa franja no se ofrece a
-          los clientes.
+          los clientes. Con &quot;Copiar a todos los días&quot; el horario del
+          lunes pasa al resto de la semana.
         </p>
       )}
 
@@ -275,17 +291,30 @@ function HoursContent() {
                         </Button>
                       )}
                     </div>
-                  ) : (
-                    !readOnly && (
-                      <Button
-                        variant="secondary"
-                        aria-label={`Agregar almuerzo al ${label.toLowerCase()}`}
-                        onClick={() => update(weekday, { hasBreak: true })}
-                        className="h-10 self-start px-3 sm:h-auto sm:py-1.5"
-                      >
-                        + Almuerzo
-                      </Button>
-                    )
+                  ) : null}
+                  {!readOnly && (!day.hasBreak || weekday === COPY_FROM) && (
+                    <div className="flex flex-wrap gap-2">
+                      {!day.hasBreak && (
+                        <Button
+                          variant="secondary"
+                          aria-label={`Agregar almuerzo al ${label.toLowerCase()}`}
+                          onClick={() => update(weekday, { hasBreak: true })}
+                          className="h-10 px-3 sm:h-auto sm:py-1.5"
+                        >
+                          + Almuerzo
+                        </Button>
+                      )}
+                      {weekday === COPY_FROM && (
+                        <Button
+                          variant="secondary"
+                          aria-label={`Copiar el horario del ${label.toLowerCase()} a todos los días`}
+                          onClick={() => copyToAll(weekday)}
+                          className="h-10 px-3 sm:h-auto sm:py-1.5"
+                        >
+                          Copiar a todos los días
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </div>
               ) : (

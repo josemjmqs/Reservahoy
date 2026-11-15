@@ -13,7 +13,8 @@ import {
 } from "./helpers";
 
 // Almuerzo en el horario: el dueño corta el día y la página pública no ofrece
-// esa franja. Cada prueba deja el horario demo como estaba
+// esa franja. También copiar el lunes (con su almuerzo) a toda la semana.
+// Cada prueba deja el horario demo como estaba
 
 const TZ = "America/Santiago";
 const LABELS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -175,7 +176,48 @@ test("quitar el almuerzo desde la pantalla lo borra al guardar", async ({
   }
 });
 
-test("en el celular los botones del almuerzo miden al menos 40 px", async ({
+test("copiar el lunes abre todos los días con su horario y almuerzo", async ({
+  page,
+}) => {
+  await loginAsDemo(page);
+  const original = await getHours(page.request);
+
+  try {
+    await openHours(page);
+    const lunes = page.getByRole("listitem").filter({ hasText: "Lunes" });
+    await lunes.getByLabel("Lunes: apertura").fill("10:00");
+    await lunes.getByLabel("Lunes: cierre").fill("17:00");
+    await lunes.getByRole("button", { name: "Agregar almuerzo al lunes" }).click();
+    await lunes.getByLabel("Lunes: inicio del almuerzo").fill("13:30");
+    await lunes.getByLabel("Lunes: término del almuerzo").fill("14:15");
+    await lunes
+      .getByRole("button", { name: "Copiar el horario del lunes a todos los días" })
+      .click();
+
+    // El domingo del seed está cerrado: ahora queda abierto como el lunes
+    const domingo = page.getByRole("listitem").filter({ hasText: "Domingo" });
+    await expect(domingo.getByRole("checkbox")).toBeChecked();
+    await expect(domingo.getByLabel("Domingo: apertura")).toHaveValue("10:00");
+
+    await page.getByRole("button", { name: "Guardar horario" }).click();
+    await expect(page.getByText("Horario guardado.")).toBeVisible();
+
+    const saved = await getHours(page.request);
+    expect(saved.map((d) => d.weekday).sort()).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    for (const d of saved) {
+      expect(d).toMatchObject({
+        opensAt: "10:00",
+        closesAt: "17:00",
+        breakStartsAt: "13:30",
+        breakEndsAt: "14:15",
+      });
+    }
+  } finally {
+    await putHours(page.request, original);
+  }
+});
+
+test("en el celular los botones del almuerzo y de copiar miden al menos 40 px", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 375, height: 812 });
@@ -189,6 +231,10 @@ test("en el celular los botones del almuerzo miden al menos 40 px", async ({
   await add.click();
   const remove = lunes.getByRole("button", { name: "Quitar almuerzo del lunes" });
   expect((await remove.boundingBox())!.height).toBeGreaterThanOrEqual(40);
+  const copy = lunes.getByRole("button", {
+    name: "Copiar el horario del lunes a todos los días",
+  });
+  expect((await copy.boundingBox())!.height).toBeGreaterThanOrEqual(40);
 });
 
 test("el profesional ve su almuerzo en solo lectura", async ({
@@ -226,7 +272,7 @@ test("el profesional ve su almuerzo en solo lectura", async ({
     await expect(start).toHaveValue("13:00");
     await expect(start).toBeDisabled();
     await expect(day.getByLabel(`${label}: término del almuerzo`)).toBeDisabled();
-    await expect(page.getByRole("button", { name: /almuerzo/i })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /almuerzo|copiar/i })).toHaveCount(0);
   } finally {
     await putHours(owner, original, diego);
     await owner.dispose();
