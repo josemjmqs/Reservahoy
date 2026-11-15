@@ -138,7 +138,10 @@ function ServiceRow({
       }`}
     >
       <span className="flex items-center gap-3">
-        {s.imageUrl && <ServiceThumb src={s.imageUrl} className="h-12 w-12" />}
+        {/* elegido, la foto se ve completa abajo: no se repite en miniatura */}
+        {s.imageUrl && !selected && (
+          <ServiceThumb src={s.imageUrl} className="h-12 w-12" />
+        )}
         <span className="min-w-0 flex-1">
           <span className="block font-medium text-gray-900">{s.name}</span>
           <span className="block text-sm text-gray-500">
