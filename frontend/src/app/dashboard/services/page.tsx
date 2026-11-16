@@ -11,6 +11,7 @@ import { CategoryInput } from "@/components/CategoryInput";
 import { DurationInput } from "@/components/DurationInput";
 import { ServiceThumb } from "@/components/ServiceThumb";
 import { groupByCategory } from "@/lib/services";
+import { scrollFieldUp } from "@/lib/scroll-field";
 import type { Service } from "@/lib/types";
 
 const NO_CATEGORY = "Sin categoría";
@@ -47,7 +48,8 @@ function ServiceFields({
 }) {
   const set = (patch: Partial<ServiceForm>) => onChange({ ...value, ...patch });
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    // en el celular, el campo que se toca sube para no quedar bajo el teclado
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" onFocus={scrollFieldUp}>
       <Field label="Nombre" className="sm:col-span-2">
         <Input
           value={value.name}
