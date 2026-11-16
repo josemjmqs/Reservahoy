@@ -397,7 +397,8 @@ export default function PublicPage({
       />
 
       {showBar && (
-        <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)-var(--safe-bottom-max))] z-10 border-t border-gray-200 bg-white/95 pb-[var(--safe-bottom-max)] backdrop-blur">
+        // data-fixed-bottom: centerInView descuenta lo que tapa esta barra
+        <div data-fixed-bottom className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)-var(--safe-bottom-max))] z-10 border-t border-gray-200 bg-white/95 pb-[var(--safe-bottom-max)] backdrop-blur">
           <div className="mx-auto w-full max-w-md px-6 py-3">
             {noOneDoesAll ? (
               <p className="text-sm text-amber-800">

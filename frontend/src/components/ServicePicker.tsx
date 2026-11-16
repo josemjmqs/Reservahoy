@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ServiceThumb } from "@/components/ServiceThumb";
+import { centerInView } from "@/lib/center-in-view";
 import { publicDuration } from "@/lib/format";
 import { groupByCategory } from "@/lib/services";
 import type { PublicBusiness } from "@/lib/types";
@@ -134,8 +135,15 @@ function ServiceRow({
   onOpenChange: (open: boolean) => void;
   onToggle: (id: string) => void;
 }) {
+  const rowRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLButtonElement>(null);
   const detailId = `service-${s.id}`;
+
+  // Al abrirse, el servicio (fila y detalle) queda centrado en la pantalla. Corre
+  // después de que se cierra el que estaba abierto, con las posiciones ya al día
+  useEffect(() => {
+    if (open && rowRef.current) centerInView(rowRef.current);
+  }, [open]);
 
   function choose() {
     onToggle(s.id);
@@ -147,6 +155,7 @@ function ServiceRow({
 
   return (
     <div
+      ref={rowRef}
       className={
         selected
           ? // franja a la izquierda: se ve aunque el color de marca sea claro
@@ -214,6 +223,9 @@ function ServiceRow({
             <img
               src={s.imageUrl}
               alt={s.name}
+              // hasta que carga no se sabe su alto: al cargar el detalle crece
+              // y se vuelve a centrar
+              onLoad={() => rowRef.current && centerInView(rowRef.current)}
               // foto completa en su proporción; el alto máximo evita que una
               // foto vertical ocupe toda la pantalla del celular
               className="mx-auto h-auto max-h-[60vh] w-auto max-w-full rounded-lg"
