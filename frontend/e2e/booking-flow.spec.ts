@@ -76,6 +76,13 @@ test("tocar un servicio muestra su detalle y se elige con Seleccionar", async ({
   await expect(row).toHaveAttribute("aria-expanded", "false");
   await expect(select).toHaveCount(1);
 
+  // tocar el detalle fuera de sus botones lo cierra sin elegir
+  await row.click();
+  const detail = page.locator(`#${await row.getAttribute("aria-controls")}`);
+  await detail.click({ position: { x: 4, y: 4 } });
+  await expect(row).toHaveAttribute("aria-expanded", "false");
+  await expect(seeTimes).toHaveCount(0);
+
   await row.click();
   await select.click();
   await expect(seeTimes).toBeVisible();
