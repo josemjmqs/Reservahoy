@@ -53,7 +53,7 @@ test("el cliente elige con qué profesional reserva", async ({ page }) => {
 });
 
 // Tocar un servicio abre su detalle (foto y descripción) sin elegirlo: se elige
-// con "Seleccionar" y se quita con "Quitar"
+// con "Seleccionar" y se quita con "Quitar" o tocando el check de la fila
 test("tocar un servicio muestra su detalle y se elige con Seleccionar", async ({
   page,
 }) => {
@@ -91,6 +91,14 @@ test("tocar un servicio muestra su detalle y se elige con Seleccionar", async ({
   await row.click();
   await page.getByRole("button", { name: "Quitar", exact: true }).click();
   await expect(seeTimes).toHaveCount(0);
+
+  // el check de un servicio elegido lo quita sin abrir su detalle
+  await row.click();
+  await select.click();
+  await expect(seeTimes).toBeVisible();
+  await page.getByRole("button", { name: "Desmarcar Corte de pelo" }).click();
+  await expect(seeTimes).toHaveCount(0);
+  await expect(row).toHaveAttribute("aria-expanded", "false");
 });
 
 // En la barra de abajo, tocar los servicios elegidos despliega qué se está
@@ -103,7 +111,9 @@ test("la barra de abajo muestra el detalle de lo elegido", async ({ page }) => {
 
   for (const name of [/^Corte de pelo/, /^Lavado y peinado/]) {
     await page.getByRole("button", { name }).click();
-    await page.getByRole("button", { name: "Seleccionar", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Seleccionar", exact: true })
+      .click();
   }
 
   const toggle = page.getByRole("button", {
