@@ -27,12 +27,18 @@ export function ServicePicker({
   onToggle: (id: string) => void;
   maxReached?: boolean; // ya se eligió el máximo: no se pueden sumar más
 }) {
+  // Si alguno tiene foto, los que no la tienen muestran su inicial en el mismo
+  // recuadro: todas las filas se ven iguales y el texto queda alineado. Si
+  // ninguno tiene foto, la lista va sin recuadros
+  const withThumbs = services.some((s) => s.imageUrl);
+
   const rows = (items: PublicService[]) => (
     <div className="divide-y divide-gray-100">
       {items.map((s) => (
         <ServiceRow
           key={s.id}
           service={s}
+          withThumb={withThumbs}
           selected={selectedIds.includes(s.id)}
           disabled={maxReached && !selectedIds.includes(s.id)}
           open={openId === s.id}
@@ -122,6 +128,7 @@ export function ServicePicker({
 
 function ServiceRow({
   service: s,
+  withThumb,
   selected,
   disabled,
   open,
@@ -129,6 +136,7 @@ function ServiceRow({
   onToggle,
 }: {
   service: PublicService;
+  withThumb: boolean;
   selected: boolean;
   disabled: boolean;
   open: boolean;
@@ -175,9 +183,10 @@ function ServiceRow({
           selected ? "" : "hover:bg-gray-50"
         }`}
       >
-        {/* abierto, la foto se ve completa abajo: no se repite en miniatura */}
-        {s.imageUrl && !open && (
-          <ServiceThumb src={s.imageUrl} className="h-12 w-12" />
+        {/* abierto, la foto se ve completa abajo: no se repite en miniatura
+            (sin foto, la inicial se queda: abajo no hay nada que la reemplace) */}
+        {withThumb && !(s.imageUrl && open) && (
+          <ServiceThumb src={s.imageUrl} name={s.name} className="h-12 w-12" />
         )}
         <span className="min-w-0 flex-1">
           <span className="block font-medium text-gray-900">{s.name}</span>
