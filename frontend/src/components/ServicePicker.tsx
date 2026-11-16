@@ -153,12 +153,17 @@ function ServiceRow({
     if (open && rowRef.current) centerInView(rowRef.current);
   }, [open]);
 
+  // El foco vuelve a la fila al cerrar, no se pierde
+  function close() {
+    onOpenChange(false);
+    headerRef.current?.focus();
+  }
+
   function choose() {
     onToggle(s.id);
     // elegido (o quitado) se cierra: la fila ya muestra el check y la lista
-    // queda corta para seguir eligiendo. El foco vuelve a la fila, no se pierde
-    onOpenChange(false);
-    headerRef.current?.focus();
+    // queda corta para seguir eligiendo
+    close();
   }
 
   return (
@@ -226,7 +231,18 @@ function ServiceRow({
         )}
       </button>
       {open && (
-        <div id={detailId} className="flex flex-col gap-3 px-4 pb-4">
+        // tocar cualquier parte del detalle (foto, descripción, aviso) lo
+        // cierra, salvo sus botones. Un botón deshabilitado ("Seleccionar" con
+        // el máximo elegido) también se excluye: Chrome pasa su clic al padre
+        // y cerrar escondería el aviso de por qué no se puede. Con teclado se
+        // cierra desde la fila
+        <div
+          id={detailId}
+          onClick={(e) => {
+            if (!(e.target as HTMLElement).closest("button")) close();
+          }}
+          className="flex cursor-pointer flex-col gap-3 px-4 pb-4"
+        >
           {s.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element -- la foto ya viene reducida; no usamos el optimizador de Vercel
             <img
