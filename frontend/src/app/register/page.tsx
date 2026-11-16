@@ -137,10 +137,14 @@ export default function RegisterPage() {
                         role="note"
                         className="absolute inset-x-0 top-full z-10 mt-1 rounded-lg border border-gray-200 bg-white p-3 text-xs text-gray-600 shadow-md"
                       >
-                        Crea el link de tu negocio, solo minúsculas, números y
-                        guiones. Ejemplo:{" "}
+                        Crea el link de tu negocio. Solo minúsculas, guiones y
+                        números. Por ejemplo, si escribes{" "}
                         <span className="whitespace-nowrap font-medium text-gray-800">
-                          reservahoy.cl/tu-negocio
+                          taller-perez
+                        </span>
+                        , tu link será{" "}
+                        <span className="whitespace-nowrap font-medium text-gray-800">
+                          reservahoy.cl/taller-perez
                         </span>
                       </p>
                     )}
