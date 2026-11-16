@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { bookFirstSlot, loginAsDemo, STAFF, workdayFrom } from "./helpers";
+import {
+  bookFirstSlot,
+  DEMO,
+  loginAsDemo,
+  STAFF,
+  workdayFrom,
+} from "./helpers";
 
 // Lo que de verdad le importa a un negocio: un cliente reserva desde la página
 // pública y el dueño la ve en su agenda. Usa el negocio demo del seed.
@@ -44,4 +50,38 @@ test("el cliente elige con qué profesional reserva", async ({ page }) => {
   await page.goto(`/dashboard/agenda?date=${date}`);
   const card = page.getByRole("listitem").filter({ hasText: customer });
   await expect(card).toContainText(`Con ${STAFF.name}`);
+});
+
+// Tocar un servicio abre su detalle (foto y descripción) sin elegirlo: se elige
+// con "Seleccionar" y se quita con "Quitar"
+test("tocar un servicio muestra su detalle y se elige con Seleccionar", async ({
+  page,
+}) => {
+  await page.goto(`/${DEMO.slug}`);
+  const category = page.getByRole("button", { name: /^Pelo/ });
+  if ((await category.getAttribute("aria-expanded")) === "false")
+    await category.click();
+
+  const row = page.getByRole("button", { name: /^Corte de pelo/ });
+  const select = page.getByRole("button", { name: "Seleccionar", exact: true });
+  const seeTimes = page.getByRole("link", { name: "Ver horas" });
+
+  await row.click();
+  await expect(row).toHaveAttribute("aria-expanded", "true");
+  await expect(select).toBeVisible();
+  await expect(seeTimes).toHaveCount(0);
+
+  // abrir otro servicio cierra el anterior: un solo detalle a la vez
+  await page.getByRole("button", { name: /^Lavado y peinado/ }).click();
+  await expect(row).toHaveAttribute("aria-expanded", "false");
+  await expect(select).toHaveCount(1);
+
+  await row.click();
+  await select.click();
+  await expect(seeTimes).toBeVisible();
+  await expect(row).toHaveAttribute("aria-expanded", "false");
+
+  await row.click();
+  await page.getByRole("button", { name: "Quitar", exact: true }).click();
+  await expect(seeTimes).toHaveCount(0);
 });
