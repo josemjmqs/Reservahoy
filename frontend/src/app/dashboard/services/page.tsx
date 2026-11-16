@@ -25,7 +25,7 @@ const empty = {
   name: "",
   category: "",
   description: "",
-  durationMin: 30,
+  durationMin: "30", // texto, para que el campo pueda quedar vacío mientras se escribe
   totalMin: "",
   price: "",
 };
@@ -86,7 +86,7 @@ function ServiceFields({
           min={5}
           max={480}
           value={value.durationMin}
-          onChange={(e) => set({ durationMin: Number(e.target.value) })}
+          onChange={(e) => set({ durationMin: e.target.value })}
           required
         />
       </Field>
@@ -98,7 +98,7 @@ function ServiceFields({
           value={value.totalMin}
           onChange={(totalMin) => set({ totalMin })}
           // no menor que el tiempo de atención (lo revisa también el backend)
-          minMinutes={Math.max(5, value.durationMin || 5)}
+          minMinutes={Math.max(5, Number(value.durationMin) || 5)}
           maxMinutes={TOTAL_MAX}
         />
       </Field>
@@ -226,7 +226,7 @@ export default function ServicesPage() {
       name: s.name,
       category: s.category ?? "",
       description: s.description ?? "",
-      durationMin: s.durationMin,
+      durationMin: String(s.durationMin),
       totalMin: s.totalMin === null ? "" : String(s.totalMin),
       price: s.price === null ? "" : String(s.price),
     });
