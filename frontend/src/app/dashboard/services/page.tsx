@@ -115,6 +115,9 @@ function ServiceFields({
           onChange={(e) => set({ description: e.target.value })}
           maxLength={DESCRIPTION_MAX}
           rows={2}
+          // crece con el texto para que se vea completo (sin field-sizing,
+          // como en Firefox, queda de 2 líneas con desplazamiento)
+          className="min-h-[3.75rem] field-sizing-content"
         />
       </Field>
     </div>
@@ -307,7 +310,7 @@ export default function ServicesPage() {
         </div>
         <div className={s.active ? "" : "opacity-50"}>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <p className="font-medium">{s.name}</p>
+            <p className="break-words font-medium">{s.name}</p>
             {!s.active && (
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
                 Desactivado
@@ -320,7 +323,7 @@ export default function ServicesPage() {
             {s.price !== null && ` · $${s.price.toLocaleString("es-CL")}`}
           </p>
           {s.description && (
-            <p className="mt-1 line-clamp-2 whitespace-pre-line text-sm text-gray-500">
+            <p className="mt-1 whitespace-pre-line break-words text-sm text-gray-500">
               {s.description}
             </p>
           )}
