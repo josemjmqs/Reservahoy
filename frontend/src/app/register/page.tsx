@@ -19,7 +19,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [slugInfoOpen, setSlugInfoOpen] = useState(false);
   const slugInfoButtonRef = useRef<HTMLButtonElement>(null);
-  const slugInfoRef = useRef<HTMLParagraphElement>(null);
+  const slugInfoRef = useRef<HTMLDivElement>(null);
 
   // The slug info popover closes with Escape or a tap anywhere but the button
   // or the popover, including the field itself, so it never hides the live link.
@@ -131,22 +131,25 @@ export default function RegisterPage() {
                       </svg>
                     </button>
                     {slugInfoOpen && (
-                      <p
+                      <div
                         ref={slugInfoRef}
                         id="slug-info"
                         role="note"
-                        className="absolute inset-x-0 top-full z-10 mt-1 rounded-lg border border-gray-200 bg-white p-3 text-xs text-gray-600 shadow-md"
+                        className="absolute inset-x-0 top-full z-10 mt-1 space-y-2 rounded-lg border border-gray-200 bg-white p-3 text-xs text-gray-600 shadow-md"
                       >
-                        Crea el link de tu negocio. Solo minúsculas, guiones y
-                        números. Por ejemplo, si escribes{" "}
-                        <span className="whitespace-nowrap font-medium text-gray-800">
-                          taller-perez
-                        </span>
-                        , tu link será{" "}
-                        <span className="whitespace-nowrap font-medium text-gray-800">
+                        <p>Crea el link de tu negocio.</p>
+                        <p>Usa solo letras minúsculas, números y guiones.</p>
+                        <p>
+                          Por ejemplo, si escribes{" "}
+                          <span className="whitespace-nowrap font-medium text-gray-800">
+                            taller-perez
+                          </span>
+                          , tu link será:
+                        </p>
+                        <p className="break-all font-medium text-gray-800">
                           reservahoy.cl/taller-perez
-                        </span>
-                      </p>
+                        </p>
+                      </div>
                     )}
                   </>
                 )}
