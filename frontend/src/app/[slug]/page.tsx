@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { Button, Card, Field, Input } from "@/components/ui";
 import type { BookingResult, PublicBusiness } from "@/lib/types";
 import { ServicePicker } from "@/components/ServicePicker";
+import { ServiceThumb } from "@/components/ServiceThumb";
 import { DayStrip, todayISO } from "@/components/DayStrip";
 import { CheckIcon, MapPinIcon, PhoneIcon } from "@/components/icons";
 import { mapsUrl } from "@/lib/maps";
@@ -141,6 +142,19 @@ export default function PublicPage({
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState<BookingResult | null>(null);
   const [copied, setCopied] = useState(false);
+  // Detalle de lo elegido desplegado en la barra de abajo
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  // Escape lo cierra esté donde esté el foco (al quitar un servicio, su botón
+  // desaparece y el foco queda en la página)
+  useEffect(() => {
+    if (!detailsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDetailsOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [detailsOpen]);
 
   useEffect(() => {
     api<PublicBusiness>(`/public/${slug}`)
@@ -365,6 +379,8 @@ export default function PublicPage({
   // La barra de abajo acompaña mientras se elige; con la hora elegida se
   // oculta para no tapar el formulario (que ya muestra el resumen)
   const showBar = selected.length > 0 && !startsAt;
+  // Si alguno tiene foto, el detalle de la barra muestra miniaturas (como la lista)
+  const withThumbs = business.services.some((s) => s.imageUrl);
 
   return (
     <main
@@ -396,31 +412,139 @@ export default function PublicPage({
         maxReached={serviceIds.length >= MAX_SERVICES}
       />
 
+      {showBar && detailsOpen && (
+        // desplegado, tocar fuera del detalle lo cierra
+        <div
+          aria-hidden
+          onClick={() => setDetailsOpen(false)}
+          className="fixed inset-0 z-10 bg-black/20"
+        />
+      )}
       {showBar && (
         // data-fixed-bottom: centerInView descuenta lo que tapa esta barra
-        <div data-fixed-bottom className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)-var(--safe-bottom-max))] z-10 border-t border-gray-200 bg-white/95 pb-[var(--safe-bottom-max)] backdrop-blur">
+        <div
+          data-fixed-bottom
+          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)-var(--safe-bottom-max))] z-20 border-t border-gray-200 bg-white/95 pb-[var(--safe-bottom-max)] backdrop-blur"
+        >
           <div className="mx-auto w-full max-w-md px-6 py-3">
-            {noOneDoesAll ? (
-              <p className="text-sm text-amber-800">
-                Ningún profesional hace todos estos servicios en una misma
-                visita. Quita alguno o resérvalos por separado.
-              </p>
-            ) : (
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-gray-900">
-                    {selected.map((s) => s.name).join(" + ")}
+            {detailsOpen && (
+              <div
+                id="booking-details"
+                // con muchos servicios se desplaza adentro: la barra no tapa
+                // toda la pantalla
+                className="mb-3 max-h-[min(55vh,26rem)] overflow-y-auto border-b border-gray-200 pb-3"
+              >
+                <p className="text-sm font-semibold text-gray-900">
+                  Lo que estás reservando
+                </p>
+                <ul className="mt-2 flex flex-col gap-3">
+                  {selected.map((s) => (
+                    <li key={s.id} className="flex items-start gap-3">
+                      {withThumbs && (
+                        <ServiceThumb
+                          src={s.imageUrl}
+                          name={s.name}
+                          className="h-10 w-10"
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900">
+                          {s.name}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {[
+                            publicDuration(s.durationMin, s.totalMin),
+                            s.price !== null &&
+                              `$${s.price.toLocaleString("es-CL")}`,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                        {s.description && (
+                          // la completa está en el detalle de la lista
+                          <p className="mt-0.5 line-clamp-2 text-sm text-gray-600">
+                            {s.description}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={`Quitar ${s.name}`}
+                        onClick={() => {
+                          if (selected.length === 1) setDetailsOpen(false);
+                          toggleService(s.id);
+                        }}
+                        className="h-10 shrink-0 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        Quitar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {selected.length > 1 && (
+                  <p className="mt-3 text-sm text-gray-600">
+                    Se hacen seguidos, en este orden y con un mismo
+                    profesional.
                   </p>
-                  <p className="text-sm text-gray-600">{summary}</p>
-                </div>
+                )}
+                {member && (
+                  <p className="mt-1 text-sm text-gray-600">
+                    Con {member.displayName}
+                  </p>
+                )}
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-3">
+              {/* tocar lo elegido despliega su detalle (y lo vuelve a cerrar) */}
+              <button
+                type="button"
+                aria-expanded={detailsOpen}
+                aria-controls="booking-details"
+                // nombre propio: si empezara con el del servicio se confundiría
+                // con su fila de la lista
+                aria-label={`Lo que estás reservando: ${selected.map((s) => s.name).join(" + ")}`}
+                onClick={() => setDetailsOpen(!detailsOpen)}
+                className="-m-1 flex min-w-0 flex-1 items-center gap-2 rounded-lg p-1 text-left transition hover:bg-gray-50"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-gray-900">
+                    {selected.map((s) => s.name).join(" + ")}
+                  </span>
+                  {noOneDoesAll ? (
+                    <span className="block text-sm text-amber-800">
+                      Ningún profesional hace todos estos servicios en una
+                      misma visita. Quita alguno o resérvalos por separado.
+                    </span>
+                  ) : (
+                    <span className="block text-sm text-gray-600">
+                      {summary}
+                    </span>
+                  )}
+                </span>
+                <svg
+                  aria-hidden
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  // hacia arriba: el detalle se despliega sobre la barra
+                  className={`h-5 w-5 shrink-0 text-gray-400 transition-transform ${detailsOpen ? "" : "rotate-180"}`}
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+              {!noOneDoesAll && (
                 <a
                   href="#dia-y-hora"
+                  onClick={() => setDetailsOpen(false)}
                   className="inline-flex min-h-10 shrink-0 items-center rounded-lg bg-brand px-3 text-sm font-medium text-brand-fg hover:bg-brand-hover"
                 >
                   Ver horas
                 </a>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}

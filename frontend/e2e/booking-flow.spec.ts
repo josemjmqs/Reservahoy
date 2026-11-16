@@ -92,3 +92,36 @@ test("tocar un servicio muestra su detalle y se elige con Seleccionar", async ({
   await page.getByRole("button", { name: "Quitar", exact: true }).click();
   await expect(seeTimes).toHaveCount(0);
 });
+
+// En la barra de abajo, tocar los servicios elegidos despliega qué se está
+// reservando (cada servicio con su duración y precio) y permite quitarlos
+test("la barra de abajo muestra el detalle de lo elegido", async ({ page }) => {
+  await page.goto(`/${DEMO.slug}`);
+  const category = page.getByRole("button", { name: /^Pelo/ });
+  if ((await category.getAttribute("aria-expanded")) === "false")
+    await category.click();
+
+  for (const name of [/^Corte de pelo/, /^Lavado y peinado/]) {
+    await page.getByRole("button", { name }).click();
+    await page.getByRole("button", { name: "Seleccionar", exact: true }).click();
+  }
+
+  const toggle = page.getByRole("button", {
+    name: "Lo que estás reservando: Corte de pelo + Lavado y peinado",
+  });
+  const details = page.locator("#booking-details");
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await toggle.click();
+  await expect(details).toContainText("Corte de pelo");
+  await expect(details).toContainText("Lavado y peinado");
+  await expect(details).toContainText("Se hacen seguidos");
+
+  // quitar uno desde el detalle lo saca de la reserva
+  await page.getByRole("button", { name: "Quitar Lavado y peinado" }).click();
+  await expect(details).not.toContainText("Lavado y peinado");
+  await expect(details).not.toContainText("Se hacen seguidos");
+
+  // Escape lo cierra
+  await page.keyboard.press("Escape");
+  await expect(details).toHaveCount(0);
+});
