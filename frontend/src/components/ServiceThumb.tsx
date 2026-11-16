@@ -3,12 +3,16 @@
 import { useState } from "react";
 
 // Miniatura cuadrada de un servicio. Sin foto (o si la foto no carga) muestra
-// un ícono, así todas las filas reservan el mismo espacio y el texto queda alineado
+// un ícono, así todas las filas reservan el mismo espacio y el texto queda alineado.
+// Con `name` (página pública) muestra en cambio la inicial en el color de marca:
+// un ícono de "sin foto" se vería como una imagen rota para el cliente
 export function ServiceThumb({
   src,
+  name,
   className = "h-14 w-14",
 }: {
   src: string | null;
+  name?: string;
   className?: string;
 }) {
   const [failed, setFailed] = useState<string | null>(null);
@@ -22,6 +26,18 @@ export function ServiceThumb({
         onError={() => setFailed(src)}
         className={`${className} shrink-0 rounded-lg object-cover`}
       />
+    );
+
+  if (name !== undefined)
+    return (
+      <div
+        aria-hidden
+        // --brand-ring directo: la variable del tema se resuelve en :root
+        className={`${className} flex shrink-0 items-center justify-center rounded-lg bg-brand/15 text-lg font-semibold text-[var(--brand-ring,#4f46e5)]`}
+      >
+        {/* Array.from: la inicial puede ser un emoji (dos unidades UTF-16) */}
+        {Array.from(name.trim())[0]?.toLocaleUpperCase("es")}
+      </div>
     );
 
   return (
