@@ -15,7 +15,8 @@ const focusRing =
 
 // Servicios de la página pública: una tarjeta por categoría (una sola, sin
 // título, si no hay categorías) con los servicios como filas. Tocar una fila
-// abre su detalle (foto y descripción) y ahí se elige con "Seleccionar"
+// abre su detalle (foto y descripción) y ahí se elige con "Seleccionar"; el
+// check de un servicio elegido lo quita
 export function ServicePicker({
   services,
   selectedIds,
@@ -166,6 +167,15 @@ function ServiceRow({
     close();
   }
 
+  // Desde el check de la fila: si su detalle estaba abierto se cierra (como con
+  // "Quitar"), pero no toca otro detalle abierto. El check desaparece, así que
+  // el foco pasa a la fila
+  function unselect() {
+    onToggle(s.id);
+    if (open) onOpenChange(false);
+    headerRef.current?.focus();
+  }
+
   return (
     <div
       ref={rowRef}
@@ -177,59 +187,80 @@ function ServiceRow({
           : ""
       }
     >
-      {/* tocar la fila solo abre el detalle; elegir es el botón de adentro */}
-      <button
-        ref={headerRef}
-        type="button"
-        aria-expanded={open}
-        aria-controls={detailId}
-        onClick={() => onOpenChange(!open)}
-        className={`flex w-full items-center gap-3 px-4 py-3 text-left transition ${focusRing} ${
-          selected ? "" : "hover:bg-gray-50"
-        }`}
-      >
-        {/* abierto, la foto se ve completa abajo: no se repite en miniatura
+      <div className="flex">
+        {/* tocar la fila solo abre el detalle; elegir es el botón de adentro */}
+        <button
+          ref={headerRef}
+          type="button"
+          aria-expanded={open}
+          aria-controls={detailId}
+          onClick={() => onOpenChange(!open)}
+          className={`flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left transition ${focusRing} ${
+            selected ? "" : "pr-4 hover:bg-gray-50"
+          }`}
+        >
+          {/* abierto, la foto se ve completa abajo: no se repite en miniatura
             (sin foto, la inicial se queda: abajo no hay nada que la reemplace) */}
-        {withThumb && !(s.imageUrl && open) && (
-          <ServiceThumb src={s.imageUrl} name={s.name} className="h-12 w-12" />
-        )}
-        <span className="min-w-0 flex-1">
-          <span className="block font-medium text-gray-900">{s.name}</span>
-          <span className="block text-sm text-gray-500">
-            {publicDuration(s.durationMin, s.totalMin)}
+          {withThumb && !(s.imageUrl && open) && (
+            <ServiceThumb
+              src={s.imageUrl}
+              name={s.name}
+              className="h-12 w-12"
+            />
+          )}
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium text-gray-900">{s.name}</span>
+            <span className="block text-sm text-gray-500">
+              {publicDuration(s.durationMin, s.totalMin)}
+            </span>
           </span>
-        </span>
-        {s.price !== null && (
-          <span className="shrink-0 font-semibold tabular-nums text-gray-900">
-            ${s.price.toLocaleString("es-CL")}
-          </span>
-        )}
-        {selected ? (
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-brand-ring bg-brand text-brand-fg">
-            <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-              <title>Elegido</title>
+          {s.price !== null && (
+            <span className="shrink-0 font-semibold tabular-nums text-gray-900">
+              ${s.price.toLocaleString("es-CL")}
+            </span>
+          )}
+          {!selected && (
+            <svg
+              aria-hidden
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className={`h-5 w-5 shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+            >
               <path
                 fillRule="evenodd"
-                d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0Z"
+                d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z"
                 clipRule="evenodd"
               />
             </svg>
-          </span>
-        ) : (
-          <svg
-            aria-hidden
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            className={`h-5 w-5 shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+          )}
+        </button>
+        {selected && (
+          // el check es un botón aparte (no se anida en la fila): tocarlo quita
+          // el servicio sin abrir el detalle. Ocupa todo el alto de la fila para
+          // que sea fácil de tocar en el celular
+          <button
+            type="button"
+            aria-label={`Desmarcar ${s.name}`}
+            onClick={unselect}
+            className={`flex shrink-0 items-center pl-3 pr-4 ${focusRing}`}
           >
-            <path
-              fillRule="evenodd"
-              d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z"
-              clipRule="evenodd"
-            />
-          </svg>
+            <span className="flex h-5 w-5 items-center justify-center rounded-full border border-brand-ring bg-brand text-brand-fg">
+              <svg
+                aria-hidden
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-3.5 w-3.5"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </span>
+          </button>
         )}
-      </button>
+      </div>
       {open && (
         // tocar cualquier parte del detalle (foto, descripción, aviso) lo
         // cierra, salvo sus botones. Un botón deshabilitado ("Seleccionar" con
