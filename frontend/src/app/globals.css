@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f9fafb;
-  --foreground: #111827;
+  --background: var(--color-gray-50);
+  --foreground: var(--color-gray-900);
   /* Alto de la barra de navegación de abajo del panel en el celular (sin el
      borde del iPhone): la usan el panel y lo que va fijo sobre ella */
   --tabbar-h: 3.5rem;
@@ -21,11 +21,48 @@
   color-scheme: light;
 }
 
+/* Sistema visual de Reservahoy ("la hora manda"): neutros con un leve tinte
+   índigo, el índigo del logo (#4F39F6, el indigo-600 de Tailwind) solo para
+   acciones y lo elegido, y la hora como el elemento que se reconoce (utilidad
+   `time`). Los grises reemplazan la escala `gray` de Tailwind para que todas
+   las pantallas la usen sin cambiar sus clases; para código nuevo, los nombres
+   con significado (ink, muted, line, paper, accent) */
+@theme {
+  --color-gray-50: #f7f7fa;
+  --color-gray-100: #efeff4;
+  --color-gray-200: #e3e2ec;
+  --color-gray-300: #cdccda;
+  --color-gray-400: #9c9bb0;
+  --color-gray-500: #6e6d85;
+  --color-gray-600: #56556d;
+  --color-gray-700: #424157;
+  --color-gray-800: #2a293e;
+  --color-gray-900: #16152b;
+  --color-gray-950: #0c0b1b;
+
+  /* Texto, texto secundario, bordes, fondo y acción */
+  --color-ink: var(--color-gray-900);
+  --color-muted: var(--color-gray-600);
+  --color-line: var(--color-gray-200);
+  --color-paper: var(--color-gray-50);
+  --color-accent: var(--color-indigo-600);
+  --color-accent-hover: var(--color-indigo-700);
+  --color-accent-soft: var(--color-indigo-50);
+
+  /* Bordes redondeados por jerarquía: lo que se toca (botones, campos), lo que
+     agrupa (tarjetas) y lo que se abre encima (diálogos, paneles desde abajo) */
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-sheet: 20px;
+
+  /* Sombra solo para lo que flota sobre la página */
+  --shadow-float: 0 12px 32px -8px rgb(22 21 43 / 0.18), 0 2px 6px rgb(22 21 43 / 0.06);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
   /* Color de marca del negocio en su página pública: `--brand` y `--brand-fg`
      (texto encima) los define brandStyle (lib/brand.ts); sin ellos, el índigo */
   --color-brand: var(--brand, #4f46e5);
@@ -34,6 +71,16 @@
   /* Bordes y marcas de lo elegido sobre fondo claro: el color de marca, u
      oscurecido si es claro (amarillo, celeste...) para que se vea (brandStyle) */
   --color-brand-ring: var(--brand-ring, var(--brand, #4f46e5));
+}
+
+/* Horas (09:30): Instrument Sans angosta, seminegrita y con cifras de igual
+   ancho, para que se alineen en columna y se lean de un vistazo. Es lo que
+   distingue a Reservahoy: usarla en toda hora que se muestre o se elija */
+@utility time {
+  font-stretch: 80%;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.005em;
 }
 
 /* Reserva el espacio de la barra de desplazamiento: el contenido no se corre
@@ -45,4 +92,22 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
+  font-feature-settings: "kern";
+  line-height: 1.5;
+}
+
+/* Foco visible solo con teclado, en el índigo, para todo lo que se puede tocar */
+:where(a, button, [role="button"], summary):focus-visible {
+  outline: 2px solid var(--color-indigo-600);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

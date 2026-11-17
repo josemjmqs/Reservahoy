@@ -18,7 +18,7 @@ const MINUTES = Array.from(
 );
 
 const cell =
-  "h-11 rounded-lg border text-base tabular-nums transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300";
+  "h-11 rounded-control border text-base time transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300";
 const cellIdle = "border-gray-200 bg-white text-gray-900 hover:bg-gray-50";
 const cellOn = "border-indigo-600 bg-indigo-600 text-white";
 
@@ -73,7 +73,7 @@ export function TimePicker({
         aria-haspopup="dialog"
         disabled={disabled}
         onClick={open}
-        className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm tabular-nums sm:h-9.5 hover:border-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:cursor-default disabled:border-gray-300 disabled:bg-gray-50 disabled:text-gray-600"
+        className="h-10 rounded-control border border-gray-300 bg-white px-3 text-[15px] time sm:h-9.5 hover:border-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:cursor-default disabled:border-gray-300 disabled:bg-gray-50 disabled:text-gray-600"
       >
         {value}
       </button>
@@ -87,12 +87,12 @@ export function TimePicker({
           aria-label={label}
           // Tocar fuera del panel (el fondo oscuro) lo cierra sin cambiar nada
           onClick={(e) => e.target === e.currentTarget && close()}
-          className="m-0 mt-auto w-full max-w-none rounded-t-2xl bg-white p-0 text-gray-900 backdrop:bg-black/40 sm:m-auto sm:max-w-sm sm:rounded-2xl"
+          className="m-0 mt-auto w-full max-w-none rounded-t-sheet bg-white p-0 shadow-float text-gray-900 backdrop:bg-black/40 sm:m-auto sm:max-w-sm sm:rounded-sheet"
         >
           <div className="px-4 pt-4 pb-[max(1rem,var(--safe-bottom-max))]">
             <div className="mb-3 flex items-baseline justify-between gap-3">
               <h2 className="text-sm font-medium text-gray-600">{label}</h2>
-              <p className="text-3xl font-semibold tabular-nums">
+              <p className="text-4xl time">
                 <button
                   type="button"
                   aria-label="Cambiar la hora"

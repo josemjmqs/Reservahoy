@@ -111,7 +111,7 @@ export default function ManageBookingPage({
 
         <div className="mt-4 border-t border-gray-100 pt-4">
           <p className="capitalize">{day}</p>
-          <p className="text-2xl font-semibold tracking-tight">{time}</p>
+          <p className="text-3xl time">{time}</p>
         </div>
 
         {booking.business.address && (

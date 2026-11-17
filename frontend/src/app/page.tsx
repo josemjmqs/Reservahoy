@@ -173,13 +173,13 @@ function PhoneMockup() {
         </div>
         <div>
           <p className="mb-2 text-xs font-semibold">Hora</p>
-          <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
+          <div className="grid grid-cols-3 gap-1.5 text-center text-[13px] time">
             {times.map((t) => (
               <div
                 key={t}
                 className={
                   t === "11:30"
-                    ? "rounded-lg bg-indigo-600 py-[7px] font-semibold text-white"
+                    ? "rounded-lg bg-indigo-600 py-[7px] text-white"
                     : "rounded-lg border border-gray-200 py-[7px]"
                 }
               >
