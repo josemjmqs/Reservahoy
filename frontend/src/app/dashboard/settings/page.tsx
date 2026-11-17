@@ -90,7 +90,7 @@ function BrandColorField({
           aria-label="Elegir el color en la paleta"
           value={valid ? value.toLowerCase() : DEFAULT_BRAND}
           onChange={(e) => onChange(e.target.value)}
-          className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-gray-300 bg-white p-1"
+          className="h-10 w-12 shrink-0 cursor-pointer rounded-control border border-gray-300 bg-white p-1"
         />
         <Input
           aria-labelledby="brand-color-label"
@@ -106,7 +106,7 @@ function BrandColorField({
           <button
             type="button"
             onClick={() => onChange("")}
-            className="min-h-10 rounded-lg px-3 text-sm font-medium text-gray-600 transition hover:bg-gray-100"
+            className="min-h-10 rounded-control px-3 text-sm font-medium text-gray-600 transition hover:bg-gray-100"
           >
             Usar el de Reservahoy
           </button>
@@ -119,16 +119,16 @@ function BrandColorField({
       <div
         aria-hidden
         style={brandStyle(valid ? value : null)}
-        className="mt-1 flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 p-3"
+        className="mt-1 flex flex-wrap items-center gap-2 rounded-card bg-gray-50 p-3"
       >
         <span className="text-xs text-gray-500">Vista previa</span>
-        <span className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-brand-fg">
+        <span className="rounded-control bg-brand px-3 py-2 text-sm font-medium text-brand-fg">
           Confirmar reserva
         </span>
-        <span className="rounded-lg border border-brand bg-brand px-3 py-2 text-[15px] time text-brand-fg">
+        <span className="rounded-control border border-brand bg-brand px-3 py-2 text-[15px] time text-brand-fg">
           10:30
         </span>
-        <span className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-[15px] time">
+        <span className="rounded-control border border-gray-200 bg-white px-3 py-2 text-[15px] time">
           11:00
         </span>
       </div>
@@ -205,7 +205,7 @@ function BusinessSection() {
       </h2>
       <form
         onSubmit={save}
-        className="space-y-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+        className="space-y-3 rounded-card border border-line bg-white p-4"
       >
         {form ? (
           <>
@@ -409,7 +409,7 @@ export default function SettingsPage() {
       <h2 className="mb-2 mt-6 text-sm font-medium text-gray-900">
         Notificaciones
       </h2>
-      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="rounded-card border border-line bg-white p-4">
         {settings ? (
           <fieldset disabled={saving}>
             <legend className="font-medium">
@@ -423,7 +423,7 @@ export default function SettingsPage() {
               {options.map((o) => (
                 <label
                   key={o.value}
-                  className={`flex min-h-10 cursor-pointer items-start gap-3 rounded-md border px-3 py-2 transition has-[:disabled]:cursor-default has-[:disabled]:opacity-60 ${
+                  className={`flex min-h-10 cursor-pointer items-start gap-3 rounded-control border px-3 py-2 transition has-[:disabled]:cursor-default has-[:disabled]:opacity-60 ${
                     settings.newBookings === o.value
                       ? "border-indigo-600 bg-indigo-50"
                       : "border-gray-200 hover:bg-gray-50"

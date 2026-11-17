@@ -24,7 +24,7 @@ export function ServiceThumb({
         src={src}
         alt=""
         onError={() => setFailed(src)}
-        className={`${className} shrink-0 rounded-lg object-cover`}
+        className={`${className} shrink-0 rounded-control object-cover`}
       />
     );
 
@@ -33,7 +33,7 @@ export function ServiceThumb({
       <div
         aria-hidden
         // --brand-ring directo: la variable del tema se resuelve en :root
-        className={`${className} flex shrink-0 items-center justify-center rounded-lg bg-brand/15 text-lg font-semibold text-[var(--brand-ring,#4f46e5)]`}
+        className={`${className} flex shrink-0 items-center justify-center rounded-control bg-brand/15 text-lg font-semibold text-[var(--brand-ring,#4f46e5)]`}
       >
         {/* Array.from: la inicial puede ser un emoji (dos unidades UTF-16) */}
         {Array.from(name.trim())[0]?.toLocaleUpperCase("es")}
@@ -43,7 +43,7 @@ export function ServiceThumb({
   return (
     <div
       aria-hidden
-      className={`${className} flex shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-400`}
+      className={`${className} flex shrink-0 items-center justify-center rounded-control bg-gray-100 text-gray-400`}
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-6 w-6">
         <rect x="3" y="4" width="18" height="16" rx="2" />

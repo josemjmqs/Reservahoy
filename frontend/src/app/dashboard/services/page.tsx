@@ -394,7 +394,7 @@ export default function ServicesPage() {
                 </span>
               </h2>
             )}
-            <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white shadow-sm">
+            <ul className="divide-y divide-gray-200 rounded-card border border-line bg-white">
               {items.map(renderRow)}
             </ul>
           </section>

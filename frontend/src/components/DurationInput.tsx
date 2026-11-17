@@ -61,7 +61,7 @@ export function DurationInput({
           setUnitId(next.id);
           onChange(toMinutes(amount, next.factor));
         }}
-        className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+        className="rounded-control border border-gray-300 bg-white px-3 py-2 text-sm"
       >
         {UNITS.map((u) => (
           <option key={u.id} value={u.id}>

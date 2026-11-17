@@ -89,7 +89,7 @@ export function CategoryInput({
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 text-sm shadow-lg"
+          className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-control border border-line bg-white py-1 text-sm shadow-float"
         >
           {matches.map((option, i) => (
             <li
