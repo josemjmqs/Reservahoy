@@ -58,7 +58,7 @@ export function DayStrip({
                 >
                   {d.weekday}
                 </span>
-                <span className="text-base font-semibold tabular-nums sm:text-lg">
+                <span className="text-base time sm:text-lg">
                   {d.day}
                 </span>
               </button>

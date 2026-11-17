@@ -125,10 +125,10 @@ function BrandColorField({
         <span className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-brand-fg">
           Confirmar reserva
         </span>
-        <span className="rounded-lg border border-brand bg-brand px-3 py-2 text-sm tabular-nums text-brand-fg">
+        <span className="rounded-lg border border-brand bg-brand px-3 py-2 text-[15px] time text-brand-fg">
           10:30
         </span>
-        <span className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm tabular-nums">
+        <span className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-[15px] time">
           11:00
         </span>
       </div>

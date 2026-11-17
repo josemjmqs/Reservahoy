@@ -612,7 +612,7 @@ export default function PublicPage({
                   type="button"
                   aria-pressed={startsAt === s}
                   onClick={() => setStartsAt(s)}
-                  className={`h-10 rounded-lg border text-sm tabular-nums transition ${
+                  className={`h-10 rounded-control border text-[15px] time transition ${
                     startsAt === s
                       ? "border-brand bg-brand text-brand-fg"
                       : "border-gray-200 bg-white hover:border-brand/40"
