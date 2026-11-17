@@ -1,5 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { DateTime } from 'luxon';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { StorageService } from '../storage/storage.service';
 import { AvailabilityService } from './availability.service';
@@ -73,6 +74,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await prisma.workingHours.deleteMany({ where: { member: { businessId } } });
+  await prisma.timeBlock.deleteMany({ where: { businessId } });
   await prisma.memberService.deleteMany({ where: { member: { businessId } } });
   await prisma.member.deleteMany({ where: { businessId } });
   await prisma.service.deleteMany({ where: { businessId } });
@@ -119,6 +122,7 @@ describe('AvailabilityService.getBusiness (página pública)', () => {
         'services',
         'slug',
         'timezone',
+        'todayHours',
       ].sort(),
     );
     expect(Object.keys(page.members[0]).sort()).toEqual(
@@ -179,6 +183,94 @@ describe('AvailabilityService.getBusiness (página pública)', () => {
         data: { active: true },
       });
     }
+  });
+
+  // "Hoy atiende de ... a ...": el miércoles 18 de noviembre de 2026, a las
+  // 8:00 en Santiago (antes de abrir: el horario es de todo el día)
+  describe('todayHours', () => {
+    const tz = 'America/Santiago';
+    const now = DateTime.fromISO('2026-11-18T08:00', { zone: tz });
+    const at = (hhmm: string) =>
+      DateTime.fromISO(`2026-11-18T${hhmm}`, { zone: tz }).toJSDate();
+    let morning: string;
+    let afternoon: string;
+
+    beforeAll(async () => {
+      [morning, afternoon] = await Promise.all(
+        ['Mañana', 'Tarde'].map(
+          async (displayName) =>
+            (
+              await prisma.member.create({
+                data: { role: 'STAFF', displayName, businessId },
+              })
+            ).id,
+        ),
+      );
+      // Miércoles = 3; la tarde también trabaja el jueves (no cuenta hoy)
+      await prisma.workingHours.createMany({
+        data: [
+          { memberId: morning, weekday: 3, opensAt: '09:00', closesAt: '14:00' },
+          {
+            memberId: afternoon,
+            weekday: 3,
+            opensAt: '12:00',
+            closesAt: '20:30',
+            breakStartsAt: '15:00',
+            breakEndsAt: '16:00',
+          },
+          { memberId: afternoon, weekday: 4, opensAt: '07:00', closesAt: '22:00' },
+        ],
+      });
+    });
+
+    afterEach(() => prisma.timeBlock.deleteMany({ where: { businessId } }));
+
+    const hoursFor = (ids: string[]) =>
+      availability.todayHours({ slug, timezone: tz }, ids, now);
+
+    it('va de la primera apertura al último cierre de quienes atienden hoy', async () => {
+      expect(await hoursFor([morning, afternoon])).toEqual({
+        opensAt: '09:00',
+        closesAt: '20:30',
+      });
+    });
+
+    it('no cuenta a quien tiene un bloqueo que cubre todo su horario', async () => {
+      await prisma.timeBlock.create({
+        data: { businessId, memberId: morning, startsAt: at('00:00'), endsAt: at('23:59') },
+      });
+      expect(await hoursFor([morning, afternoon])).toEqual({
+        opensAt: '12:00',
+        closesAt: '20:30',
+      });
+    });
+
+    it('un bloqueo de parte del día no cambia el horario', async () => {
+      await prisma.timeBlock.create({
+        data: { businessId, memberId: null, startsAt: at('10:00'), endsAt: at('11:00') },
+      });
+      expect(await hoursFor([morning, afternoon])).toEqual({
+        opensAt: '09:00',
+        closesAt: '20:30',
+      });
+    });
+
+    it('con un bloqueo de todo el negocio, hoy no atiende', async () => {
+      await prisma.timeBlock.create({
+        data: { businessId, memberId: null, startsAt: at('00:00'), endsAt: at('23:59') },
+      });
+      expect(await hoursFor([morning, afternoon])).toBeNull();
+    });
+
+    it('sin horario para hoy, o sin profesionales, es null', async () => {
+      expect(await hoursFor([])).toBeNull();
+      const other = (
+        await prisma.member.create({
+          data: { role: 'STAFF', displayName: 'Sin horario', businessId },
+        })
+      ).id;
+      expect(await hoursFor([other])).toBeNull();
+    });
   });
 
   it('un slug que no existe responde 404', async () => {

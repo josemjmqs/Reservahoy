@@ -27,6 +27,9 @@ export interface PublicBusiness {
   brandColor: string | null;
   logoUrl: string | null;
   acceptsBookings: boolean;
+  // Hoy, de la primera apertura al último cierre del equipo ("HH:mm"); null si
+  // hoy no atiende nadie (AvailabilityService.todayHours)
+  todayHours: { opensAt: string; closesAt: string } | null;
   services: Omit<Service, "active">[];
   members: {
     id: string;

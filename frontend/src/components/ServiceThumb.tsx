@@ -33,7 +33,7 @@ export function ServiceThumb({
       <div
         aria-hidden
         // --brand-ring directo: la variable del tema se resuelve en :root
-        className={`${className} flex shrink-0 items-center justify-center rounded-control bg-brand/15 text-lg font-semibold text-[var(--brand-ring,#4f46e5)]`}
+        className={`${className} flex shrink-0 items-center justify-center rounded-control bg-brand/15 text-lg font-semibold text-[var(--brand-ring,#4f39f6)]`}
       >
         {/* Array.from: la inicial puede ser un emoji (dos unidades UTF-16) */}
         {Array.from(name.trim())[0]?.toLocaleUpperCase("es")}

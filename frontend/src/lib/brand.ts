@@ -1,10 +1,10 @@
 import type { CSSProperties } from "react";
 
-// Color de Reservahoy (indigo-600): el de la página pública si el negocio no eligió uno
-export const DEFAULT_BRAND = "#4f46e5";
+// Color de Reservahoy (el del logo, indigo-600 de Tailwind 4): el de la página pública si el negocio no eligió uno
+export const DEFAULT_BRAND = "#4f39f6";
 
 const WHITE = "#ffffff";
-const DARK = "#111827"; // gray-900
+const DARK = "#16152b"; // gray-900 del sistema visual (globals.css)
 
 // Luminancia relativa de un color "#rrggbb" (WCAG 2)
 function luminance(hex: string) {
