@@ -47,7 +47,7 @@ export function DayStrip({
                 aria-pressed={selected}
                 aria-label={d.label}
                 onClick={() => onChange(d.iso)}
-                className={`flex h-14 flex-col items-center justify-center rounded-lg border transition ${
+                className={`flex h-14 flex-col items-center justify-center rounded-control border transition ${
                   selected
                     ? "border-brand bg-brand text-brand-fg"
                     : "border-gray-200 bg-white hover:border-brand/40"
@@ -72,7 +72,7 @@ export function DayStrip({
           value={value}
           min={todayISO()}
           onChange={(e) => e.target.value && onChange(e.target.value)}
-          className="min-h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          className="min-h-10 rounded-control border border-gray-300 bg-white px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
         />
       </label>
     </div>

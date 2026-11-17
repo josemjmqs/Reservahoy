@@ -37,11 +37,11 @@ export function PhotoPicker({
           <img
             src={imageUrl}
             alt={alt}
-            className={`${size} shrink-0 rounded-lg border border-gray-200 bg-gray-50 object-contain`}
+            className={`${size} shrink-0 rounded-control border border-gray-200 bg-gray-50 object-contain`}
           />
         ) : (
           <div
-            className={`${size} flex shrink-0 items-center justify-center rounded-lg border border-dashed border-gray-300 text-xs text-gray-400`}
+            className={`${size} flex shrink-0 items-center justify-center rounded-control border border-dashed border-gray-300 text-xs text-gray-400`}
           >
             Sin {noun}
           </div>
@@ -51,7 +51,7 @@ export function PhotoPicker({
             type="button"
             disabled={busy}
             onClick={() => input.current?.click()}
-            className="min-h-10 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+            className="min-h-10 rounded-control border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
           >
             {busy ? "Subiendo..." : `${imageUrl ? "Cambiar" : "Subir"} ${noun}`}
           </button>
@@ -60,7 +60,7 @@ export function PhotoPicker({
               type="button"
               disabled={busy}
               onClick={onRemove}
-              className="min-h-10 rounded-lg px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+              className="min-h-10 rounded-control px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
             >
               Quitar
             </button>

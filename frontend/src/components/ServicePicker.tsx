@@ -65,7 +65,7 @@ export function ServicePicker({
 
   if (!collapsible)
     return (
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <div className="overflow-hidden rounded-card border border-gray-200 bg-white">
         {rows(services)}
       </div>
     );
@@ -79,7 +79,7 @@ export function ServicePicker({
         return (
           <div
             key={name}
-            className="overflow-hidden rounded-xl border border-gray-200 bg-white"
+            className="overflow-hidden rounded-card border border-gray-200 bg-white"
           >
             <button
               type="button"
@@ -284,7 +284,7 @@ function ServiceRow({
               onLoad={() => rowRef.current && centerInView(rowRef.current)}
               // foto completa en su proporción; el alto máximo evita que una
               // foto vertical ocupe toda la pantalla del celular
-              className="mx-auto h-auto max-h-[60vh] w-auto max-w-full rounded-lg"
+              className="mx-auto h-auto max-h-[60vh] w-auto max-w-full rounded-control"
             />
           )}
           {s.description && (
@@ -296,7 +296,7 @@ function ServiceRow({
             <button
               type="button"
               onClick={choose}
-              className="h-10 w-full rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="h-10 w-full rounded-control border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Quitar
             </button>
@@ -306,7 +306,7 @@ function ServiceRow({
                 type="button"
                 onClick={choose}
                 disabled={disabled}
-                className="h-10 w-full rounded-lg bg-brand text-sm font-medium text-brand-fg hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-10 w-full rounded-control bg-brand text-sm font-medium text-brand-fg hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Seleccionar
               </button>

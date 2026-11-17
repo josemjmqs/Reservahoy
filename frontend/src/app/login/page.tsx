@@ -13,7 +13,7 @@ function LoginNotice() {
   const params = useSearchParams();
   if (params.get("reset") === "1") {
     return (
-      <p className="mt-3 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+      <p className="mt-3 rounded-card bg-green-50 p-3 text-sm text-green-700">
         Contraseña actualizada, ya puedes entrar.
       </p>
     );
@@ -22,7 +22,7 @@ function LoginNotice() {
     return (
       <p
         role="status"
-        className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"
+        className="mt-3 rounded-card bg-amber-50 p-3 text-sm text-amber-800"
       >
         Tu sesión expiró. Vuelve a iniciar sesión.
       </p>
@@ -32,7 +32,7 @@ function LoginNotice() {
     return (
       <p
         role="status"
-        className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"
+        className="mt-3 rounded-card bg-amber-50 p-3 text-sm text-amber-800"
       >
         Ya no tienes acceso al panel de este negocio. Si crees que es un error,
         habla con el dueño.

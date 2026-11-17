@@ -208,7 +208,7 @@ function HoursContent() {
       )}
       <ul
         hidden={!loaded}
-        className="my-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white shadow-sm"
+        className="my-4 divide-y divide-gray-200 rounded-card border border-line bg-white"
       >
         {DAYS.map(({ weekday, label }) => {
           const day = days[weekday];

@@ -195,7 +195,7 @@ export default function TeamPage() {
         </p>
       )}
 
-      <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white shadow-sm">
+      <ul className="divide-y divide-gray-200 rounded-card border border-line bg-white">
         {members.map((m) =>
           editingId === m.id ? (
             <li key={m.id} className="p-4">

@@ -48,7 +48,7 @@ function BusinessHeader({
   logoUrl?: string | null;
 }) {
   const chip =
-    "inline-flex min-h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50";
+    "inline-flex min-h-10 items-center gap-2 rounded-control border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50";
   return (
     <header>
       <div className="flex items-center gap-4">
@@ -258,8 +258,8 @@ export default function PublicPage({
           </div>
         </div>
         <div className="mt-10 flex animate-pulse flex-col gap-2">
-          <div className="h-16 rounded-lg bg-gray-200/70" />
-          <div className="h-16 rounded-lg bg-gray-200/70" />
+          <div className="h-16 rounded-card bg-gray-200/70" />
+          <div className="h-16 rounded-card bg-gray-200/70" />
         </div>
       </main>
     );
@@ -345,7 +345,7 @@ export default function PublicPage({
             {member && ` · con ${member.displayName}`}
           </p>
 
-          <div className="mt-5 rounded-lg bg-gray-50 p-3 text-left">
+          <div className="mt-5 rounded-card bg-gray-50 p-3 text-left">
             <p className="text-sm font-medium text-gray-700">
               Guarda este enlace para ver o cancelar tu reserva
             </p>
@@ -353,7 +353,7 @@ export default function PublicPage({
             <div className="mt-3 flex gap-2">
               <Link
                 href={`/reserva/${done.manageToken}`}
-                className="inline-flex min-h-10 items-center rounded-lg bg-brand px-3 text-sm font-medium text-brand-fg hover:bg-brand-hover"
+                className="inline-flex min-h-10 items-center rounded-control bg-brand px-3 text-sm font-medium text-brand-fg hover:bg-brand-hover"
               >
                 Abrir mi reserva
               </Link>
@@ -365,7 +365,7 @@ export default function PublicPage({
                     .then(() => setCopied(true))
                     .catch(() => {})
                 }
-                className="inline-flex min-h-10 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="inline-flex min-h-10 items-center rounded-control border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 {copied ? "Copiado" : "Copiar enlace"}
               </button>
@@ -474,7 +474,7 @@ export default function PublicPage({
                           if (selected.length === 1) setDetailsOpen(false);
                           toggleService(s.id);
                         }}
-                        className="h-10 shrink-0 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        className="h-10 shrink-0 rounded-control border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
                       >
                         Quitar
                       </button>
@@ -504,7 +504,7 @@ export default function PublicPage({
                 // con su fila de la lista
                 aria-label={`Lo que estás reservando: ${selected.map((s) => s.name).join(" + ")}`}
                 onClick={() => setDetailsOpen(!detailsOpen)}
-                className="-m-1 flex min-w-0 flex-1 items-center gap-2 rounded-lg p-1 text-left transition hover:bg-gray-50"
+                className="-m-1 flex min-w-0 flex-1 items-center gap-2 rounded-control p-1 text-left transition hover:bg-gray-50"
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-gray-900">
@@ -539,7 +539,7 @@ export default function PublicPage({
                 <a
                   href="#dia-y-hora"
                   onClick={() => setDetailsOpen(false)}
-                  className="inline-flex min-h-10 shrink-0 items-center rounded-lg bg-brand px-3 text-sm font-medium text-brand-fg hover:bg-brand-hover"
+                  className="inline-flex min-h-10 shrink-0 items-center rounded-control bg-brand px-3 text-sm font-medium text-brand-fg hover:bg-brand-hover"
                 >
                   Ver horas
                 </a>
@@ -565,7 +565,7 @@ export default function PublicPage({
                         setMemberId(m.id);
                         setStartsAt("");
                       }}
-                      className={`min-h-10 rounded-lg border px-3 text-sm transition ${
+                      className={`min-h-10 rounded-control border px-3 text-sm transition ${
                         memberId === m.id
                           ? "border-brand bg-brand text-brand-fg"
                           : "border-gray-200 bg-white hover:border-brand/40"
@@ -600,7 +600,7 @@ export default function PublicPage({
               {Array.from({ length: 8 }, (_, i) => (
                 <div
                   key={i}
-                  className="h-10 animate-pulse rounded-lg bg-gray-200/70"
+                  className="h-10 animate-pulse rounded-control bg-gray-200/70"
                 />
               ))}
             </div>
@@ -624,7 +624,7 @@ export default function PublicPage({
             </div>
           ) : (
             !error && (
-              <p className="rounded-lg border border-dashed border-gray-300 p-4 text-center text-sm text-gray-600">
+              <p className="rounded-card border border-dashed border-gray-300 p-4 text-center text-sm text-gray-600">
                 No hay horas disponibles ese día. Prueba con otro.
               </p>
             )
@@ -635,7 +635,7 @@ export default function PublicPage({
       {startsAt && (
         <form onSubmit={submit}>
           <SectionTitle>Tus datos</SectionTitle>
-          <div className="mb-4 rounded-lg border border-brand/20 bg-brand/5 p-3 text-sm">
+          <div className="mb-4 rounded-card border border-brand/20 bg-brand/5 p-3 text-sm">
             <p className="font-medium text-gray-900">
               {selected.map((s) => s.name).join(" + ")}
             </p>

@@ -115,7 +115,7 @@ export default function RegisterPage() {
                       aria-label="Información sobre el link"
                       aria-expanded={slugInfoOpen}
                       aria-controls="slug-info"
-                      className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-gray-400 hover:text-indigo-600 focus:text-indigo-600 focus:outline-none"
+                      className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-control text-gray-400 hover:text-indigo-600 focus:text-indigo-600 focus:outline-none"
                     >
                       <svg
                         viewBox="0 0 20 20"
@@ -135,7 +135,7 @@ export default function RegisterPage() {
                         ref={slugInfoRef}
                         id="slug-info"
                         role="note"
-                        className="absolute inset-x-0 top-full z-10 mt-1 space-y-2 rounded-lg border border-gray-200 bg-white p-3 text-xs text-gray-600 shadow-md"
+                        className="absolute inset-x-0 top-full z-10 mt-1 space-y-2 rounded-control border border-line bg-white p-3 text-xs text-gray-600 shadow-float"
                       >
                         <p>Crea el link de tu negocio.</p>
                         <p>Usa solo letras minúsculas, números y guiones.</p>
@@ -159,7 +159,7 @@ export default function RegisterPage() {
                   {/* The owner's link, live; a sample one while the field is empty */}
                   <p
                     id="slug-link"
-                    className="break-all rounded-lg bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700"
+                    className="break-all rounded-control bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700"
                   >
                     reservahoy.cl/{form.slug || "tu-negocio"}
                   </p>

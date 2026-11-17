@@ -229,12 +229,14 @@ function AgendaContent() {
     <li key={b.id} className="p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-medium">
-            {time(b.startsAt)} – {time(b.endsAt)}
-            <span className="font-normal text-gray-600">
-              {" "}
-              · {b.services.map((s) => s.name).join(" + ")}
-            </span>
+          {/* La hora primero y grande (utilidad `time`): es lo que se busca
+              al mirar la agenda; el término, más suave */}
+          <p className="time text-xl leading-tight">
+            {time(b.startsAt)}
+            <span className="text-gray-500"> – {time(b.endsAt)}</span>
+          </p>
+          <p className="mt-1 font-medium">
+            {b.services.map((s) => s.name).join(" + ")}
           </p>
           <p className="mt-0.5 text-sm text-gray-600">
             {b.customer.name} · {b.customer.email}
@@ -333,7 +335,7 @@ function AgendaContent() {
             aria-label="Profesional"
             value={memberId}
             onChange={(e) => setMemberId(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm sm:w-auto"
+            className="w-full rounded-control border border-gray-300 bg-white px-3 py-2 text-sm sm:w-auto"
           >
             <option value="">Todos los profesionales</option>
             {members.map((m) => (
@@ -376,7 +378,7 @@ function AgendaContent() {
         </p>
       )}
 
-      <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white shadow-sm">
+      <ul className="divide-y divide-gray-200 rounded-card border border-line bg-white">
         {upcoming.map(renderBooking)}
         {upcoming.length === 0 && (
           <li className="p-6 text-center text-sm text-gray-500">
@@ -395,7 +397,7 @@ function AgendaContent() {
           <p className="mb-3 mt-1 text-sm capitalize text-gray-600">
             {nextDay(next.startsAt)}
           </p>
-          <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white shadow-sm">
+          <ul className="divide-y divide-gray-200 rounded-card border border-line bg-white">
             {renderBooking(next)}
           </ul>
         </section>
@@ -407,7 +409,7 @@ function AgendaContent() {
           <h2 className="mb-3 text-base font-semibold tracking-tight">
             Ya pasaron
           </h2>
-          <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white shadow-sm">
+          <ul className="divide-y divide-gray-200 rounded-card border border-line bg-white">
             {past.map(renderBooking)}
           </ul>
         </section>

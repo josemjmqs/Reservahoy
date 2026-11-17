@@ -82,7 +82,7 @@ export function CompleteBookingDialog({
         e.preventDefault(); // Esc: se cierra por el mismo camino que "Volver"
         close();
       }}
-      className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-xl p-0 shadow-xl backdrop:bg-black/40"
+      className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-sheet p-0 shadow-float backdrop:bg-black/40"
     >
       {booking && (
         <div className="p-5">
@@ -115,7 +115,7 @@ export function CompleteBookingDialog({
                     <img
                       src={p.url}
                       alt={`Foto ${i + 1}`}
-                      className="aspect-square w-full rounded-lg border border-gray-200 bg-gray-50 object-cover"
+                      className="aspect-square w-full rounded-control border border-gray-200 bg-gray-50 object-cover"
                     />
                     <button
                       type="button"
@@ -135,7 +135,7 @@ export function CompleteBookingDialog({
                 type="button"
                 disabled={busy}
                 onClick={() => input.current?.click()}
-                className="mt-2 min-h-10 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+                className="mt-2 min-h-10 rounded-control border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
               >
                 {photos.length ? "Agregar otra foto" : "Agregar fotos"}
               </button>

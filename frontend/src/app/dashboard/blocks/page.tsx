@@ -50,9 +50,17 @@ function describe(block: TimeBlock, timeZone: string) {
       ? `${longDay(start)} · Todo el día`
       : `${shortDay(start)} al ${shortDay(end)} · Todo el día`;
   }
-  return sameDay
-    ? `${longDay(start)} · ${time(start)} a ${time(end)}`
-    : `${shortDay(start)} ${time(start)} al ${shortDay(end)} ${time(end)}`;
+  // Las horas con la utilidad `time`, como en el resto del panel
+  const at = (d: Date) => <span className="time">{time(d)}</span>;
+  return sameDay ? (
+    <>
+      {longDay(start)} · {at(start)} a {at(end)}
+    </>
+  ) : (
+    <>
+      {shortDay(start)} {at(start)} al {shortDay(end)} {at(end)}
+    </>
+  );
 }
 
 export default function BlocksPage() {
@@ -166,7 +174,7 @@ export default function BlocksPage() {
                 <select
                   value={memberId}
                   onChange={(e) => setMemberId(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  className="w-full rounded-control border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                 >
                   <option value="">Todo el negocio</option>
                   {members.map((m) => (
@@ -252,7 +260,7 @@ export default function BlocksPage() {
 
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
       {notice && (
-        <p className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-200">
+        <p className="mb-3 rounded-card bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-200">
           {notice}
         </p>
       )}
@@ -264,7 +272,7 @@ export default function BlocksPage() {
       )}
 
       {data && data.blocks.length > 0 && (
-        <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white shadow-sm">
+        <ul className="divide-y divide-gray-200 rounded-card border border-line bg-white">
           {data.blocks.map((b) => (
             <li
               key={b.id}

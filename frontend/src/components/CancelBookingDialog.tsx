@@ -53,7 +53,7 @@ export function CancelBookingDialog({
         e.preventDefault(); // Esc: se cierra por el mismo camino que "Volver"
         close();
       }}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl p-0 shadow-xl backdrop:bg-black/40"
+      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-sheet p-0 shadow-float backdrop:bg-black/40"
     >
       {booking && (
         <div className="p-5">
