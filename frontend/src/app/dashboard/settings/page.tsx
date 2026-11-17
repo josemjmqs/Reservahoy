@@ -282,6 +282,67 @@ function BusinessSection() {
   );
 }
 
+// Ajuste del negocio (solo el dueño): al marcar una reserva como Completada se
+// le escribe al cliente que su servicio está listo. Se guarda al instante
+function CompletedNotice() {
+  const me = useMe();
+  const [checked, setChecked] = useState(
+    me.membership.business.notifyCompleted,
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function change(notifyCompleted: boolean) {
+    setChecked(notifyCompleted);
+    setSaving(true);
+    setError("");
+    try {
+      const b = await api<BusinessInfo>("/business", {
+        method: "PATCH",
+        body: JSON.stringify({ notifyCompleted }),
+      });
+      setChecked(b.notifyCompleted);
+      // El panel vuelve a cargar /auth/me: la Agenda usa este ajuste
+      window.dispatchEvent(new Event("business-updated"));
+    } catch (e) {
+      setChecked(!notifyCompleted);
+      setError(e instanceof Error ? e.message : "Error inesperado");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 border-t border-gray-200 pt-4">
+      <label className="flex min-h-10 cursor-pointer items-start gap-3 has-[:disabled]:cursor-default has-[:disabled]:opacity-60">
+        <input
+          type="checkbox"
+          checked={checked}
+          disabled={saving}
+          onChange={(e) => change(e.target.checked)}
+          className="mt-1 h-4 w-4 accent-indigo-600"
+        />
+        <span>
+          <span className="block font-medium">
+            Avisar al cliente cuando su servicio está listo
+          </span>
+          <span className="mt-0.5 block text-sm text-gray-600">
+            Al marcar una reserva como Completada en la agenda, le escribimos
+            al cliente que ya puede pasar a buscarlo. Sirve si tus clientes
+            dejan algo y vuelven más tarde. Vale para todo el negocio.
+          </span>
+        </span>
+      </label>
+      {saving && (
+        <p role="status" className="mt-2 text-sm text-gray-500">
+          Guardando...
+        </p>
+      )}
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const owner = isOwner(useMe());
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -397,6 +458,7 @@ export default function SettingsPage() {
           !error && <p className="text-sm text-gray-500">Cargando...</p>
         )}
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        {owner && <CompletedNotice />}
       </div>
     </div>
   );

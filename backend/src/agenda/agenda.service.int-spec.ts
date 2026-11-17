@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import { DateTime } from 'luxon';
 import type {
   CancelledByBusinessEmailData,
+  CompletedEmailData,
   NotificationsService,
 } from '../notifications/notifications.service';
 import type { PrismaService } from '../prisma/prisma.service';
@@ -13,9 +14,14 @@ import { AgendaService } from './agenda.service';
 const prisma = new PrismaClient();
 // Correos simulados: se anotan en vez de enviarse
 const cancelled: CancelledByBusinessEmailData[] = [];
+const completed: CompletedEmailData[] = [];
 const notifications = {
   bookingCancelledByBusiness: (data: CancelledByBusinessEmailData) => {
     cancelled.push(data);
+    return Promise.resolve();
+  },
+  bookingCompleted: (data: CompletedEmailData) => {
+    completed.push(data);
     return Promise.resolve();
   },
 } as unknown as NotificationsService;
@@ -441,6 +447,125 @@ describe('AgendaService.updateStatus', () => {
       await service.updateStatus(ownerUserId, id, 'CANCELLED');
       await settle();
       expect(cancelled).toEqual([]);
+    });
+  });
+
+  describe('correo al cliente de que su servicio está listo', () => {
+    const setNotify = (notifyCompleted: boolean) =>
+      prisma.business.update({
+        where: { id: businessId },
+        data: { notifyCompleted },
+      });
+
+    beforeEach(async () => {
+      await settle();
+      completed.length = 0;
+    });
+    afterEach(() => setNotify(false));
+
+    it('con el aviso activado, completar le avisa una vez con el servicio y el negocio', async () => {
+      await setNotify(true);
+      await prisma.business.update({
+        where: { id: businessId },
+        data: { phone: '+56 9 1111 2222', address: 'Calle 1, Ñuñoa' },
+      });
+      try {
+        const id = await book('01:00');
+        expect(
+          await service.updateStatus(ownerUserId, id, 'COMPLETED'),
+        ).toEqual({ id, status: 'COMPLETED' });
+        await settle();
+        expect(completed).toEqual([
+          {
+            to: `agenda-e-${run}@test.local`,
+            customerName: 'E',
+            businessName: 'Agenda a',
+            businessPhone: '+56 9 1111 2222',
+            businessAddress: 'Calle 1, Ñuñoa',
+            serviceName: 'Color',
+          },
+        ]);
+      } finally {
+        await prisma.business.update({
+          where: { id: businessId },
+          data: { phone: null, address: null },
+        });
+      }
+    });
+
+    it('una reserva pendiente también avisa', async () => {
+      await setNotify(true);
+      await service.updateStatus(
+        ownerUserId,
+        await book('02:00', 'PENDING'),
+        'COMPLETED',
+      );
+      await settle();
+      expect(completed).toHaveLength(1);
+    });
+
+    it('con el aviso desactivado, completar no le escribe al cliente', async () => {
+      const id = await book('03:00');
+      expect(await service.updateStatus(ownerUserId, id, 'COMPLETED')).toEqual({
+        id,
+        status: 'COMPLETED',
+      });
+      await settle();
+      expect(completed).toEqual([]);
+    });
+
+    it('completar dos veces al mismo tiempo manda un solo correo', async () => {
+      await setNotify(true);
+      const id = await book('04:00');
+      await Promise.all([
+        service.updateStatus(ownerUserId, id, 'COMPLETED'),
+        service.updateStatus(ownerUserId, id, 'COMPLETED'),
+      ]);
+      await settle();
+      expect(completed).toHaveLength(1);
+    });
+
+    it('completar una que no estaba activa (cancelada) no le escribe', async () => {
+      await setNotify(true);
+      const id = await book('05:00', 'CANCELLED');
+      await service.updateStatus(ownerUserId, id, 'COMPLETED');
+      await settle();
+      expect(completed).toEqual([]);
+    });
+
+    it('marcar que no se presentó no le escribe', async () => {
+      await setNotify(true);
+      await service.updateStatus(ownerUserId, await book('06:00'), 'NO_SHOW');
+      await settle();
+      expect(completed).toEqual([]);
+    });
+
+    it('si el correo falla, la reserva igual queda completada', async () => {
+      await setNotify(true);
+      const logged = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => {});
+      const failing = new AgendaService(
+        prisma as unknown as PrismaService,
+        {
+          bookingCompleted: () => Promise.reject(new Error('Resend caído')),
+        } as unknown as NotificationsService,
+      );
+      try {
+        const id = await book('07:00');
+        expect(
+          await failing.updateStatus(ownerUserId, id, 'COMPLETED'),
+        ).toEqual({ id, status: 'COMPLETED' });
+        await settle();
+        const saved = await prisma.booking.findUniqueOrThrow({ where: { id } });
+        expect(saved.status).toBe('COMPLETED');
+        expect(logged).toHaveBeenCalledWith(
+          'Error avisando que el servicio está listo',
+          expect.any(Error),
+        );
+      } finally {
+        logged.mockRestore();
+      }
     });
   });
 

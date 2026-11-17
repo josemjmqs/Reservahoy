@@ -73,6 +73,19 @@ describe('UpdateBusinessDto', () => {
     expect(dto.brandColor).toBeNull();
   });
 
+  it.each([true, false])('acepta el aviso de servicio listo %p', async (v) => {
+    expect((await parse({ notifyCompleted: v })).errors).toEqual([]);
+  });
+
+  it.each(['true', 1, null])(
+    'rechaza el aviso de servicio listo %p',
+    async (notifyCompleted) => {
+      expect((await parse({ notifyCompleted })).errors).toEqual([
+        'notifyCompleted',
+      ]);
+    },
+  );
+
   it('quita espacios al nombre y exige al menos 2 letras', async () => {
     expect((await parse({ name: '  Taller Pérez ' })).dto.name).toBe(
       'Taller Pérez',

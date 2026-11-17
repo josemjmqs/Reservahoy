@@ -53,6 +53,15 @@ export interface CancelledByBusinessEmailData {
   reason: string | null;
 }
 
+export interface CompletedEmailData {
+  to: string;
+  customerName: string;
+  businessName: string;
+  businessPhone: string | null;
+  businessAddress: string | null;
+  serviceName: string;
+}
+
 export interface MemberInvitationEmailData {
   to: string;
   memberName: string;
@@ -178,6 +187,31 @@ export class NotificationsService {
           <strong>${escapeHtml(data.serviceName)}</strong> del <strong>${when}</strong>.</p>
           ${data.reason ? `<p>Motivo: ${escapeHtml(data.reason)}</p>` : ''}
           <p><a href="${rebook}">Reservar otra hora</a></p>
+          ${
+            data.businessPhone
+              ? `<p>Si tienes dudas, puedes llamar al ${escapeHtml(data.businessPhone)}.</p>`
+              : ''
+          }
+        `,
+    });
+  }
+
+  // El negocio marcó la reserva como completada y tiene activado el aviso: el
+  // servicio está listo para que el cliente lo pase a buscar. Nunca lanza
+  async bookingCompleted(data: CompletedEmailData): Promise<void> {
+    const address = data.businessAddress
+      ? `<p>Dirección: <a href="${escapeHtml(mapsUrl(data.businessAddress))}">${escapeHtml(data.businessAddress)}</a> (ver en Google Maps)</p>`
+      : '';
+
+    await this.send('servicio listo', {
+      from: this.from,
+      to: data.to,
+      subject: `Tu servicio en ${data.businessName} está listo`,
+      html: `
+          <p>Hola ${escapeHtml(data.customerName)},</p>
+          <p><strong>${escapeHtml(data.businessName)}</strong> terminó tu
+          <strong>${escapeHtml(data.serviceName)}</strong>. Ya puedes pasar a buscarlo.</p>
+          ${address}
           ${
             data.businessPhone
               ? `<p>Si tienes dudas, puedes llamar al ${escapeHtml(data.businessPhone)}.</p>`

@@ -111,6 +111,7 @@ describe('BusinessService', () => {
       address: null,
       brandColor: null,
       logoUrl: null,
+      notifyCompleted: false,
     });
   });
 
@@ -162,6 +163,22 @@ describe('BusinessService', () => {
   it('un miembro que no es dueño no cambia el color', async () => {
     await expect(
       service.update(userIds.staff, { brandColor: '#000000' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('el dueño activa y desactiva el aviso de servicio listo, sin tocar lo demás', async () => {
+    expect(
+      await service.update(userIds.owner, { notifyCompleted: true }),
+    ).toMatchObject({ notifyCompleted: true, name: 'Taller Pérez' });
+    expect((await service.get(userIds.staff)).notifyCompleted).toBe(true);
+    expect((await service.get(userIds.other)).notifyCompleted).toBe(false);
+    await service.update(userIds.owner, { notifyCompleted: false });
+    expect((await service.get(userIds.owner)).notifyCompleted).toBe(false);
+  });
+
+  it('un miembro que no es dueño no cambia el aviso de servicio listo', async () => {
+    await expect(
+      service.update(userIds.staff, { notifyCompleted: true }),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

@@ -131,6 +131,19 @@ export class AgendaService {
       }
     }
 
+    if (status === 'COMPLETED') {
+      // Igual que al cancelar: solo quien la pasa de activa a completada avisa
+      // (si el negocio tiene el aviso activado), así el correo sale una vez
+      const { count } = await this.prisma.booking.updateMany({
+        where: { id, status: { in: ['PENDING', 'CONFIRMED'] } },
+        data: { status: 'COMPLETED' },
+      });
+      if (count === 1) {
+        void this.notifyCompleted(id);
+        return { id, status: 'COMPLETED' as const };
+      }
+    }
+
     try {
       return await this.prisma.booking.update({
         where: { id },
@@ -143,6 +156,45 @@ export class AgendaService {
         throw new ConflictException('Esa hora ya fue tomada por otra reserva');
       }
       throw e;
+    }
+  }
+
+  // Correo al cliente de que su servicio está listo, si el negocio lo tiene
+  // activado. Nunca lanza: un fallo aquí no debe deshacer la reserva completada
+  private async notifyCompleted(id: string) {
+    try {
+      const b = await this.prisma.booking.findUniqueOrThrow({
+        where: { id },
+        select: {
+          customer: { select: { name: true, email: true } },
+          business: {
+            select: {
+              name: true,
+              phone: true,
+              address: true,
+              notifyCompleted: true,
+            },
+          },
+          items: {
+            orderBy: { position: 'asc' },
+            select: { service: { select: { name: true } } },
+          },
+        },
+      });
+      if (!b.business.notifyCompleted) return;
+      await this.notifications.bookingCompleted({
+        to: b.customer.email,
+        customerName: b.customer.name,
+        businessName: b.business.name,
+        businessPhone: b.business.phone,
+        businessAddress: b.business.address,
+        serviceName: b.items.map((i) => i.service.name).join(' + '),
+      });
+    } catch (e) {
+      this.logger.error(
+        'Error avisando que el servicio está listo',
+        e as Error,
+      );
     }
   }
 
