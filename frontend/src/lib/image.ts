@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import type { BusinessInfo, Service } from "@/lib/types";
+import type { BookingStatus, BusinessInfo, Service } from "@/lib/types";
 
 const MAX_SIDE = 1200; // px del lado más largo
 const QUALITY = 0.82;
@@ -55,6 +55,20 @@ export async function uploadBusinessLogo(file: File) {
   const body = new FormData();
   body.append("logo", blob, fileName(blob, "logo"));
   return api<BusinessInfo>("/business/logo", { method: "POST", body });
+}
+
+// Completa una reserva desde la agenda. Las fotos (opcionales) van reducidas
+// dentro del correo de "servicio listo"; no se guardan
+export async function completeBooking(id: string, photos: File[]) {
+  const body = new FormData();
+  for (const [index, file] of photos.entries()) {
+    const blob = await resizeImage(file);
+    body.append("photos", blob, fileName(blob, `foto-${index + 1}`));
+  }
+  return api<{ id: string; status: BookingStatus; notified: boolean }>(
+    `/agenda/${id}/complete`,
+    { method: "POST", body },
+  );
 }
 
 export function removeBusinessLogo() {

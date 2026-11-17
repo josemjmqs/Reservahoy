@@ -1,5 +1,10 @@
 import { jest } from '@jest/globals'; // en modo ESM, jest no es global
-import { ConflictException, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { DateTime } from 'luxon';
 import type {
@@ -320,12 +325,13 @@ describe('AgendaService.updateStatus', () => {
     time: string,
     status: 'CONFIRMED' | 'CANCELLED' | 'PENDING' = 'CONFIRMED',
     member = memberId,
+    day = '2032-02-16',
   ) =>
     (
       await prisma.booking.create({
         data: {
-          startsAt: local('2032-02-16', time),
-          endsAt: DateTime.fromJSDate(local('2032-02-16', time))
+          startsAt: local(day, time),
+          endsAt: DateTime.fromJSDate(local(day, time))
             .plus({ hours: 1 })
             .toJSDate(),
           status,
@@ -483,6 +489,7 @@ describe('AgendaService.updateStatus', () => {
             businessPhone: '+56 9 1111 2222',
             businessAddress: 'Calle 1, Ñuñoa',
             serviceName: 'Color',
+            photos: [],
           },
         ]);
       } finally {
@@ -566,6 +573,113 @@ describe('AgendaService.updateStatus', () => {
       } finally {
         logged.mockRestore();
       }
+    });
+  });
+
+  // Completar desde el diálogo de la agenda, con fotos (otro día, para no
+  // pisar las horas de las pruebas de arriba)
+  describe('complete', () => {
+    const JPG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10]);
+    const PNG = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0,
+    ]);
+    const day = '2032-02-17';
+    const at = (time: string, status?: 'CONFIRMED' | 'CANCELLED') =>
+      book(time, status, memberId, day);
+    const statusOf = async (id: string) =>
+      (await prisma.booking.findUniqueOrThrow({ where: { id } })).status;
+    const setNotify = (notifyCompleted: boolean) =>
+      prisma.business.update({
+        where: { id: businessId },
+        data: { notifyCompleted },
+      });
+
+    beforeEach(async () => {
+      await settle();
+      completed.length = 0;
+    });
+    afterEach(() => setNotify(false));
+
+    it('con el aviso activado, completa y le manda las fotos al cliente', async () => {
+      await setNotify(true);
+      const id = await at('09:00');
+      expect(
+        await service.complete(ownerUserId, id, [
+          { buffer: JPG },
+          { buffer: PNG },
+        ]),
+      ).toEqual({ id, status: 'COMPLETED', notified: true });
+      await settle();
+      expect(completed).toHaveLength(1);
+      expect(completed[0].photos).toEqual([
+        { content: JPG, mime: 'image/jpeg', ext: 'jpg' },
+        { content: PNG, mime: 'image/png', ext: 'png' },
+      ]);
+    });
+
+    it('sin fotos también avisa', async () => {
+      await setNotify(true);
+      const id = await at('10:00');
+      expect(await service.complete(ownerUserId, id)).toMatchObject({
+        notified: true,
+      });
+      await settle();
+      expect(completed[0].photos).toEqual([]);
+    });
+
+    it('con el aviso desactivado completa sin escribirle (notified: false)', async () => {
+      const id = await at('11:00');
+      expect(
+        await service.complete(ownerUserId, id, [{ buffer: JPG }]),
+      ).toEqual({ id, status: 'COMPLETED', notified: false });
+      await settle();
+      expect(completed).toEqual([]);
+    });
+
+    it('una que no estaba activa queda completada sin avisar', async () => {
+      await setNotify(true);
+      const id = await at('12:00', 'CANCELLED');
+      expect(await service.complete(ownerUserId, id)).toEqual({
+        id,
+        status: 'COMPLETED',
+        notified: false,
+      });
+      await settle();
+      expect(completed).toEqual([]);
+    });
+
+    it('rechaza un archivo que no es imagen y la reserva sigue igual (400)', async () => {
+      await setNotify(true);
+      const id = await at('13:00');
+      await expect(
+        service.complete(ownerUserId, id, [
+          { buffer: JPG },
+          { buffer: Buffer.from('<svg></svg>') },
+        ]),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(await statusOf(id)).toBe('CONFIRMED');
+      await settle();
+      expect(completed).toEqual([]);
+    });
+
+    it('rechaza más de 4 fotos (400)', async () => {
+      const id = await at('14:00');
+      await expect(
+        service.complete(
+          ownerUserId,
+          id,
+          Array.from({ length: 5 }, () => ({ buffer: JPG })),
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(await statusOf(id)).toBe('CONFIRMED');
+    });
+
+    it('no se puede completar una reserva de otro negocio (404)', async () => {
+      const id = await at('15:00');
+      await expect(service.complete(otherUserId, id)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(await statusOf(id)).toBe('CONFIRMED');
     });
   });
 

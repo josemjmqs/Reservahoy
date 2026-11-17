@@ -12,7 +12,12 @@ type Result = {
 
 // Resend simulado: devuelve las respuestas en orden y anota cada llamada
 function setup(responses: (Result | Error)[]) {
-  const calls: { to: unknown; html?: string; idempotencyKey?: string }[] = [];
+  const calls: {
+    to: unknown;
+    html?: string;
+    attachments?: unknown;
+    idempotencyKey?: string;
+  }[] = [];
   const service = new NotificationsService({
     get: () => undefined,
   } as unknown as ConfigService);
@@ -21,12 +26,13 @@ function setup(responses: (Result | Error)[]) {
     resend: {
       emails: {
         send: (
-          email: { to: unknown; html?: string },
+          email: { to: unknown; html?: string; attachments?: unknown },
           opts: { idempotencyKey?: string },
         ) => {
           calls.push({
             to: email.to,
             html: email.html,
+            attachments: email.attachments,
             idempotencyKey: opts?.idempotencyKey,
           });
           const next = responses.shift() ?? { error: null };
@@ -135,6 +141,44 @@ describe('NotificationsService: servicio listo', () => {
       'href="https://www.google.com/maps/search/?api=1&amp;query=Av.%20Matta%20100%2C%20%C3%91u%C3%B1oa"',
     );
     expect(html).toContain('llamar al +56 9 1234 5678');
+  });
+
+  it('las fotos van dentro del correo (cid) y como adjuntos en línea', async () => {
+    const { service, calls } = setup([]);
+    const jpg = Buffer.from([0xff, 0xd8, 0xff]);
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+    await service.bookingCompleted({
+      ...data,
+      photos: [
+        { content: jpg, mime: 'image/jpeg', ext: 'jpg' },
+        { content: png, mime: 'image/png', ext: 'png' },
+      ],
+    });
+    expect(calls[0].attachments).toEqual([
+      {
+        filename: 'foto-1.jpg',
+        content: jpg,
+        contentType: 'image/jpeg',
+        contentId: 'foto-1',
+      },
+      {
+        filename: 'foto-2.png',
+        content: png,
+        contentType: 'image/png',
+        contentId: 'foto-2',
+      },
+    ]);
+    const html = calls[0].html ?? '';
+    expect(html).toContain('fotos de cómo quedó');
+    expect(html).toContain('src="cid:foto-1"');
+    expect(html).toContain('src="cid:foto-2"');
+  });
+
+  it('sin fotos no hay adjuntos ni galería', async () => {
+    const { service, calls } = setup([]);
+    await service.bookingCompleted(data);
+    expect(calls[0].attachments).toBeUndefined();
+    expect(calls[0].html).not.toContain('cid:');
   });
 
   it('sin dirección ni teléfono no muestra esas líneas', async () => {
