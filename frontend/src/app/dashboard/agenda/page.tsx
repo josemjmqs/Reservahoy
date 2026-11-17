@@ -5,7 +5,9 @@ import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { formatTime } from "@/lib/format";
 import { isOwner, useMe } from "@/lib/me";
+import { completeBooking } from "@/lib/image";
 import { CancelBookingDialog } from "@/components/CancelBookingDialog";
+import { CompleteBookingDialog } from "@/components/CompleteBookingDialog";
 import { RefreshIcon } from "@/components/icons";
 import { Button, Input } from "@/components/ui";
 import type {
@@ -69,6 +71,8 @@ function AgendaContent() {
   const [next, setNext] = useState<AgendaBooking | null>(null);
   // Reserva que el dueño está por cancelar (abre la confirmación)
   const [toCancel, setToCancel] = useState<AgendaBooking | null>(null);
+  // Reserva que se está por completar avisando al cliente (abre el diálogo)
+  const [toComplete, setToComplete] = useState<AgendaBooking | null>(null);
   // Hora de la última carga correcta: la agenda no está en vivo (se recarga
   // cada 30 s y con "Actualizar"), así que se muestra de cuándo es
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
@@ -190,6 +194,20 @@ function AgendaContent() {
     }
   }
 
+  // Desde el diálogo: si falla, lanza y el diálogo muestra el error
+  async function complete(b: AgendaBooking, photos: File[]) {
+    setError("");
+    setNotice("");
+    const { notified } = await completeBooking(b.id, photos);
+    setToComplete(null);
+    if (notified) {
+      setNotice(
+        `Le avisamos a ${b.customer.name} por correo que su servicio está listo.`,
+      );
+    }
+    await load();
+  }
+
   const time = (s: string) => formatTime(s, TZ);
 
   const dayLabel = new Date(`${date}T12:00:00`).toLocaleDateString("es-CL", {
@@ -242,19 +260,13 @@ function AgendaContent() {
           <Button
             variant="secondary"
             className={ACTION}
-            title={
+            onClick={() =>
+              // Con el aviso de "servicio listo" se confirma en un diálogo
+              // (y se pueden sumar fotos); sin él, se marca al instante
               notifyCompleted
-                ? "Le avisa al cliente por correo que su servicio está listo"
-                : undefined
+                ? setToComplete(b)
+                : setStatus(b.id, "COMPLETED")
             }
-            onClick={async () => {
-              await setStatus(b.id, "COMPLETED");
-              if (notifyCompleted) {
-                setNotice(
-                  `Le avisamos a ${b.customer.name} por correo que su servicio está listo.`,
-                );
-              }
-            }}
           >
             Completada
           </Button>
@@ -400,6 +412,14 @@ function AgendaContent() {
           </ul>
         </section>
       )}
+
+      <CompleteBookingDialog
+        booking={toComplete}
+        onClose={() => setToComplete(null)}
+        onConfirm={async (photos) => {
+          if (toComplete) await complete(toComplete, photos);
+        }}
+      />
 
       <CancelBookingDialog
         booking={toCancel}

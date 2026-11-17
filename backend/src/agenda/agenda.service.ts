@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -8,7 +9,12 @@ import { Prisma } from '@prisma/client';
 import { DateTime } from 'luxon';
 import { getMembership, isOwner, scopeMemberId } from '../auth/membership';
 import { NotificationsService } from '../notifications/notifications.service';
+import type { EmailPhoto } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { detectImageType } from '../storage/image-type';
+
+// Fotos que se pueden mandar en el correo de "servicio listo"
+export const MAX_COMPLETED_PHOTOS = 4;
 
 const BOOKING_SELECT = {
   id: true,
@@ -101,22 +107,28 @@ export class AgendaService {
     return { booking: booking ? toAgendaBooking(booking) : null };
   }
 
-  async updateStatus(
-    userId: string,
-    id: string,
-    status: string,
-    reason?: string,
-  ) {
+  // Un profesional solo cambia sus propias reservas; las de otro, 404
+  private async findScoped(userId: string, id: string) {
     const m = await getMembership(this.prisma, userId);
-    // Un profesional solo cambia sus propias reservas; las de otro, 404
     const booking = await this.prisma.booking.findFirst({
       where: {
         id,
         businessId: m.businessId,
         ...(!isOwner(m) && { memberId: m.memberId }),
       },
+      select: { id: true, businessId: true },
     });
     if (!booking) throw new NotFoundException('Reserva no encontrada');
+    return booking;
+  }
+
+  async updateStatus(
+    userId: string,
+    id: string,
+    status: string,
+    reason?: string,
+  ) {
+    const booking = await this.findScoped(userId, id);
 
     if (status === 'CANCELLED') {
       // Solo quien pasa la reserva de activa a cancelada avisa al cliente, así
@@ -131,17 +143,11 @@ export class AgendaService {
       }
     }
 
-    if (status === 'COMPLETED') {
-      // Igual que al cancelar: solo quien la pasa de activa a completada avisa
-      // (si el negocio tiene el aviso activado), así el correo sale una vez
-      const { count } = await this.prisma.booking.updateMany({
-        where: { id, status: { in: ['PENDING', 'CONFIRMED'] } },
-        data: { status: 'COMPLETED' },
-      });
-      if (count === 1) {
-        void this.notifyCompleted(id);
-        return { id, status: 'COMPLETED' as const };
-      }
+    if (
+      status === 'COMPLETED' &&
+      (await this.markCompleted(booking.businessId, id, []))
+    ) {
+      return { id, status: 'COMPLETED' as const };
     }
 
     try {
@@ -159,21 +165,67 @@ export class AgendaService {
     }
   }
 
-  // Correo al cliente de que su servicio está listo, si el negocio lo tiene
-  // activado. Nunca lanza: un fallo aquí no debe deshacer la reserva completada
-  private async notifyCompleted(id: string) {
+  // Completar desde el diálogo de la agenda, con fotos opcionales (JPG, PNG o
+  // WebP, validadas por sus bytes) que van dentro del correo de "servicio
+  // listo". No se guardan: el bucket es público y son fotos de cosas del
+  // cliente. `notified` dice si se le escribió (el negocio tiene el aviso)
+  async complete(userId: string, id: string, files: { buffer: Buffer }[] = []) {
+    const booking = await this.findScoped(userId, id);
+    if (files.length > MAX_COMPLETED_PHOTOS) {
+      throw new BadRequestException(
+        `Puedes enviar hasta ${MAX_COMPLETED_PHOTOS} fotos`,
+      );
+    }
+    const photos = files.map((f) => {
+      const type = detectImageType(f.buffer);
+      if (!type) {
+        throw new BadRequestException('Las fotos deben ser JPG, PNG o WebP');
+      }
+      return { content: f.buffer, ...type };
+    });
+
+    const done = await this.markCompleted(booking.businessId, id, photos);
+    if (done) return { id, status: 'COMPLETED' as const, ...done };
+    // Ya no estaba activa: queda completada sin avisar, como con PATCH status
+    const updated = await this.prisma.booking.update({
+      where: { id },
+      data: { status: 'COMPLETED' },
+      select: { id: true, status: true },
+    });
+    return { ...updated, notified: false };
+  }
+
+  // Igual que al cancelar: solo quien pasa la reserva de activa a completada
+  // avisa (si el negocio tiene el aviso activado), así el correo sale una vez.
+  // null si ya no estaba activa
+  private async markCompleted(
+    businessId: string,
+    id: string,
+    photos: EmailPhoto[],
+  ) {
+    const { count } = await this.prisma.booking.updateMany({
+      where: { id, status: { in: ['PENDING', 'CONFIRMED'] } },
+      data: { status: 'COMPLETED' },
+    });
+    if (count !== 1) return null;
+    const { notifyCompleted } = await this.prisma.business.findUniqueOrThrow({
+      where: { id: businessId },
+      select: { notifyCompleted: true },
+    });
+    if (notifyCompleted) void this.notifyCompleted(id, photos);
+    return { notified: notifyCompleted };
+  }
+
+  // Correo al cliente de que su servicio está listo. Nunca lanza: un fallo
+  // aquí no debe deshacer la reserva completada
+  private async notifyCompleted(id: string, photos: EmailPhoto[]) {
     try {
       const b = await this.prisma.booking.findUniqueOrThrow({
         where: { id },
         select: {
           customer: { select: { name: true, email: true } },
           business: {
-            select: {
-              name: true,
-              phone: true,
-              address: true,
-              notifyCompleted: true,
-            },
+            select: { name: true, phone: true, address: true },
           },
           items: {
             orderBy: { position: 'asc' },
@@ -181,7 +233,6 @@ export class AgendaService {
           },
         },
       });
-      if (!b.business.notifyCompleted) return;
       await this.notifications.bookingCompleted({
         to: b.customer.email,
         customerName: b.customer.name,
@@ -189,6 +240,7 @@ export class AgendaService {
         businessPhone: b.business.phone,
         businessAddress: b.business.address,
         serviceName: b.items.map((i) => i.service.name).join(' + '),
+        photos,
       });
     } catch (e) {
       this.logger.error(
