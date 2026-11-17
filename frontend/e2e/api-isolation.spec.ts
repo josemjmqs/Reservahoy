@@ -117,6 +117,11 @@ const PANEL_ROUTES: Record<
     other: 404,
     staff: 404, // una reserva de la dueña
   },
+  "POST /agenda/:id/complete": {
+    call: (c, a) => c.post(`/agenda/${a.booking}/complete`),
+    other: 404,
+    staff: 404, // una reserva de la dueña
+  },
   "GET /services": {
     call: (c) => c.get("/services"),
     other: async (res, a) => {
@@ -315,6 +320,7 @@ let ownerA: APIRequestContext;
 let ownerB: APIRequestContext;
 let staffA: APIRequestContext;
 const a = {} as Ids;
+let bookingStatus: string;
 
 test.beforeAll(async () => {
   [anon, ownerA, ownerB, staffA] = await Promise.all([
@@ -357,9 +363,12 @@ test.beforeAll(async () => {
     agenda.length,
     "el seed debe dejar reservas en el negocio demo",
   ).toBeGreaterThan(0);
-  a.booking = agenda.find(
+  const booking = agenda.find(
     (b: { member: { id: string } }) => b.member.id === a.member,
-  ).id;
+  );
+  a.booking = booking.id;
+  // Para revisar al final que nadie la canceló ni la completó
+  bookingStatus = booking.status;
   a.block = (
     await (
       await ownerA.post("/time-blocks", {
@@ -432,9 +441,10 @@ for (const [route, { call, staff }] of Object.entries(PANEL_ROUTES)) {
 // Se revisa después de los intentos del otro negocio y del profesional
 test("los datos del negocio A siguen intactos", async () => {
   const agenda = await (await ownerA.get(`/agenda?${range}`)).json();
-  expect(
-    agenda.find((b: { id: string }) => b.id === a.booking).status,
-  ).not.toBe("CANCELLED");
+  // Ni cancelada ni completada por el otro negocio o el profesional
+  expect(agenda.find((b: { id: string }) => b.id === a.booking).status).toBe(
+    bookingStatus,
+  );
   const services = await (await ownerA.get("/services")).json();
   const service = services.find((s: { id: string }) => s.id === a.service);
   expect(service.name).not.toBe("Hackeado");

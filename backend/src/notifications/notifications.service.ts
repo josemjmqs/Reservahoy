@@ -53,6 +53,13 @@ export interface CancelledByBusinessEmailData {
   reason: string | null;
 }
 
+// Foto que va dentro del correo (imagen en línea, referenciada con cid:)
+export interface EmailPhoto {
+  content: Buffer;
+  mime: string;
+  ext: string;
+}
+
 export interface CompletedEmailData {
   to: string;
   customerName: string;
@@ -60,6 +67,7 @@ export interface CompletedEmailData {
   businessPhone: string | null;
   businessAddress: string | null;
   serviceName: string;
+  photos?: EmailPhoto[];
 }
 
 export interface MemberInvitationEmailData {
@@ -202,15 +210,31 @@ export class NotificationsService {
     const address = data.businessAddress
       ? `<p>Dirección: <a href="${escapeHtml(mapsUrl(data.businessAddress))}">${escapeHtml(data.businessAddress)}</a> (ver en Google Maps)</p>`
       : '';
+    const photos = (data.photos ?? []).map((p, i) => ({
+      filename: `foto-${i + 1}.${p.ext}`,
+      content: p.content,
+      contentType: p.mime,
+      contentId: `foto-${i + 1}`,
+    }));
+    const gallery = photos.length
+      ? `<p>Te dejamos ${photos.length === 1 ? 'una foto' : 'fotos'} de cómo quedó:</p>${photos
+          .map(
+            (p, i) =>
+              `<p><img src="cid:${p.contentId}" alt="Foto ${i + 1}" width="480" style="max-width:100%;height:auto;border-radius:8px"></p>`,
+          )
+          .join('')}`
+      : '';
 
     await this.send('servicio listo', {
       from: this.from,
       to: data.to,
       subject: `Tu servicio en ${data.businessName} está listo`,
+      ...(photos.length && { attachments: photos }),
       html: `
           <p>Hola ${escapeHtml(data.customerName)},</p>
           <p><strong>${escapeHtml(data.businessName)}</strong> terminó tu
           <strong>${escapeHtml(data.serviceName)}</strong>. Ya puedes pasar a buscarlo.</p>
+          ${gallery}
           ${address}
           ${
             data.businessPhone
