@@ -1,5 +1,6 @@
 import { Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsOptional,
   IsString,
   Matches,
@@ -62,4 +63,10 @@ export class UpdateBusinessDto {
     message: 'La dirección debe ser una sola línea, sin < ni >',
   })
   address?: string | null;
+
+  // Avisarle al cliente por correo cuando su reserva se marca como completada.
+  // Puede faltar, pero no ser null (la columna no acepta null)
+  @ValidateIf((_, v) => v !== undefined)
+  @IsBoolean()
+  notifyCompleted?: boolean;
 }

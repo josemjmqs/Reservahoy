@@ -64,6 +64,8 @@ function AgendaContent() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [memberId, setMemberId] = useState(""); // "" = todos
   const [error, setError] = useState("");
+  // Aviso tras marcar Completada con el correo de "servicio listo" activado
+  const [notice, setNotice] = useState("");
   const [next, setNext] = useState<AgendaBooking | null>(null);
   // Reserva que el dueño está por cancelar (abre la confirmación)
   const [toCancel, setToCancel] = useState<AgendaBooking | null>(null);
@@ -103,7 +105,10 @@ function AgendaContent() {
 
   // Solo el dueño elige profesional: el profesional ve únicamente su agenda,
   // sin el filtro ni el "Con {nombre}" (ambos aparecen con más de un miembro)
-  const owner = isOwner(useMe());
+  const me = useMe();
+  const owner = isOwner(me);
+  // Ajuste del negocio: al marcar Completada se le escribe al cliente
+  const notifyCompleted = me.membership.business.notifyCompleted;
   useEffect(() => {
     if (!owner) return;
     api<TeamMember[]>("/members")
@@ -170,6 +175,7 @@ function AgendaContent() {
     reason?: string,
   ) {
     setError("");
+    setNotice("");
     try {
       await api(`/agenda/${id}/status`, {
         method: "PATCH",
@@ -236,7 +242,19 @@ function AgendaContent() {
           <Button
             variant="secondary"
             className={ACTION}
-            onClick={() => setStatus(b.id, "COMPLETED")}
+            title={
+              notifyCompleted
+                ? "Le avisa al cliente por correo que su servicio está listo"
+                : undefined
+            }
+            onClick={async () => {
+              await setStatus(b.id, "COMPLETED");
+              if (notifyCompleted) {
+                setNotice(
+                  `Le avisamos a ${b.customer.name} por correo que su servicio está listo.`,
+                );
+              }
+            }}
           >
             Completada
           </Button>
@@ -340,6 +358,11 @@ function AgendaContent() {
       </div>
 
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+      {notice && !error && (
+        <p role="status" className="mb-3 text-sm text-green-700">
+          {notice}
+        </p>
+      )}
 
       <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white shadow-sm">
         {upcoming.map(renderBooking)}

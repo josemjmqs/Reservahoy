@@ -113,6 +113,42 @@ describe('NotificationsService: confirmación de reserva', () => {
   });
 });
 
+describe('NotificationsService: servicio listo', () => {
+  const data = {
+    to: 'cliente@test.local',
+    customerName: 'Ana <b>',
+    businessName: 'Taller & Cía',
+    businessPhone: '+56 9 1234 5678',
+    businessAddress: 'Av. Matta 100, Ñuñoa',
+    serviceName: 'Lavado + Encerado',
+  };
+
+  it('le dice al cliente que su servicio está listo, con dirección y teléfono, escapado', async () => {
+    const { service, calls } = setup([]);
+    await service.bookingCompleted(data);
+    const html = calls[0].html ?? '';
+    expect(calls[0].to).toBe('cliente@test.local');
+    expect(html).toContain('Hola Ana &lt;b&gt;');
+    expect(html).toContain('<strong>Taller &amp; Cía</strong> terminó tu');
+    expect(html).toContain('<strong>Lavado + Encerado</strong>');
+    expect(html).toContain(
+      'href="https://www.google.com/maps/search/?api=1&amp;query=Av.%20Matta%20100%2C%20%C3%91u%C3%B1oa"',
+    );
+    expect(html).toContain('llamar al +56 9 1234 5678');
+  });
+
+  it('sin dirección ni teléfono no muestra esas líneas', async () => {
+    const { service, calls } = setup([]);
+    await service.bookingCompleted({
+      ...data,
+      businessAddress: null,
+      businessPhone: null,
+    });
+    expect(calls[0].html).not.toContain('Dirección');
+    expect(calls[0].html).not.toContain('llamar');
+  });
+});
+
 describe('mapsUrl', () => {
   it('arma la búsqueda de Google Maps con la dirección codificada', () => {
     expect(mapsUrl('Av. Providencia 1234, Providencia')).toBe(

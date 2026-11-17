@@ -99,7 +99,12 @@ export interface Me {
     memberId: string;
     role: "OWNER" | "STAFF";
     displayName: string;
-    business: { id: string; name: string; slug: string };
+    business: {
+      id: string;
+      name: string;
+      slug: string;
+      notifyCompleted: boolean;
+    };
   };
 }
 
@@ -141,4 +146,6 @@ export interface BusinessInfo {
   address: string | null;
   brandColor: string | null;
   logoUrl: string | null;
+  // Al marcar una reserva como completada se le avisa al cliente que está lista
+  notifyCompleted: boolean;
 }

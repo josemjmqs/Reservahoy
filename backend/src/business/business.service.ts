@@ -17,6 +17,7 @@ const SELECT = {
   address: true,
   brandColor: true,
   logoKey: true,
+  notifyCompleted: true,
 } as const;
 
 // Datos del negocio que ven los clientes (página pública y correos)
@@ -60,6 +61,9 @@ export class BusinessService {
         ...(dto.phone !== undefined && { phone: dto.phone }),
         ...(dto.address !== undefined && { address: dto.address }),
         ...(dto.brandColor !== undefined && { brandColor: dto.brandColor }),
+        ...(dto.notifyCompleted !== undefined && {
+          notifyCompleted: dto.notifyCompleted,
+        }),
       },
       select: SELECT,
     });

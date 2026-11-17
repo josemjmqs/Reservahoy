@@ -118,7 +118,9 @@ export class AuthService {
       where: { id: m.memberId },
       select: {
         displayName: true,
-        business: { select: { name: true, slug: true } },
+        business: {
+          select: { name: true, slug: true, notifyCompleted: true },
+        },
       },
     });
     return {

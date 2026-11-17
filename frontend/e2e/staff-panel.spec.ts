@@ -151,6 +151,8 @@ test("en Ajustes el profesional ve solo su aviso, sin los datos del negocio", as
   await expect(page.getByText("Todas las reservas del negocio")).toHaveCount(0);
   await expect(page.getByText("Datos del negocio")).toHaveCount(0);
   await expect(page.getByLabel("Nombre del negocio")).toHaveCount(0);
+  // El aviso de servicio listo es un ajuste del negocio: solo el dueño
+  await expect(page.getByRole("checkbox")).toHaveCount(0);
 
   try {
     await none.check();
