@@ -14,6 +14,7 @@ import {
   UsersIcon,
 } from "@/components/icons";
 import { isOwner, MeProvider } from "@/lib/me";
+import { clearDrafts } from "@/lib/photo-drafts";
 import type { Me } from "@/lib/types";
 
 // ownerOnly: pestañas que un profesional no ve (Servicios y Equipo son del
@@ -99,6 +100,7 @@ export default function DashboardLayout({
         .then(setMe)
         .catch(async (err) => {
           if (err instanceof ApiError && err.status === 403) {
+            await clearDrafts();
             await api("/auth/logout", { method: "POST" }).catch(() => {});
             router.replace("/login?revoked=1");
           } else {
@@ -119,7 +121,10 @@ export default function DashboardLayout({
     }
   }, [me, pathname, router]);
 
+  // Las fotos guardadas sin enviar pueden ser cosas de clientes: no quedan en
+  // un equipo compartido después de cerrar la sesión
   async function logout() {
+    await clearDrafts();
     await api("/auth/logout", { method: "POST" }).catch(() => {});
     router.push("/login");
   }

@@ -57,12 +57,12 @@ export async function uploadBusinessLogo(file: File) {
   return api<BusinessInfo>("/business/logo", { method: "POST", body });
 }
 
-// Completa una reserva desde la agenda. Las fotos (opcionales) van reducidas
-// dentro del correo de "servicio listo"; no se guardan
-export async function completeBooking(id: string, photos: File[]) {
+// Completa una reserva desde la agenda. Las fotos (opcionales, ya reducidas
+// con resizeImage al elegirlas) van dentro del correo de "servicio listo"; el
+// servidor no las guarda
+export async function completeBooking(id: string, photos: Blob[]) {
   const body = new FormData();
-  for (const [index, file] of photos.entries()) {
-    const blob = await resizeImage(file);
+  for (const [index, blob] of photos.entries()) {
     body.append("photos", blob, fileName(blob, `foto-${index + 1}`));
   }
   return api<{ id: string; status: BookingStatus; notified: boolean }>(

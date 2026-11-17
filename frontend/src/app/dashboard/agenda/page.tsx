@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { formatTime } from "@/lib/format";
 import { isOwner, useMe } from "@/lib/me";
 import { completeBooking } from "@/lib/image";
+import { syncDrafts } from "@/lib/photo-drafts";
 import { CancelBookingDialog } from "@/components/CancelBookingDialog";
 import { CompleteBookingDialog } from "@/components/CompleteBookingDialog";
 import { RefreshIcon } from "@/components/icons";
@@ -73,6 +74,10 @@ function AgendaContent() {
   const [toCancel, setToCancel] = useState<AgendaBooking | null>(null);
   // Reserva que se está por completar avisando al cliente (abre el diálogo)
   const [toComplete, setToComplete] = useState<AgendaBooking | null>(null);
+  // Fotos guardadas sin enviar por reserva (borradores en este navegador) y
+  // un contador para volver a leerlas al cerrar el diálogo
+  const [drafts, setDrafts] = useState<Record<string, number>>({});
+  const [draftsVersion, setDraftsVersion] = useState(0);
   // Hora de la última carga correcta: la agenda no está en vivo (se recarga
   // cada 30 s y con "Actualizar"), así que se muestra de cuándo es
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
@@ -153,6 +158,18 @@ function AgendaContent() {
     };
   }, [showNext, memberId, bookings]);
 
+  // Al cargar la agenda: cuántas fotos guardadas tiene cada reserva, y se
+  // borran las de reservas que ya no están activas
+  useEffect(() => {
+    let stale = false;
+    syncDrafts(next ? [...bookings, next] : bookings).then((counts) => {
+      if (!stale) setDrafts(counts);
+    });
+    return () => {
+      stale = true;
+    };
+  }, [bookings, next, draftsVersion]);
+
   useEffect(() => {
     const refresh = () => {
       if (document.visibilityState === "visible") load();
@@ -195,11 +212,12 @@ function AgendaContent() {
   }
 
   // Desde el diálogo: si falla, lanza y el diálogo muestra el error
-  async function complete(b: AgendaBooking, photos: File[]) {
+  async function complete(b: AgendaBooking, photos: Blob[]) {
     setError("");
     setNotice("");
     const { notified } = await completeBooking(b.id, photos);
     setToComplete(null);
+    setDraftsVersion((v) => v + 1);
     if (notified) {
       setNotice(
         `Le avisamos a ${b.customer.name} por correo que su servicio está listo.`,
@@ -245,6 +263,15 @@ function AgendaContent() {
           {members.length > 1 && (
             <p className="mt-0.5 text-xs text-gray-500">
               Con {b.member.displayName}
+            </p>
+          )}
+          {/* Fotos elegidas en el diálogo de Completada que aún no se envían
+              (quedan en este dispositivo) */}
+          {notifyCompleted && drafts[b.id] > 0 && (
+            <p className="mt-1 text-xs font-medium text-amber-700">
+              {drafts[b.id] === 1
+                ? "1 foto guardada, sin enviar"
+                : `${drafts[b.id]} fotos guardadas, sin enviar`}
             </p>
           )}
         </div>
@@ -417,7 +444,10 @@ function AgendaContent() {
 
       <CompleteBookingDialog
         booking={toComplete}
-        onClose={() => setToComplete(null)}
+        onClose={() => {
+          setToComplete(null);
+          setDraftsVersion((v) => v + 1);
+        }}
         onConfirm={async (photos) => {
           if (toComplete) await complete(toComplete, photos);
         }}
