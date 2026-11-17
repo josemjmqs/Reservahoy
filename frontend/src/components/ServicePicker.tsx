@@ -183,7 +183,7 @@ function ServiceRow({
         selected
           ? // franja a la izquierda: se ve aunque el color de marca sea claro
             // (--brand-ring directo: la variable del tema se resuelve en :root)
-            "bg-brand/10 shadow-[inset_4px_0_0_var(--brand-ring,#4f46e5)]"
+            "bg-brand/10 shadow-[inset_4px_0_0_var(--brand-ring,#4f39f6)]"
           : ""
       }
     >

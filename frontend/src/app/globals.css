@@ -65,12 +65,12 @@
   --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
   /* Color de marca del negocio en su página pública: `--brand` y `--brand-fg`
      (texto encima) los define brandStyle (lib/brand.ts); sin ellos, el índigo */
-  --color-brand: var(--brand, #4f46e5);
+  --color-brand: var(--brand, #4f39f6);
   --color-brand-fg: var(--brand-fg, #ffffff);
-  --color-brand-hover: color-mix(in oklab, var(--brand, #4f46e5) 85%, black);
+  --color-brand-hover: color-mix(in oklab, var(--brand, #4f39f6) 85%, black);
   /* Bordes y marcas de lo elegido sobre fondo claro: el color de marca, u
      oscurecido si es claro (amarillo, celeste...) para que se vea (brandStyle) */
-  --color-brand-ring: var(--brand-ring, var(--brand, #4f46e5));
+  --color-brand-ring: var(--brand-ring, var(--brand, #4f39f6));
 }
 
 /* Horas (09:30): Instrument Sans angosta, seminegrita y con cifras de igual

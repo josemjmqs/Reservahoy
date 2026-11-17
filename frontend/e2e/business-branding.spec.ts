@@ -21,7 +21,7 @@ const rgb = (hex: string) => {
 // Botón de la grilla de días ("lunes, 17 de noviembre"), no el del servicio
 const DAY = /^\S+,? \d{1,2} de \S+$/;
 const WHITE = "rgb(255, 255, 255)";
-const DARK = rgb("#111827");
+const DARK = rgb("#16152b");
 
 // PNG de 1x1 válido: el navegador lo reduce antes de subirlo
 const PNG = Buffer.from(
@@ -100,7 +100,7 @@ test("el color de marca reemplaza al índigo en la página pública, con texto l
       page.getByRole("status").filter({ hasText: "Guardado." }),
     ).toBeVisible();
     await openSlots(page, { category: "Pelo", service: "Corte de pelo", date });
-    await expectColors(pressed(page, DAY), { bg: rgb("#4f46e5"), fg: WHITE });
+    await expectColors(pressed(page, DAY), { bg: rgb("#4f39f6"), fg: WHITE });
   } finally {
     // Deja el negocio demo como estaba
     await page.request.patch("/api/business", { data: { brandColor: null } });

@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { Button, Card, Field, Input } from "@/components/ui";
+import { Button, Field, Input } from "@/components/ui";
 import type { BookingResult, PublicBusiness } from "@/lib/types";
 import { ServicePicker } from "@/components/ServicePicker";
 import { ServiceThumb } from "@/components/ServiceThumb";
@@ -36,47 +36,76 @@ const initials = (name: string) =>
     .map((w) => w[0].toUpperCase())
     .join("");
 
+// La franja de arriba sobre el color del negocio: es su letrero, lo que hace
+// que la página se vea suya y no de Reservahoy. En el celular llega de borde a
+// borde y hasta arriba (anula el relleno del <main>); desde `sm`, una tarjeta.
+// El texto encima usa `--brand-fg` (blanco u oscuro según el color, brandStyle)
+const headerBand =
+  "-mx-6 -mt-10 px-6 pb-7 pt-[max(2.5rem,env(safe-area-inset-top))] sm:mx-0 sm:mt-0 sm:rounded-card sm:p-6";
+
 function BusinessHeader({
   name,
   phone,
   address,
   logoUrl,
+  todayHours,
 }: {
   name: string;
   phone?: string | null;
   address?: string | null;
   logoUrl?: string | null;
+  // Sin pasarlo no se muestra la línea del horario (negocio que no recibe reservas)
+  todayHours?: PublicBusiness["todayHours"];
 }) {
-  const chip =
-    "inline-flex min-h-10 items-center gap-2 rounded-control border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50";
+  // Contacto: enlaces de texto sobre la franja, no botones, para no competir
+  // con los pasos de la reserva (40 px de alto igual, para tocarlos fácil)
+  const contact =
+    "inline-flex min-h-10 max-w-full items-center gap-2 text-sm font-medium underline decoration-current/30 underline-offset-4 transition hover:decoration-current";
   return (
-    <header>
+    <header className={`${headerBand} bg-brand text-brand-fg`}>
       <div className="flex items-center gap-4">
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- el logo ya viene reducido; no usamos el optimizador de Vercel
           <img
             src={logoUrl}
             alt={`Logo de ${name}`}
-            className="h-14 w-14 shrink-0 rounded-2xl border border-gray-200 bg-white object-contain"
+            className="h-16 w-16 shrink-0 rounded-card bg-white object-contain ring-1 ring-black/10"
           />
         ) : (
+          // Las iniciales en el color de marca sobre blanco (oscurecido si es
+          // claro, como los bordes: --brand-ring)
           <div
             aria-hidden
-            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand text-xl font-semibold text-brand-fg"
+            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-card bg-white text-2xl font-semibold text-brand-ring"
           >
             {initials(name)}
           </div>
         )}
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">{name}</h1>
-          <p className="text-gray-600">Reserva tu hora online</p>
+          <h1 className="text-[1.75rem] leading-tight font-semibold tracking-tight text-balance">
+            {name}
+          </h1>
+          {todayHours !== undefined && (
+            <p className="mt-1 text-[15px] text-brand-fg/80">
+              {todayHours ? (
+                <>
+                  Hoy atiende de{" "}
+                  <span className="time text-brand-fg">{todayHours.opensAt}</span>{" "}
+                  a{" "}
+                  <span className="time text-brand-fg">{todayHours.closesAt}</span>
+                </>
+              ) : (
+                "Hoy no atiende"
+              )}
+            </p>
+          )}
         </div>
       </div>
       {(phone || address) && (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-x-5">
           {phone && (
-            <a href={`tel:${phone.replace(/[^\d+]/g, "")}`} className={chip}>
-              <PhoneIcon className="h-4 w-4 shrink-0 text-gray-500" />
+            <a href={`tel:${phone.replace(/[^\d+]/g, "")}`} className={contact}>
+              <PhoneIcon className="h-4 w-4 shrink-0 opacity-80" />
               {phone}
             </a>
           )}
@@ -86,9 +115,9 @@ function BusinessHeader({
               target="_blank"
               rel="noopener noreferrer"
               title="Ver en Google Maps"
-              className={`${chip} min-w-0 max-w-full`}
+              className={`${contact} min-w-0`}
             >
-              <MapPinIcon className="h-4 w-4 shrink-0 text-gray-500" />
+              <MapPinIcon className="h-4 w-4 shrink-0 opacity-80" />
               <span className="min-w-0 break-words">{address}</span>
             </a>
           )}
@@ -250,11 +279,14 @@ export default function PublicPage({
         aria-busy="true"
         aria-label="Cargando"
       >
-        <div className="flex animate-pulse items-center gap-4">
-          <div className="h-14 w-14 rounded-2xl bg-gray-200" />
-          <div className="flex flex-col gap-2">
-            <div className="h-6 w-44 rounded bg-gray-200" />
-            <div className="h-4 w-32 rounded bg-gray-200" />
+        {/* La misma franja del encabezado, en gris mientras carga */}
+        <div className={`${headerBand} animate-pulse bg-gray-200`}>
+          <div className="flex items-center gap-4">
+            <div className="h-16 w-16 rounded-card bg-gray-300/70" />
+            <div className="flex flex-col gap-2">
+              <div className="h-7 w-44 rounded bg-gray-300/70" />
+              <div className="h-4 w-36 rounded bg-gray-300/70" />
+            </div>
           </div>
         </div>
         <div className="mt-10 flex animate-pulse flex-col gap-2">
@@ -327,26 +359,60 @@ export default function PublicPage({
     return (
       <main
         style={brandStyle(business.brandColor)}
-        className="mx-auto w-full max-w-md px-6 py-12"
+        className="mx-auto w-full max-w-md px-6 py-10"
       >
-        <Card className="p-6 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-700">
-            <CheckIcon className="h-6 w-6" />
+        {/* Un comprobante: arriba, sobre el color del negocio, el día y la
+            hora en grande (lo que el cliente necesita recordar); abajo el
+            detalle y, tras el corte punteado, el enlace para gestionarla */}
+        <div className="overflow-hidden rounded-card border border-line bg-white">
+          <div className="bg-brand px-6 pt-5 pb-6 text-brand-fg">
+            <h1 className="flex items-center gap-2 font-semibold">
+              <CheckIcon className="h-5 w-5 shrink-0" />
+              ¡Reserva confirmada!
+            </h1>
+            <p className="mt-5 text-brand-fg/85">
+              {capitalize(longDate(done.startsAt, tz))}
+            </p>
+            <p className="mt-1 time text-6xl leading-none">
+              {fmt(done.startsAt)}
+            </p>
+            <p className="mt-3 text-brand-fg/85">En {business.name}</p>
           </div>
-          <h1 className="mt-3 text-xl font-semibold tracking-tight">
-            ¡Reserva confirmada!
-          </h1>
-          <p className="mt-2 text-gray-600">
-            {capitalize(longDate(done.startsAt, tz))}, a las{" "}
-            {fmt(done.startsAt)}, en {business.name}.
-          </p>
-          <p className="mt-1 text-sm text-gray-500">
-            {selected.map((s) => s.name).join(" + ")}
-            {member && ` · con ${member.displayName}`}
-          </p>
 
-          <div className="mt-5 rounded-card bg-gray-50 p-3 text-left">
-            <p className="text-sm font-medium text-gray-700">
+          <dl className="divide-y divide-line px-6 text-sm">
+            <div className="flex justify-between gap-4 py-3">
+              <dt className="text-gray-600">
+                {selected.length > 1 ? "Servicios" : "Servicio"}
+              </dt>
+              <dd className="text-right font-medium">
+                {selected.map((s) => s.name).join(" + ")}
+              </dd>
+            </div>
+            {member && (
+              <div className="flex justify-between gap-4 py-3">
+                <dt className="text-gray-600">Con</dt>
+                <dd className="text-right font-medium">{member.displayName}</dd>
+              </div>
+            )}
+            {business.address && (
+              <div className="flex justify-between gap-4 py-3">
+                <dt className="text-gray-600">Dónde</dt>
+                <dd className="text-right">
+                  <a
+                    href={mapsUrl(business.address)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium underline decoration-gray-300 underline-offset-4 hover:decoration-current"
+                  >
+                    {business.address}
+                  </a>
+                </dd>
+              </div>
+            )}
+          </dl>
+
+          <div className="border-t border-dashed border-gray-300 bg-paper px-6 py-5">
+            <p className="text-sm font-medium text-gray-800">
               Guarda este enlace para ver o cancelar tu reserva
             </p>
             <p className="mt-1 break-all text-xs text-gray-500">{link}</p>
@@ -371,7 +437,7 @@ export default function PublicPage({
               </button>
             </div>
           </div>
-        </Card>
+        </div>
       </main>
     );
   }
@@ -394,6 +460,7 @@ export default function PublicPage({
         phone={business.phone}
         address={business.address}
         logoUrl={business.logoUrl}
+        todayHours={business.todayHours}
       />
 
       <SectionTitle
