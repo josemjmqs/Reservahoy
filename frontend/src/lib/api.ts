@@ -1,3 +1,5 @@
+import { clearDrafts } from "./photo-drafts";
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -32,7 +34,9 @@ export async function api<T>(
     window.location.pathname.startsWith("/dashboard")
   ) {
     // Navegación completa a propósito: api() no es un componente (no hay
-    // useRouter) y así se deja atrás todo el estado del panel
+    // useRouter) y así se deja atrás todo el estado del panel. Como al cerrar
+    // sesión, se borran las fotos guardadas sin enviar
+    await clearDrafts();
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.assign("/login?expired=1");
     return new Promise<T>(() => {});

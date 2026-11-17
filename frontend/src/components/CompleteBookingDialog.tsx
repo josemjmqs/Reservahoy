@@ -1,33 +1,46 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { resizeImage } from "@/lib/image";
+import { deleteDraft, getDraft, saveDraft } from "@/lib/photo-drafts";
 import type { AgendaBooking } from "@/lib/types";
 import { Button } from "./ui";
 
 // Lo mismo que MAX_COMPLETED_PHOTOS en el backend (agenda.service.ts)
 export const MAX_COMPLETED_PHOTOS = 4;
 
-type Picked = { file: File; url: string };
+type Picked = { blob: Blob; url: string };
+
+const preview = (blob: Blob): Picked => ({
+  blob,
+  url: URL.createObjectURL(blob),
+});
 
 // Se abre al marcar Completada cuando el negocio tiene el aviso de "servicio
 // listo": deja claro que se le escribe al cliente y permite sumar fotos de
-// cómo quedó, que van dentro del correo. Usa <dialog> nativo, como el de
-// cancelar (foco atrapado, Esc para cerrar, fondo)
+// cómo quedó, que van dentro del correo. Las fotos quedan guardadas en este
+// navegador como borrador de la reserva (lib/photo-drafts.ts): se puede
+// cerrar, volver más tarde y sumar otra antes de enviar. Usa <dialog> nativo,
+// como el de cancelar (foco atrapado, Esc para cerrar, fondo)
 export function CompleteBookingDialog({
   booking,
   onClose,
   onConfirm,
 }: {
   booking: AgendaBooking | null;
+  // Al cerrar sin enviar (el borrador puede haber cambiado)
   onClose: () => void;
   // Lanza si no se pudo: el diálogo sigue abierto y muestra el error
-  onConfirm: (photos: File[]) => Promise<void>;
+  onConfirm: (photos: Blob[]) => Promise<void>;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<Picked[]>([]);
+  // Mientras se reducen las fotos recién elegidas
+  const [preparing, setPreparing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const bookingId = booking?.id;
 
   useEffect(() => {
     const dialog = ref.current;
@@ -36,19 +49,55 @@ export function CompleteBookingDialog({
     if (!booking && dialog.open) dialog.close();
   }, [booking]);
 
-  function add(files: FileList) {
+  // Al abrir, las fotos que quedaron guardadas de la vez anterior
+  useEffect(() => {
+    if (!bookingId) return;
+    let stale = false;
+    getDraft(bookingId).then((blobs) => {
+      if (stale || !blobs.length) return;
+      // Si ya se eligió alguna mientras cargaba, se queda la de ahora
+      setPhotos((current) => (current.length ? current : blobs.map(preview)));
+    });
+    return () => {
+      stale = true;
+    };
+  }, [bookingId]);
+
+  // Se reducen al elegirlas (no al enviar), así el borrador ocupa poco
+  async function add(files: File[]) {
+    if (!bookingId) return;
     const room = MAX_COMPLETED_PHOTOS - photos.length;
-    const next = Array.from(files)
-      .slice(0, room)
-      .map((file) => ({ file, url: URL.createObjectURL(file) }));
-    setPhotos([...photos, ...next]);
+    setPreparing(true);
+    setError("");
+    try {
+      const blobs = await Promise.all(
+        files.slice(0, room).map((f) => resizeImage(f)),
+      );
+      const next = [...photos, ...blobs.map(preview)];
+      setPhotos(next);
+      await saveDraft(
+        bookingId,
+        next.map((p) => p.blob),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error inesperado");
+    } finally {
+      setPreparing(false);
+    }
   }
 
   function remove(index: number) {
+    if (!bookingId) return;
     URL.revokeObjectURL(photos[index].url);
-    setPhotos(photos.filter((_, i) => i !== index));
+    const next = photos.filter((_, i) => i !== index);
+    setPhotos(next);
+    void saveDraft(
+      bookingId,
+      next.map((p) => p.blob),
+    );
   }
 
+  // Vacía la vista; el borrador guardado se queda (o ya se borró al enviar)
   function reset() {
     photos.forEach((p) => URL.revokeObjectURL(p.url));
     setPhotos([]);
@@ -56,10 +105,12 @@ export function CompleteBookingDialog({
   }
 
   async function confirm() {
+    if (!bookingId) return;
     setBusy(true);
     setError("");
     try {
-      await onConfirm(photos.map((p) => p.file));
+      await onConfirm(photos.map((p) => p.blob));
+      await deleteDraft(bookingId);
       reset();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
@@ -69,10 +120,12 @@ export function CompleteBookingDialog({
   }
 
   function close() {
-    if (busy) return;
+    if (busy || preparing) return;
     reset();
     onClose();
   }
+
+  const locked = busy || preparing;
 
   return (
     <dialog
@@ -105,7 +158,8 @@ export function CompleteBookingDialog({
             </span>
             <p className="text-xs text-gray-500">
               Hasta {MAX_COMPLETED_PHOTOS}. Van dentro del correo para que vea
-              cómo quedó.
+              cómo quedó. Quedan guardadas en este dispositivo hasta que las
+              envíes: puedes cerrar y volver a sumar otra.
             </p>
             {photos.length > 0 && (
               <ul className="mt-2 grid grid-cols-4 gap-2">
@@ -120,7 +174,7 @@ export function CompleteBookingDialog({
                     <button
                       type="button"
                       aria-label={`Quitar foto ${i + 1}`}
-                      disabled={busy}
+                      disabled={locked}
                       onClick={() => remove(i)}
                       className="absolute -right-1.5 -top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-gray-900/80 text-sm leading-none text-white transition hover:bg-gray-900 disabled:opacity-50"
                     >
@@ -133,11 +187,15 @@ export function CompleteBookingDialog({
             {photos.length < MAX_COMPLETED_PHOTOS && (
               <button
                 type="button"
-                disabled={busy}
+                disabled={locked}
                 onClick={() => input.current?.click()}
                 className="mt-2 min-h-10 rounded-control border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
               >
-                {photos.length ? "Agregar otra foto" : "Agregar fotos"}
+                {preparing
+                  ? "Preparando..."
+                  : photos.length
+                    ? "Agregar otra foto"
+                    : "Agregar fotos"}
               </button>
             )}
             <input
@@ -148,8 +206,9 @@ export function CompleteBookingDialog({
               aria-label="Elegir fotos"
               className="hidden"
               onChange={(e) => {
-                if (e.target.files) add(e.target.files);
+                const files = Array.from(e.target.files ?? []);
                 e.target.value = ""; // permite volver a elegir el mismo archivo
+                if (files.length) void add(files);
               }}
             />
           </div>
@@ -161,11 +220,15 @@ export function CompleteBookingDialog({
               variant="secondary"
               className="h-10 sm:h-auto"
               onClick={close}
-              disabled={busy}
+              disabled={locked}
             >
               Volver
             </Button>
-            <Button className="h-10 sm:h-auto" onClick={confirm} disabled={busy}>
+            <Button
+              className="h-10 sm:h-auto"
+              onClick={confirm}
+              disabled={locked}
+            >
               {busy ? "Enviando..." : "Completar y avisar"}
             </Button>
           </div>
