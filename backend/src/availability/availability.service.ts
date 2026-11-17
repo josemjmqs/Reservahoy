@@ -162,7 +162,13 @@ export class AvailabilityService {
       },
     });
     if (!business) throw new NotFoundException('Negocio no encontrado');
-    const acceptsBookings = await this.acceptsBookings({ slug });
+    const [acceptsBookings, todayHours] = await Promise.all([
+      this.acceptsBookings({ slug }),
+      this.todayHours(
+        { slug, timezone: business.timezone },
+        business.members.map((m) => m.id),
+      ),
+    ]);
     const services = business.services.map(({ imageKey, ...s }) => ({
       ...s,
       imageUrl: this.storage.urlFor(imageKey),
@@ -173,6 +179,58 @@ export class AvailabilityService {
       logoUrl: this.storage.urlFor(logoKey),
       services,
       acceptsBookings,
+      todayHours,
+    };
+  }
+
+  // Horario de hoy del negocio para su página pública ("Hoy atiende de 10:00 a
+  // 19:00"): desde la primera apertura hasta el último cierre de los
+  // profesionales que atienden hoy. No cuenta a quien tiene un bloqueo (suyo o
+  // de todo el negocio) que cubre todo su horario de hoy; si nadie atiende, null.
+  // El almuerzo no corta el rango: es un resumen, las horas reales las da
+  // getSlots
+  async todayHours(
+    business: { slug: string; timezone: string },
+    memberIds: string[],
+    now: DateTime = DateTime.now(),
+  ): Promise<{ opensAt: string; closesAt: string } | null> {
+    if (memberIds.length === 0) return null;
+    const today = now.setZone(business.timezone).startOf('day');
+    const [hours, blocks] = await Promise.all([
+      this.prisma.workingHours.findMany({
+        where: { memberId: { in: memberIds }, weekday: today.weekday % 7 },
+        select: { memberId: true, opensAt: true, closesAt: true },
+      }),
+      this.prisma.timeBlock.findMany({
+        where: {
+          business: { slug: business.slug },
+          startsAt: { lt: today.plus({ days: 1 }).toJSDate() },
+          endsAt: { gt: today.toJSDate() },
+        },
+        select: { memberId: true, startsAt: true, endsAt: true },
+      }),
+    ]);
+    const at = (hhmm: string) => {
+      const [hour, minute] = hhmm.split(':').map(Number);
+      return today.set({ hour, minute }).toJSDate();
+    };
+    const working = hours.filter(
+      (h) =>
+        !blocks.some(
+          (b) =>
+            (b.memberId === null || b.memberId === h.memberId) &&
+            b.startsAt <= at(h.opensAt) &&
+            b.endsAt >= at(h.closesAt),
+        ),
+    );
+    if (working.length === 0) return null;
+    // "HH:mm" se ordena igual como texto que como hora
+    return {
+      opensAt: working.map((h) => h.opensAt).sort()[0],
+      closesAt: working
+        .map((h) => h.closesAt)
+        .sort()
+        .at(-1)!,
     };
   }
 
