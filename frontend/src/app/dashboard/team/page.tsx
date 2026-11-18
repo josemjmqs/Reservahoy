@@ -339,14 +339,20 @@ export default function TeamPage() {
                 >
                   Editar
                 </Button>
+                {/* En el celular va siempre en su propia fila: con "Invitar"
+                    o "Reenviar" + "Anular" no cabe, y así queda en el mismo
+                    lugar en todas las tarjetas y lejos de los botones de uso
+                    frecuente. Desde sm, al lado de los demás */}
                 {!isMe(m) && (
-                  <Button
-                    variant="secondary"
-                    className={ACTION}
-                    onClick={() => toggleActive(m)}
-                  >
-                    {m.active ? 'Desactivar' : 'Activar'}
-                  </Button>
+                  <div className="w-full sm:w-auto">
+                    <Button
+                      variant={m.active ? 'danger' : 'secondary'}
+                      className={ACTION}
+                      onClick={() => toggleActive(m)}
+                    >
+                      {m.active ? 'Desactivar' : 'Activar'}
+                    </Button>
+                  </div>
                 )}
               </div>
               {invitingId === m.id && (
