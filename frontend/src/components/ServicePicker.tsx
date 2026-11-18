@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ServiceThumb } from "@/components/ServiceThumb";
-import { centerInView } from "@/lib/center-in-view";
+import { centerInView, smoothScrollBy } from "@/lib/center-in-view";
 import { publicDuration } from "@/lib/format";
 import { groupByCategory } from "@/lib/services";
 import type { PublicBusiness } from "@/lib/types";
@@ -45,7 +45,11 @@ export function ServicePicker({
             selected={selectedIds.includes(s.id)}
             disabled={maxReached && !selectedIds.includes(s.id)}
             open={openId === s.id}
-            onOpenChange={(o) => setOpenId(o ? s.id : null)}
+            // cerrar solo cierra este: el cierre llega después de deslizar la
+            // página y en ese rato pudo abrirse otro
+            onOpenChange={(o) =>
+              setOpenId((cur) => (o ? s.id : cur === s.id ? null : cur))
+            }
             onToggle={onToggle}
           />
         ))}
@@ -158,36 +162,35 @@ function ServiceRow({
   // la página y al contraerse el detalle queda a la vista lo de abajo
   // (profesional, día y hora) en vez de la lista
   const topBeforeOpen = useRef<number | null>(null);
-  const restoreOnClose = useRef(false);
+  // Cerrándose (deslizando de vuelta): un segundo toque en "Seleccionar" o
+  // "Quitar" no deshace lo que se acaba de elegir
+  const closing = useRef(false);
 
   // Al abrirse, el servicio (fila y detalle) queda centrado en la pantalla. Corre
-  // después de que se cierra el que estaba abierto, con las posiciones ya al día.
-  // Al cerrarse desde la misma fila vuelve a su lugar; si se cerró porque se
-  // abrió otro, manda el centrado de ese
+  // después de que se cierra el que estaba abierto, con las posiciones ya al día
   useEffect(() => {
-    const row = rowRef.current;
-    if (!row) return;
-    if (open) {
-      topBeforeOpen.current = row.getBoundingClientRect().top;
-      centerInView(row);
-    } else if (restoreOnClose.current && topBeforeOpen.current !== null) {
-      restoreOnClose.current = false;
-      const top = row.getBoundingClientRect().top - topBeforeOpen.current;
-      // solo si la fila quedó más arriba que donde estaba: nunca la baja
-      if (top < -1) {
-        const reduce = window.matchMedia(
-          "(prefers-reduced-motion: reduce)",
-        ).matches;
-        window.scrollBy({ top, behavior: reduce ? "auto" : "smooth" });
-      }
+    if (open && rowRef.current) {
+      closing.current = false;
+      topBeforeOpen.current = rowRef.current.getBoundingClientRect().top;
+      centerInView(rowRef.current);
     }
   }, [open]);
 
   // Cerrar desde esta fila (la fila, el detalle, "Seleccionar", "Quitar" o el
-  // check): la devuelve a donde estaba
+  // check) es abrir al revés: al abrir aparece el detalle y la página se
+  // desliza; al cerrar la página se desliza de vuelta, con el detalle todavía
+  // abierto, y recién ahí se cierra. Así lo de abajo no salta antes de tiempo.
+  // Si la fila no quedó más arriba que donde estaba, se cierra al tiro (nunca
+  // la baja). Si se cerró porque se abrió otro, manda el centrado de ese
   function closeHere() {
-    restoreOnClose.current = true;
-    onOpenChange(false);
+    if (closing.current) return;
+    closing.current = true;
+    const row = rowRef.current;
+    const before = topBeforeOpen.current;
+    const top =
+      row && before !== null ? row.getBoundingClientRect().top - before : 0;
+    if (top < -1) void smoothScrollBy(top).then(() => onOpenChange(false));
+    else onOpenChange(false);
   }
 
   // El foco vuelve a la fila al cerrar, no se pierde
@@ -197,6 +200,7 @@ function ServiceRow({
   }
 
   function choose() {
+    if (closing.current) return;
     onToggle(s.id);
     // elegido (o quitado) se cierra: la fila ya muestra el check y la lista
     // queda corta para seguir eligiendo
