@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { ColorPicker } from "@/components/ColorPicker";
 import { PhotoPicker } from "@/components/PhotoPicker";
 import { Button, buttonClass, Field, Input } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -45,8 +46,8 @@ const SUGGESTED_COLORS = [
 const RAINBOW =
   "conic-gradient(#e0605a, #e8a04a, #e6d35a, #6fbf73, #4fa3d9, #7d6bd1, #c45fae, #e0605a)";
 
-// Color de los botones de la página pública: uno sugerido u "Otro color" (la
-// paleta del sistema), y una vista previa. El código (#RRGGBB) queda escondido
+// Color de los botones de la página pública: uno sugerido u "Otro color" (tono,
+// saturación y brillo en `ColorPicker`), y una vista previa. El código (#RRGGBB) queda escondido
 // para quien ya tiene el de su marca. Vacío = el color de Reservahoy
 function BrandColorField({
   value,
@@ -87,12 +88,12 @@ function BrandColorField({
             />
           );
         })}
-        {/* El input de color cubre el círculo (transparente): tocarlo abre
-            la paleta del sistema en todos los navegadores */}
-        <span
-          title="Otro color"
+        <ColorPicker
+          label="Otro color"
+          value={valid ? value.toLowerCase() : DEFAULT_BRAND}
+          onChange={onChange}
           style={{ background: custom ? value : RAINBOW }}
-          className={`relative flex h-10 w-10 items-center justify-center rounded-full transition ${
+          className={`flex h-10 w-10 items-center justify-center rounded-full transition ${
             custom
               ? "ring-2 ring-gray-900 ring-offset-2"
               : "hover:scale-110"
@@ -106,14 +107,7 @@ function BrandColorField({
               +
             </span>
           )}
-          <input
-            type="color"
-            aria-label="Otro color"
-            value={valid ? value.toLowerCase() : DEFAULT_BRAND}
-            onChange={(e) => onChange(e.target.value)}
-            className="absolute inset-0 h-full w-full cursor-pointer rounded-full opacity-0"
-          />
-        </span>
+        </ColorPicker>
       </div>
       {value && (
         <button

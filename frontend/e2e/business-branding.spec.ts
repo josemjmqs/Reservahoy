@@ -61,9 +61,27 @@ test("el color de marca reemplaza al índigo en la página pública, con texto l
   await expect(color).toHaveValue("#5b7560");
   await expect(sage).toHaveAttribute("aria-pressed", "true");
 
-  // "Otro color" abre la paleta del sistema; lo elegido deja de marcar el sugerido
-  await page.getByLabel("Otro color").fill("#123456");
-  await expect(color).toHaveValue("#123456");
+  // "Otro color" abre directo tono, saturación y brillo, partiendo del color
+  // elegido; Cancelar no cambia nada y Listo deja de marcar el sugerido
+  const other = page.getByRole("button", { name: "Otro color" });
+  const picker = page.getByRole("dialog", { name: "Otro color" });
+  await other.click();
+  await expect(picker.getByLabel("Saturación")).toHaveValue("22"); // Salvia
+  await picker.getByLabel("Tono").fill("0");
+  await picker.getByRole("button", { name: "Cancelar" }).click();
+  await expect(picker).toHaveCount(0);
+  await expect(color).toHaveValue("#5b7560");
+  // Listo sin mover nada deja el color exacto (sin redondeos)
+  await other.click();
+  await picker.getByRole("button", { name: "Listo" }).click();
+  await expect(color).toHaveValue("#5b7560");
+
+  await other.click();
+  await picker.getByLabel("Tono").fill("210");
+  await picker.getByLabel("Saturación").fill("100");
+  await picker.getByLabel("Brillo").fill("50");
+  await picker.getByRole("button", { name: "Listo" }).click();
+  await expect(color).toHaveValue("#004080");
   await expect(sage).toHaveAttribute("aria-pressed", "false");
 
   try {
