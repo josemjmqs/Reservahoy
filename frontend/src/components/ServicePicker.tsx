@@ -164,8 +164,8 @@ function ServiceRow({
   // la página y al contraerse el detalle queda a la vista lo de abajo
   // (profesional, día y hora) en vez de la lista
   const topBeforeOpen = useRef<number | null>(null);
-  // Cerrándose (deslizando de vuelta): un segundo toque en el "+" o en
-  // "Quitar" no deshace lo que se acaba de elegir
+  // Cerrándose (deslizando de vuelta): un segundo toque en el "+" no vuelve a
+  // elegir ni deshace lo que se acaba de elegir
   const closing = useRef(false);
 
   // Al abrirse, el servicio (fila y detalle) queda centrado en la pantalla. Corre
@@ -178,8 +178,8 @@ function ServiceRow({
     }
   }, [open]);
 
-  // Cerrar desde esta fila (la fila, el detalle, el "+", "Quitar" o el
-  // check) es abrir al revés: al abrir aparece el detalle y la página se
+  // Cerrar desde esta fila (la fila, el detalle, el "+" o el check) es abrir
+  // al revés: al abrir aparece el detalle y la página se
   // desliza; al cerrar la página se desliza de vuelta, con el detalle todavía
   // abierto, y recién ahí se cierra. Así lo de abajo no salta antes de tiempo.
   // Si la fila no quedó más arriba que donde estaba, se cierra al tiro (nunca
@@ -204,13 +204,13 @@ function ServiceRow({
   function choose() {
     if (closing.current) return;
     onToggle(s.id);
-    // elegido (o quitado) se cierra: la fila ya muestra el check y la lista
-    // queda corta para seguir eligiendo
+    // elegido se cierra: la fila ya muestra el check y la lista queda corta
+    // para seguir eligiendo
     close();
   }
 
-  // Desde el check de la fila: si su detalle estaba abierto se cierra (como con
-  // "Quitar"), pero no toca otro detalle abierto. El check desaparece, así que
+  // Desde el check de la fila: si su detalle estaba abierto se cierra, pero no
+  // toca otro detalle abierto. El check desaparece, así que
   // el foco pasa a la fila
   function unselect() {
     onToggle(s.id);
@@ -223,6 +223,8 @@ function ServiceRow({
   // check, y el check lo quita). Con el máximo elegido el "+" se atenúa y
   // tocarlo muestra por qué no se puede sumar
   const hasDetail = Boolean(s.imageUrl || s.description);
+  // se ve abierto solo si hay algo abajo (el detalle, o el aviso del máximo)
+  const isOpen = open && (hasDetail || disabled);
 
   const info = (
     <>
@@ -253,12 +255,18 @@ function ServiceRow({
   return (
     <div
       ref={rowRef}
+      // abierto (fila y detalle), un fondo apenas distinto lo separa de las
+      // filas de al lado; elegido, el tinte de marca un poco más intenso
       className={
         selected
           ? // franja a la izquierda: se ve aunque el color de marca sea claro
             // (--brand-ring directo: la variable del tema se resuelve en :root)
-            "bg-brand/10 shadow-[inset_4px_0_0_var(--brand-ring,#4f39f6)]"
-          : ""
+            `${isOpen ? "bg-brand/15" : "bg-brand/10"} shadow-[inset_4px_0_0_var(--brand-ring,#4f39f6)]`
+          : isOpen
+            ? // gray-100: paper (gray-50) casi no se distingue del blanco y es
+              // el mismo del hover
+              "bg-gray-100"
+            : ""
       }
     >
       {!hasDetail ? (
@@ -347,7 +355,7 @@ function ServiceRow({
           )}
         </div>
       )}
-      {open && (hasDetail || disabled) && (
+      {isOpen && (
         // tocar cualquier parte del detalle (foto, descripción, aviso) lo
         // cierra, salvo sus botones. Con teclado se cierra desde la fila (o
         // desde el "+", en una fila sin detalle, que solo se abre para mostrar
@@ -377,17 +385,8 @@ function ServiceRow({
               {s.description}
             </p>
           )}
-          {/* elegir es el "+" de la fila; ya elegido, se quita aquí o con el
+          {/* sin botones: se elige con el "+" de la fila y se quita con el
             check */}
-          {hasDetail && selected && (
-            <button
-              type="button"
-              onClick={choose}
-              className="h-10 w-full rounded-control border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Quitar
-            </button>
-          )}
           {disabled && (
             <p className="text-center text-sm text-gray-600">
               Ya elegiste el máximo de servicios por reserva. Quita alguno para

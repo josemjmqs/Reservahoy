@@ -177,8 +177,8 @@ test("con el máximo elegido, otro servicio explica por qué no se suma", async 
 });
 
 // Con foto o descripción, tocar la fila abre su detalle sin elegirlo. Abierto,
-// el "+" reemplaza a la flecha y elige el servicio (no hay otro botón para
-// elegir); se quita con "Quitar" o tocando el check de la fila
+// el "+" reemplaza a la flecha y elige el servicio; se quita con el check de
+// la fila. El detalle no tiene botones
 test("tocar un servicio con detalle lo muestra y se elige con el +", async ({
   page,
 }) => {
@@ -222,14 +222,14 @@ test("tocar un servicio con detalle lo muestra y se elige con el +", async ({
   await expect(seeTimes).toBeVisible();
   await expect(row).toHaveAttribute("aria-expanded", "false");
 
+  // abierto ya elegido, el detalle no tiene botones (ni "Quitar")
   await row.click();
-  await page.getByRole("button", { name: "Quitar", exact: true }).click();
-  await expect(seeTimes).toHaveCount(0);
+  await expect(row).toHaveAttribute("aria-expanded", "true");
+  await expect(detail.getByRole("button")).toHaveCount(0);
+  await row.click();
+  await expect(row).toHaveAttribute("aria-expanded", "false");
 
   // el check de un servicio elegido lo quita sin abrir su detalle
-  await row.click();
-  await add.click();
-  await expect(seeTimes).toBeVisible();
   await page.getByRole("button", { name: "Desmarcar Corte de pelo" }).click();
   await expect(seeTimes).toHaveCount(0);
   await expect(row).toHaveAttribute("aria-expanded", "false");
