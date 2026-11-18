@@ -96,9 +96,15 @@ export async function openSlots(
   });
   if ((await categoryButton.getAttribute("aria-expanded")) === "false")
     await categoryButton.click();
-  // tocar el servicio abre su detalle; se elige con "Seleccionar"
-  await page.getByRole("button", { name: new RegExp(`^${service}`) }).click();
-  await page.getByRole("button", { name: "Seleccionar", exact: true }).click();
+  // se elige con el "+" de la fila; si el servicio tiene foto o descripción,
+  // el "+" aparece al abrir su detalle (tocando la fila)
+  const add = page.getByRole("button", {
+    name: `Seleccionar ${service}`,
+    exact: true,
+  });
+  if (!(await add.count()))
+    await page.getByRole("button", { name: new RegExp(`^${service}`) }).click();
+  await add.click();
   if (member)
     await page.getByRole("button", { name: member, exact: true }).click();
   // Espera la respuesta de ese día (y de ese profesional): las horas que haya

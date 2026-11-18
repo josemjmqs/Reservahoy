@@ -114,14 +114,36 @@ test("las categorías muestran sus servicios y las miniaturas solo donde hay fot
   // Barba no tiene fotos: sin recuadro con la inicial
   await page.getByRole("button", { name: /^Barba/ }).click();
   const barba = page.locator("#category-Barba");
-  await expect(
-    barba.getByRole("button", { name: /^Perfilado de barba/ }),
-  ).toBeVisible();
+  await expect(barba.getByText("Perfilado de barba")).toBeVisible();
   await expect(barba.getByText("P", { exact: true })).toHaveCount(0);
 });
 
-// Con el máximo elegido, el detalle de otro servicio tiene "Seleccionar"
-// deshabilitado y explica por qué no se puede sumar
+// Sin foto ni descripción no hay detalle que ver: la fila no es un botón (sin
+// flecha) y el servicio se elige con su "+", que pasa a check y lo quita
+test("un servicio sin detalle se elige y se quita con el +", async ({
+  page,
+}) => {
+  await openPelo(page);
+  const seeTimes = page.getByRole("link", { name: "Ver horas" });
+
+  await expect(
+    page.getByRole("button", { name: /^Corte de pelo/ }),
+  ).toHaveCount(0);
+  // tocar el nombre no hace nada
+  await page.getByText("Corte de pelo", { exact: true }).click();
+  await expect(seeTimes).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Seleccionar Corte de pelo" }).click();
+  await expect(seeTimes).toBeVisible();
+  const remove = page.getByRole("button", { name: "Desmarcar Corte de pelo" });
+  // es el mismo botón: el foco no se pierde
+  await expect(remove).toBeFocused();
+  await remove.click();
+  await expect(seeTimes).toHaveCount(0);
+});
+
+// Con el máximo elegido, el "+" de un servicio sin detalle explica por qué no
+// se suma
 test("con el máximo elegido, otro servicio explica por qué no se suma", async ({
   page,
 }) => {
@@ -132,46 +154,61 @@ test("con el máximo elegido, otro servicio explica por qué no se suma", async 
     { ...services[0], id: "e2e-extra-2", name: "Extra dos", category: "Pelo" },
   ]);
   await openPelo(page);
-  const select = page.getByRole("button", { name: "Seleccionar", exact: true });
   for (const name of [
-    /^Corte de pelo/,
-    /^Color completo/,
-    /^Lavado y peinado/,
-    /^Extra uno/,
-    /^Extra dos/,
-  ]) {
-    await page.getByRole("button", { name }).click();
-    await select.click();
-  }
+    "Corte de pelo",
+    "Color completo",
+    "Lavado y peinado",
+    "Extra uno",
+    "Extra dos",
+  ])
+    await page.getByRole("button", { name: `Seleccionar ${name}` }).click();
 
   await page.getByRole("button", { name: /^Barba/ }).click();
-  const row = page.getByRole("button", { name: /^Perfilado de barba/ });
-  await row.click();
-  await expect(row).toHaveAttribute("aria-expanded", "true");
-  await expect(select).toBeDisabled();
+  const add = page.getByRole("button", {
+    name: "Seleccionar Perfilado de barba",
+  });
+  await add.click();
+  await expect(add).toHaveAttribute("aria-expanded", "true");
   await expect(page.getByText("Ya elegiste el máximo")).toBeVisible();
+  // no se sumó
+  await expect(
+    page.getByRole("button", { name: "Desmarcar Perfilado de barba" }),
+  ).toHaveCount(0);
 });
 
-// Tocar un servicio abre su detalle (foto y descripción) sin elegirlo: se elige
-// con "Seleccionar" y se quita con "Quitar" o tocando el check de la fila
-test("tocar un servicio muestra su detalle y se elige con Seleccionar", async ({
+// Con foto o descripción, tocar la fila abre su detalle sin elegirlo. Abierto,
+// el "+" reemplaza a la flecha y elige el servicio (no hay otro botón para
+// elegir); se quita con "Quitar" o tocando el check de la fila
+test("tocar un servicio con detalle lo muestra y se elige con el +", async ({
   page,
 }) => {
+  await patchPublicServices(page, (services) =>
+    services.map((s) =>
+      ["Corte de pelo", "Lavado y peinado"].includes(s.name)
+        ? { ...s, description: "Incluye lavado y secado." }
+        : s,
+    ),
+  );
   await openPelo(page);
 
   const row = page.getByRole("button", { name: /^Corte de pelo/ });
-  const select = page.getByRole("button", { name: "Seleccionar", exact: true });
+  const add = page.getByRole("button", { name: "Seleccionar Corte de pelo" });
   const seeTimes = page.getByRole("link", { name: "Ver horas" });
 
+  // cerrado, sin "+" (va la flecha)
+  await expect(add).toHaveCount(0);
   await row.click();
   await expect(row).toHaveAttribute("aria-expanded", "true");
-  await expect(select).toBeVisible();
+  await expect(add).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Seleccionar", exact: true }),
+  ).toHaveCount(0);
   await expect(seeTimes).toHaveCount(0);
 
   // abrir otro servicio cierra el anterior: un solo detalle a la vez
   await page.getByRole("button", { name: /^Lavado y peinado/ }).click();
   await expect(row).toHaveAttribute("aria-expanded", "false");
-  await expect(select).toHaveCount(1);
+  await expect(add).toHaveCount(0);
 
   // tocar el detalle fuera de sus botones lo cierra sin elegir
   await row.click();
@@ -181,7 +218,7 @@ test("tocar un servicio muestra su detalle y se elige con Seleccionar", async ({
   await expect(seeTimes).toHaveCount(0);
 
   await row.click();
-  await select.click();
+  await add.click();
   await expect(seeTimes).toBeVisible();
   await expect(row).toHaveAttribute("aria-expanded", "false");
 
@@ -191,7 +228,7 @@ test("tocar un servicio muestra su detalle y se elige con Seleccionar", async ({
 
   // el check de un servicio elegido lo quita sin abrir su detalle
   await row.click();
-  await select.click();
+  await add.click();
   await expect(seeTimes).toBeVisible();
   await page.getByRole("button", { name: "Desmarcar Corte de pelo" }).click();
   await expect(seeTimes).toHaveCount(0);
@@ -223,12 +260,9 @@ test("la barra de abajo muestra el detalle de lo elegido", async ({ page }) => {
   if ((await category.getAttribute("aria-expanded")) === "false")
     await category.click();
 
-  for (const name of [/^Corte de pelo/, /^Lavado y peinado/]) {
-    await page.getByRole("button", { name }).click();
-    await page
-      .getByRole("button", { name: "Seleccionar", exact: true })
-      .click();
-  }
+  // sin foto ni descripción, se eligen con el "+" de la fila
+  for (const name of ["Corte de pelo", "Lavado y peinado"])
+    await page.getByRole("button", { name: `Seleccionar ${name}` }).click();
 
   const toggle = page.getByRole("button", {
     name: "Lo que estás reservando: Corte de pelo + Lavado y peinado",

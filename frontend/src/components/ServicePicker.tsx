@@ -15,9 +15,11 @@ const focusRing =
 
 // Servicios de la página pública: una tarjeta por categoría (una sola, sin
 // título, si no hay categorías) con los servicios como filas. Tocar una fila
-// abre su detalle (foto y descripción) y ahí se elige con "Seleccionar": la
-// flecha deja claro que hay más información. El check de un servicio elegido
-// lo quita
+// con foto o descripción abre su detalle y ahí se elige con el "+" que
+// reemplaza a la flecha mientras está abierto: la flecha deja claro que hay
+// más información. Una fila sin nada más que ver se
+// elige con el "+" de la derecha (en vez de la flecha); tocar el resto de la
+// fila no hace nada. El check de un servicio elegido lo quita
 export function ServicePicker({
   services,
   selectedIds,
@@ -162,7 +164,7 @@ function ServiceRow({
   // la página y al contraerse el detalle queda a la vista lo de abajo
   // (profesional, día y hora) en vez de la lista
   const topBeforeOpen = useRef<number | null>(null);
-  // Cerrándose (deslizando de vuelta): un segundo toque en "Seleccionar" o
+  // Cerrándose (deslizando de vuelta): un segundo toque en el "+" o en
   // "Quitar" no deshace lo que se acaba de elegir
   const closing = useRef(false);
 
@@ -176,7 +178,7 @@ function ServiceRow({
     }
   }, [open]);
 
-  // Cerrar desde esta fila (la fila, el detalle, "Seleccionar", "Quitar" o el
+  // Cerrar desde esta fila (la fila, el detalle, el "+", "Quitar" o el
   // check) es abrir al revés: al abrir aparece el detalle y la página se
   // desliza; al cerrar la página se desliza de vuelta, con el detalle todavía
   // abierto, y recién ahí se cierra. Así lo de abajo no salta antes de tiempo.
@@ -216,6 +218,38 @@ function ServiceRow({
     headerRef.current?.focus({ preventScroll: true });
   }
 
+  // Sin foto ni descripción no hay detalle que ver: la fila no hace nada al
+  // tocarla y el servicio se elige solo con el "+" de la derecha (que pasa a
+  // check, y el check lo quita). Con el máximo elegido el "+" se atenúa y
+  // tocarlo muestra por qué no se puede sumar
+  const hasDetail = Boolean(s.imageUrl || s.description);
+
+  const info = (
+    <>
+      {/* abierto, la foto se ve completa abajo: no se repite en miniatura
+        (sin foto, la inicial se queda: abajo no hay nada que la reemplace) */}
+      {withThumb && !(s.imageUrl && open) && (
+        <ServiceThumb src={s.imageUrl} name={s.name} className="h-12 w-12" />
+      )}
+      {/* el precio va en la línea de la duración (alineado a la derecha, en
+        columna con los demás): así el nombre tiene todo el ancho y en el
+        celular no se parte en varias líneas */}
+      <span className="min-w-0 flex-1">
+        <span className="block font-medium text-gray-900">{s.name}</span>
+        <span className="flex items-baseline justify-between gap-3">
+          <span className="text-sm text-gray-500">
+            {publicDuration(s.durationMin, s.totalMin)}
+          </span>
+          {s.price !== null && (
+            <span className="shrink-0 font-semibold tabular-nums text-gray-900">
+              ${s.price.toLocaleString("es-CL")}
+            </span>
+          )}
+        </span>
+      </span>
+    </>
+  );
+
   return (
     <div
       ref={rowRef}
@@ -227,91 +261,97 @@ function ServiceRow({
           : ""
       }
     >
-      <div className="flex">
-        {/* tocar la fila solo abre el detalle; elegir es el botón de adentro */}
-        <button
-          ref={headerRef}
-          type="button"
-          aria-expanded={open}
-          aria-controls={detailId}
-          onClick={() => (open ? closeHere() : onOpenChange(true))}
-          className={`flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left transition ${focusRing} ${
-            selected ? "" : "pr-4 hover:bg-gray-50"
-          }`}
-        >
-          {/* abierto, la foto se ve completa abajo: no se repite en miniatura
-            (sin foto, la inicial se queda: abajo no hay nada que la reemplace) */}
-          {withThumb && !(s.imageUrl && open) && (
-            <ServiceThumb
-              src={s.imageUrl}
-              name={s.name}
-              className="h-12 w-12"
-            />
-          )}
-          {/* el precio va en la línea de la duración (alineado a la derecha, en
-            columna con los demás): así el nombre tiene todo el ancho y en el
-            celular no se parte en varias líneas */}
-          <span className="min-w-0 flex-1">
-            <span className="block font-medium text-gray-900">{s.name}</span>
-            <span className="flex items-baseline justify-between gap-3">
-              <span className="text-sm text-gray-500">
-                {publicDuration(s.durationMin, s.totalMin)}
-              </span>
-              {s.price !== null && (
-                <span className="shrink-0 font-semibold tabular-nums text-gray-900">
-                  ${s.price.toLocaleString("es-CL")}
-                </span>
-              )}
-            </span>
-          </span>
-          {!selected && (
-            <svg
-              aria-hidden
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className={`h-5 w-5 shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
-            >
-              <path
-                fillRule="evenodd"
-                d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z"
-                clipRule="evenodd"
-              />
-            </svg>
-          )}
-        </button>
-        {selected && (
-          // el check es un botón aparte (no se anida en la fila): tocarlo quita
-          // el servicio sin abrir el detalle. Ocupa todo el alto de la fila para
-          // que sea fácil de tocar en el celular
+      {!hasDetail ? (
+        <div className="flex">
+          <div className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4">
+            {info}
+          </div>
+          {/* el "+" es el único botón de la fila: pasa a check (el mismo
+            botón, así el foco no se pierde). Ocupa todo el alto de la fila
+            para que sea fácil de tocar en el celular */}
           <button
+            ref={headerRef}
             type="button"
-            aria-label={`Desmarcar ${s.name}`}
-            onClick={unselect}
+            aria-label={`${selected ? "Desmarcar" : "Seleccionar"} ${s.name}`}
+            aria-expanded={disabled ? open : undefined}
+            aria-controls={disabled ? detailId : undefined}
+            onClick={() =>
+              !disabled
+                ? onToggle(s.id)
+                : open
+                  ? closeHere()
+                  : onOpenChange(true)
+            }
             className={`flex shrink-0 items-center pl-3 pr-4 ${focusRing}`}
           >
-            <span className="flex h-5 w-5 items-center justify-center rounded-full border border-brand-ring bg-brand text-brand-fg">
+            <CircleMark selected={selected} muted={disabled} />
+          </button>
+        </div>
+      ) : (
+        <div className="flex">
+          {/* tocar la fila solo abre el detalle; elegir es el botón de adentro */}
+          <button
+            ref={headerRef}
+            type="button"
+            aria-expanded={open}
+            aria-controls={detailId}
+            onClick={() => (open ? closeHere() : onOpenChange(true))}
+            className={`flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left transition ${focusRing} ${
+              selected ? "" : "hover:bg-gray-50"
+            } ${selected || open ? "" : "pr-4"}`}
+          >
+            {info}
+            {/* cerrado, la flecha dice que hay más información; abierto, en su
+              lugar va el "+" (botón aparte, abajo) */}
+            {!selected && !open && (
               <svg
                 aria-hidden
                 viewBox="0 0 20 20"
                 fill="currentColor"
-                className="h-3.5 w-3.5"
+                className="h-5 w-5 shrink-0 text-gray-400"
               >
                 <path
                   fillRule="evenodd"
-                  d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0Z"
+                  d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z"
                   clipRule="evenodd"
                 />
               </svg>
-            </span>
+            )}
           </button>
-        )}
-      </div>
-      {open && (
+          {!selected && open && (
+            // abierto, el "+" elige el servicio y cierra el detalle. Con el
+            // máximo elegido va atenuado y deshabilitado: el detalle ya
+            // explica por qué
+            <button
+              type="button"
+              aria-label={`Seleccionar ${s.name}`}
+              onClick={choose}
+              disabled={disabled}
+              className={`flex shrink-0 items-center pl-3 pr-4 disabled:cursor-not-allowed ${focusRing}`}
+            >
+              <CircleMark selected={false} muted={disabled} />
+            </button>
+          )}
+          {selected && (
+            // el check es un botón aparte (no se anida en la fila): tocarlo
+            // quita el servicio sin abrir el detalle. Ocupa todo el alto de la
+            // fila para que sea fácil de tocar en el celular
+            <button
+              type="button"
+              aria-label={`Desmarcar ${s.name}`}
+              onClick={unselect}
+              className={`flex shrink-0 items-center pl-3 pr-4 ${focusRing}`}
+            >
+              <CircleMark selected />
+            </button>
+          )}
+        </div>
+      )}
+      {open && (hasDetail || disabled) && (
         // tocar cualquier parte del detalle (foto, descripción, aviso) lo
-        // cierra, salvo sus botones. Un botón deshabilitado ("Seleccionar" con
-        // el máximo elegido) también se excluye: Chrome pasa su clic al padre
-        // y cerrar escondería el aviso de por qué no se puede. Con teclado se
-        // cierra desde la fila
+        // cierra, salvo sus botones. Con teclado se cierra desde la fila (o
+        // desde el "+", en una fila sin detalle, que solo se abre para mostrar
+        // el aviso del máximo)
         <div
           id={detailId}
           onClick={(e) => {
@@ -337,7 +377,9 @@ function ServiceRow({
               {s.description}
             </p>
           )}
-          {selected ? (
+          {/* elegir es el "+" de la fila; ya elegido, se quita aquí o con el
+            check */}
+          {hasDetail && selected && (
             <button
               type="button"
               onClick={choose}
@@ -345,26 +387,49 @@ function ServiceRow({
             >
               Quitar
             </button>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={choose}
-                disabled={disabled}
-                className="h-10 w-full rounded-control bg-brand text-sm font-medium text-brand-fg hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Seleccionar
-              </button>
-              {disabled && (
-                <p className="text-center text-sm text-gray-600">
-                  Ya elegiste el máximo de servicios por reserva. Quita alguno
-                  para sumar este.
-                </p>
-              )}
-            </>
+          )}
+          {disabled && (
+            <p className="text-center text-sm text-gray-600">
+              Ya elegiste el máximo de servicios por reserva. Quita alguno para
+              sumar este.
+            </p>
           )}
         </div>
       )}
     </div>
+  );
+}
+
+// Círculo de la derecha: check si el servicio está elegido; si no, "+" (una
+// fila sin detalle, que se elige con él). Atenuado, con el máximo ya elegido
+function CircleMark({
+  selected,
+  muted = false,
+}: {
+  selected: boolean;
+  muted?: boolean;
+}) {
+  return (
+    <span
+      aria-hidden
+      // --brand-ring directo: la variable del tema se resuelve en :root
+      className={`flex h-5 w-5 items-center justify-center rounded-full border border-brand-ring transition-colors ${
+        selected
+          ? "bg-brand text-brand-fg"
+          : "bg-white text-[var(--brand-ring,#4f39f6)]"
+      } ${muted ? "opacity-40" : ""}`}
+    >
+      <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+        {selected ? (
+          <path
+            fillRule="evenodd"
+            d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0Z"
+            clipRule="evenodd"
+          />
+        ) : (
+          <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+        )}
+      </svg>
+    </span>
   );
 }
