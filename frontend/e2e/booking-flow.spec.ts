@@ -56,7 +56,13 @@ test("el cliente elige con qué profesional reserva", async ({ page }) => {
 // foto ni descripción). Solo la respuesta: el negocio demo no cambia
 async function patchPublicServices(
   page: Page,
-  patch: (services: { name: string; description: string | null }[]) => unknown[],
+  patch: (
+    services: {
+      name: string;
+      description: string | null;
+      imageUrl: string | null;
+    }[],
+  ) => unknown[],
 ) {
   await page.route(`**/api/public/${DEMO.slug}`, async (route) => {
     const response = await route.fetch();
@@ -74,6 +80,44 @@ async function openPelo(page: Page) {
   if ((await category.getAttribute("aria-expanded")) === "false")
     await category.click();
 }
+
+// La categoría muestra los nombres de sus servicios. Las miniaturas van por
+// categoría: donde algún servicio tiene foto, los demás muestran su inicial;
+// una categoría sin fotos va sin recuadros
+test("las categorías muestran sus servicios y las miniaturas solo donde hay fotos", async ({
+  page,
+}) => {
+  const photo = "https://fotos.e2e.test/corte.png";
+  await page.route(photo, (route) =>
+    route.fulfill({
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"/>',
+    }),
+  );
+  await patchPublicServices(page, (services) =>
+    services.map((s) =>
+      s.name === "Corte de pelo" ? { ...s, imageUrl: photo } : s,
+    ),
+  );
+  await openPelo(page);
+
+  await expect(page.getByRole("button", { name: /^Barba/ })).toContainText(
+    "Perfilado de barba",
+  );
+
+  // Pelo tiene una foto: "Lavado y peinado" muestra su inicial
+  const pelo = page.locator("#category-Pelo");
+  await expect(pelo.locator(`img[src="${photo}"]`)).toBeVisible();
+  await expect(pelo.getByText("L", { exact: true })).toBeVisible();
+
+  // Barba no tiene fotos: sin recuadro con la inicial
+  await page.getByRole("button", { name: /^Barba/ }).click();
+  const barba = page.locator("#category-Barba");
+  await expect(
+    barba.getByRole("button", { name: /^Perfilado de barba/ }),
+  ).toBeVisible();
+  await expect(barba.getByText("P", { exact: true })).toHaveCount(0);
+});
 
 // Sin foto ni descripción no hay detalle que ver: tocar la fila agrega el
 // servicio y tocarla otra vez lo quita
