@@ -41,8 +41,13 @@ const SUGGESTED_COLORS = [
   { name: "Grafito", hex: "#4b5563" },
 ];
 
-// Color de los botones de la página pública: uno sugerido, o con paleta o
-// escrito (#RRGGBB), y una vista previa. Vacío = el color de Reservahoy
+// Arcoíris del círculo "Otro color" mientras no hay uno propio elegido
+const RAINBOW =
+  "conic-gradient(#e0605a, #e8a04a, #e6d35a, #6fbf73, #4fa3d9, #7d6bd1, #c45fae, #e0605a)";
+
+// Color de los botones de la página pública: uno sugerido u "Otro color" (la
+// paleta del sistema), y una vista previa. El código (#RRGGBB) queda escondido
+// para quien ya tiene el de su marca. Vacío = el color de Reservahoy
 function BrandColorField({
   value,
   onChange,
@@ -51,12 +56,11 @@ function BrandColorField({
   onChange: (color: string) => void;
 }) {
   const valid = isHex(value);
+  const custom =
+    valid && !SUGGESTED_COLORS.some((c) => c.hex === value.toLowerCase());
   return (
     <div className="flex flex-col gap-1">
-      <span
-        id="brand-color-label"
-        className="text-xs font-medium text-gray-700"
-      >
+      <span className="text-xs font-medium text-gray-700">
         Color de tu página
       </span>
       <div
@@ -83,36 +87,43 @@ function BrandColorField({
             />
           );
         })}
+        {/* El input de color cubre el círculo (transparente): tocarlo abre
+            la paleta del sistema en todos los navegadores */}
+        <span
+          title="Otro color"
+          style={{ background: custom ? value : RAINBOW }}
+          className={`relative flex h-10 w-10 items-center justify-center rounded-full transition ${
+            custom
+              ? "ring-2 ring-gray-900 ring-offset-2"
+              : "hover:scale-110"
+          }`}
+        >
+          {!custom && (
+            <span
+              aria-hidden
+              className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-sm leading-none font-semibold text-gray-700"
+            >
+              +
+            </span>
+          )}
+          <input
+            type="color"
+            aria-label="Otro color"
+            value={valid ? value.toLowerCase() : DEFAULT_BRAND}
+            onChange={(e) => onChange(e.target.value)}
+            className="absolute inset-0 h-full w-full cursor-pointer rounded-full opacity-0"
+          />
+        </span>
       </div>
-      <span className="mt-1 text-xs text-gray-500">O elige otro:</span>
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          type="color"
-          aria-label="Elegir el color en la paleta"
-          value={valid ? value.toLowerCase() : DEFAULT_BRAND}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-10 w-12 shrink-0 cursor-pointer rounded-control border border-gray-300 bg-white p-1"
-        />
-        <Input
-          aria-labelledby="brand-color-label"
-          value={value}
-          onChange={(e) => onChange(e.target.value.trim())}
-          placeholder={DEFAULT_BRAND}
-          pattern="#[0-9a-fA-F]{6}"
-          title="Formato #RRGGBB, por ejemplo #0f766e"
-          maxLength={7}
-          className="w-28 font-mono"
-        />
-        {value && (
-          <button
-            type="button"
-            onClick={() => onChange("")}
-            className="min-h-10 rounded-control px-3 text-sm font-medium text-gray-600 transition hover:bg-gray-100"
-          >
-            Usar el de Reservahoy
-          </button>
-        )}
-      </div>
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="-ml-3 min-h-10 self-start rounded-control px-3 text-sm font-medium text-gray-600 transition hover:bg-gray-100"
+        >
+          Usar el de Reservahoy
+        </button>
+      )}
       <span className="text-xs text-gray-500">
         Lo usan los botones de tu página de reservas. Si es un color claro, el
         texto de los botones se ve oscuro para que se lea bien.
@@ -133,6 +144,32 @@ function BrandColorField({
           11:00
         </span>
       </div>
+      <details className="group text-xs text-gray-500">
+        <summary className="flex min-h-10 w-fit cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
+          <span
+            aria-hidden
+            className="inline-block transition group-open:rotate-90"
+          >
+            ›
+          </span>
+          Ya tengo el código de mi color
+        </summary>
+        <div className="flex flex-wrap items-center gap-2 pb-1">
+          <Input
+            aria-label="Código del color"
+            value={value}
+            onChange={(e) => onChange(e.target.value.trim())}
+            placeholder={DEFAULT_BRAND}
+            pattern="#[0-9a-fA-F]{6}"
+            title="Seis cifras o letras después del #, por ejemplo #0f766e"
+            maxLength={7}
+            className="w-28 font-mono"
+          />
+          <span>
+            Por ejemplo #0f766e. Te lo puede dar quien diseñó tu logo.
+          </span>
+        </div>
+      </details>
     </div>
   );
 }

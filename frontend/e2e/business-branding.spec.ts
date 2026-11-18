@@ -49,14 +49,22 @@ test("el color de marca reemplaza al índigo en la página pública, con texto l
 }) => {
   await loginAsDemo(page);
   await page.goto("/dashboard/settings");
-  const color = page.getByLabel("Color de tu página");
+  // El código queda escondido hasta pedirlo
+  const color = page.getByLabel("Código del color");
+  await expect(color).toBeHidden();
+  await page.getByText("Ya tengo el código de mi color").click();
   await expect(color).toHaveValue("");
 
-  // Un color sugerido llena el campo y queda marcado (sin guardar)
+  // Un color sugerido llena el código y queda marcado (sin guardar)
   const sage = page.getByRole("button", { name: "Salvia" });
   await sage.click();
   await expect(color).toHaveValue("#5b7560");
   await expect(sage).toHaveAttribute("aria-pressed", "true");
+
+  // "Otro color" abre la paleta del sistema; lo elegido deja de marcar el sugerido
+  await page.getByLabel("Otro color").fill("#123456");
+  await expect(color).toHaveValue("#123456");
+  await expect(sage).toHaveAttribute("aria-pressed", "false");
 
   try {
     await color.fill(TEAL.toUpperCase());
@@ -125,7 +133,7 @@ test("el profesional no ve el logo ni el color, y la API no lo deja cambiarlos",
   await page.goto("/dashboard/settings");
   await expect(page.getByText("Notificaciones")).toBeVisible();
   await expect(page.getByRole("button", { name: /logo/ })).toHaveCount(0);
-  await expect(page.getByLabel("Color de tu página")).toHaveCount(0);
+  await expect(page.getByText("Color de tu página")).toHaveCount(0);
 
   const upload = await page.request.post("/api/business/logo", {
     multipart: {
