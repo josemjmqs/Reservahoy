@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { Button, Field, Input } from "@/components/ui";
@@ -173,6 +173,20 @@ export default function PublicPage({
   const [copied, setCopied] = useState(false);
   // Detalle de lo elegido desplegado en la barra de abajo
   const [detailsOpen, setDetailsOpen] = useState(false);
+  // Al tocar una hora, "Tus datos" aparece debajo de la grilla, a veces fuera
+  // de la pantalla: se baja hasta ahí una vez que se dibuja
+  const scrollToDetails = useRef(false);
+  useEffect(() => {
+    if (!startsAt || !scrollToDetails.current) return;
+    scrollToDetails.current = false;
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    document.getElementById("tus-datos")?.scrollIntoView({
+      behavior: reduce ? "auto" : "smooth",
+      block: "start",
+    });
+  }, [startsAt]);
 
   // Escape lo cierra esté donde esté el foco (al quitar un servicio, su botón
   // desaparece y el foco queda en la página)
@@ -678,7 +692,10 @@ export default function PublicPage({
                   key={s}
                   type="button"
                   aria-pressed={startsAt === s}
-                  onClick={() => setStartsAt(s)}
+                  onClick={() => {
+                    scrollToDetails.current = true;
+                    setStartsAt(s);
+                  }}
                   className={`h-10 rounded-control border text-[15px] time transition ${
                     startsAt === s
                       ? "border-brand bg-brand text-brand-fg"
@@ -701,7 +718,7 @@ export default function PublicPage({
 
       {startsAt && (
         <form onSubmit={submit}>
-          <SectionTitle>Tus datos</SectionTitle>
+          <SectionTitle id="tus-datos">Tus datos</SectionTitle>
           <div className="mb-4 rounded-card border border-brand/20 bg-brand/5 p-3 text-sm">
             <p className="font-medium text-gray-900">
               {selected.map((s) => s.name).join(" + ")}
