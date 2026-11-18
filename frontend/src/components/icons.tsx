@@ -87,6 +87,14 @@ export const SlidersIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const HelpIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4v.6" />
+    <path d="M12 17h.01" />
+  </Svg>
+);
+
 export const RefreshIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M4 12a8 8 0 0 1 14-5.3L20 9M20 4v5h-5" />

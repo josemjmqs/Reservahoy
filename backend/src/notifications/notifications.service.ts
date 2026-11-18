@@ -92,12 +92,35 @@ export interface NewBookingEmailData {
   timezone: string;
 }
 
+export interface SupportRequestEmailData {
+  id: string;
+  kind: 'PROBLEM' | 'SUGGESTION' | 'QUESTION';
+  message: string;
+  page: string | null;
+  userAgent: string | null;
+  createdAt: Date;
+  userName: string;
+  userEmail: string;
+  memberName: string;
+  role: string;
+  businessName: string;
+  businessSlug: string;
+}
+
+const SUPPORT_KIND_LABEL: Record<SupportRequestEmailData['kind'], string> = {
+  PROBLEM: 'Problema',
+  SUGGESTION: 'Sugerencia',
+  QUESTION: 'Duda',
+};
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
   private readonly resend: Resend | null;
   private readonly from: string;
   private readonly frontendUrl: string;
+  // Buzón del equipo de Reservahoy para "Ayuda y sugerencias"
+  private readonly supportEmail: string | null;
   // Espera antes de cada reintento: 3 intentos en total
   private readonly retryDelaysMs = [2000, 5000];
 
@@ -109,6 +132,7 @@ export class NotificationsService {
       'Reservahoy <reservas@mail.reservahoy.cl>';
     this.frontendUrl =
       config.get<string>('FRONTEND_URL') ?? 'http://localhost:3001';
+    this.supportEmail = config.get<string>('SUPPORT_EMAIL') || null;
   }
 
   // Envía con reintentos ante fallas pasajeras. Nunca lanza: un correo que no
@@ -308,6 +332,49 @@ export class NotificationsService {
         administrar la agenda y el negocio en el panel (el enlace vale 7 días):</p>
         <p><a href="${link}">Crear mi cuenta</a></p>
         <p>Si no esperabas esta invitación, ignora este mensaje.</p>`,
+    });
+  }
+
+  // Mensaje de "Ayuda y sugerencias" del panel al equipo de Reservahoy. Responder
+  // el correo le escribe directo al usuario (replyTo). Nunca lanza
+  async supportRequest(data: SupportRequestEmailData): Promise<void> {
+    if (!this.supportEmail) {
+      this.logger.warn(
+        `SUPPORT_EMAIL no configurado: mensaje de ayuda ${data.id} solo quedó en la base`,
+      );
+      return;
+    }
+    const kind = SUPPORT_KIND_LABEL[data.kind];
+    const when = DateTime.fromJSDate(data.createdAt, {
+      zone: 'America/Santiago',
+    })
+      .setLocale('es')
+      .toFormat("d 'de' LLLL yyyy, HH:mm");
+    const role = data.role === 'OWNER' ? 'dueño' : 'profesional';
+    const page = `${this.frontendUrl}/${data.businessSlug}`;
+    const firstLine = data.message.split(/\r?\n/)[0];
+    const preview =
+      firstLine.length > 60 ? `${firstLine.slice(0, 60)}…` : firstLine;
+
+    await this.send('ayuda y sugerencias', {
+      from: this.from,
+      to: this.supportEmail,
+      replyTo: data.userEmail,
+      subject: `[${kind}] ${data.businessName}: ${preview}`,
+      html: `
+          <p><strong>${kind}</strong> de ${escapeHtml(data.userName)}
+          (${escapeHtml(data.userEmail)}), ${role} de
+          <a href="${escapeHtml(page)}">${escapeHtml(data.businessName)}</a>.</p>
+          <div style="white-space:pre-wrap;border-left:3px solid #4f39f6;padding:8px 12px;margin:12px 0">${escapeHtml(data.message)}</div>
+          <ul style="color:#6b7280;font-size:12px">
+            <li>Fecha: ${when}</li>
+            <li>Nombre en la agenda: ${escapeHtml(data.memberName)}</li>
+            ${data.page ? `<li>Pantalla: ${escapeHtml(data.page)}</li>` : ''}
+            ${data.userAgent ? `<li>Navegador: ${escapeHtml(data.userAgent)}</li>` : ''}
+            <li>Id: ${data.id}</li>
+          </ul>
+          <p style="color:#6b7280;font-size:12px">Responde este correo para escribirle directo.</p>
+        `,
     });
   }
 

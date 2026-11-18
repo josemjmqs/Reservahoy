@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { PhotoPicker } from "@/components/PhotoPicker";
-import { Button, Field, Input } from "@/components/ui";
+import { Button, buttonClass, Field, Input } from "@/components/ui";
 import { api } from "@/lib/api";
 import { brandStyle, DEFAULT_BRAND } from "@/lib/brand";
 import { removeBusinessLogo, uploadBusinessLogo } from "@/lib/image";
@@ -459,6 +460,25 @@ export default function SettingsPage() {
         )}
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
         {owner && <CompletedNotice />}
+      </div>
+
+      <h2 className="mb-2 mt-6 text-sm font-medium text-gray-900">
+        Ayuda y sugerencias
+      </h2>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-white p-4">
+        <p className="text-sm text-gray-600">
+          ¿Algo no funciona, se te ocurre una mejora o tienes una duda?
+          Escríbenos.
+        </p>
+        <Link
+          href="/dashboard/support?from=/dashboard/settings"
+          className={buttonClass(
+            "secondary",
+            "inline-flex h-10 items-center sm:h-auto",
+          )}
+        >
+          Escribirnos
+        </Link>
       </div>
     </div>
   );

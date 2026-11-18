@@ -14,6 +14,8 @@ type Result = {
 function setup(responses: (Result | Error)[]) {
   const calls: {
     to: unknown;
+    subject?: string;
+    replyTo?: unknown;
     html?: string;
     attachments?: unknown;
     idempotencyKey?: string;
@@ -26,11 +28,19 @@ function setup(responses: (Result | Error)[]) {
     resend: {
       emails: {
         send: (
-          email: { to: unknown; html?: string; attachments?: unknown },
+          email: {
+            to: unknown;
+            subject?: string;
+            replyTo?: unknown;
+            html?: string;
+            attachments?: unknown;
+          },
           opts: { idempotencyKey?: string },
         ) => {
           calls.push({
             to: email.to,
+            subject: email.subject,
+            replyTo: email.replyTo,
             html: email.html,
             attachments: email.attachments,
             idempotencyKey: opts?.idempotencyKey,
@@ -190,6 +200,60 @@ describe('NotificationsService: servicio listo', () => {
     });
     expect(calls[0].html).not.toContain('Dirección');
     expect(calls[0].html).not.toContain('llamar');
+  });
+});
+
+describe('NotificationsService: ayuda y sugerencias', () => {
+  const data = {
+    id: 'req1',
+    kind: 'PROBLEM' as const,
+    message: 'No puedo <b>guardar</b> el horario\nSale un error rojo',
+    page: '/dashboard/hours',
+    userAgent: 'Mozilla/5.0 (Android)',
+    createdAt: new Date('2032-01-20T15:00:00Z'),
+    userName: 'Ana',
+    userEmail: 'ana@test.local',
+    memberName: 'Ana P.',
+    role: 'STAFF',
+    businessName: 'Peluquería & Co',
+    businessSlug: 'peluqueria',
+  };
+
+  it('llega al buzón del equipo, con el correo del usuario para responder', async () => {
+    const { service, calls } = setup([]);
+    Object.assign(service, { supportEmail: 'equipo@test.local' });
+    await service.supportRequest(data);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].to).toBe('equipo@test.local');
+    expect(calls[0].replyTo).toBe('ana@test.local');
+    // Solo la primera línea del mensaje va en el asunto
+    expect(calls[0].subject).toBe(
+      '[Problema] Peluquería & Co: No puedo <b>guardar</b> el horario',
+    );
+    expect(calls[0].html).toContain('No puedo &lt;b&gt;guardar&lt;/b&gt;');
+    expect(calls[0].html).toContain('Peluquería &amp; Co');
+    expect(calls[0].html).toContain('profesional');
+    expect(calls[0].html).toContain('/dashboard/hours');
+    expect(calls[0].html).toContain('Mozilla/5.0 (Android)');
+  });
+
+  it('acorta un asunto largo', async () => {
+    const { service, calls } = setup([]);
+    Object.assign(service, { supportEmail: 'equipo@test.local' });
+    await service.supportRequest({
+      ...data,
+      kind: 'SUGGESTION',
+      message: 'x'.repeat(100),
+    });
+    expect(calls[0].subject).toBe(
+      `[Sugerencia] Peluquería & Co: ${'x'.repeat(60)}…`,
+    );
+  });
+
+  it('sin SUPPORT_EMAIL no envía (el mensaje queda en la base)', async () => {
+    const { service, calls } = setup([]);
+    await service.supportRequest(data);
+    expect(calls).toHaveLength(0);
   });
 });
 

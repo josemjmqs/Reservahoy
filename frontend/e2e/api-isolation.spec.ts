@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
+import { closeDb, deleteSupportRequestsByEmail } from "./db";
 import {
   expect,
   request,
@@ -295,6 +296,16 @@ const PANEL_ROUTES: Record<
     other: 200,
     staff: 200, // sus propios ajustes; afterAll los deja como estaban
   },
+  "POST /support": {
+    // Cada miembro escribe por su cuenta (dueño o profesional): el negocio
+    // sale de su membresía y no puede apuntar a otro
+    call: (c) =>
+      c.post("/support", {
+        data: { kind: "QUESTION", message: "Prueba de aislamiento" },
+      }),
+    other: 201,
+    staff: 201, // afterAll borra su mensaje
+  },
 };
 
 // Todas las rutas declaradas en los controladores del backend
@@ -401,6 +412,9 @@ test.afterAll(async () => {
   await ownerA?.delete(`/time-blocks/${a.ownerBlock}`);
   // PATCH /settings del profesional cambió sus propios avisos: se restauran
   await staffA?.patch("/settings", { data: { newBookings: "OWN" } });
+  // POST /support del profesional dejó un mensaje (cuenta para su máximo por hora)
+  await deleteSupportRequestsByEmail(STAFF_EMAIL);
+  await closeDb();
   await Promise.all([anon, ownerA, ownerB, staffA].map((c) => c?.dispose()));
 });
 
