@@ -31,9 +31,6 @@ model Business {
   logoKey    String?
   // Color de marca de la página pública, "#rrggbb" en minúsculas
   brandColor String?
-  // Al marcar una reserva como completada se le avisa al cliente que su
-  // servicio está listo (negocios donde el cliente deja algo y vuelve a buscarlo)
-  notifyCompleted Boolean @default(false)
   createdAt DateTime    @default(now())
   members   Member[]
   services  Service[]

@@ -119,7 +119,7 @@ export class AuthService {
       select: {
         displayName: true,
         business: {
-          select: { name: true, slug: true, notifyCompleted: true },
+          select: { name: true, slug: true },
         },
       },
     });

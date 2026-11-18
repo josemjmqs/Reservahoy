@@ -14,12 +14,11 @@ Los negocios de citas se parecen entre sí: barbería, peluquería, mecánico, e
 
 ### Regla
 
-El código nunca pregunta `kind === 'MECHANIC'` en distintas pantallas. Pregunta por el ajuste concreto (`notifyCompleted`, y más adelante los campos que se piden al reservar). Es la misma idea que `isOwner` en vez de comparar con `'STAFF'`:
+El código nunca pregunta `kind === 'MECHANIC'` en distintas pantallas. Pregunta por el ajuste concreto (por ejemplo, más adelante, los campos que se piden al reservar). Es la misma idea que `isOwner` en vez de comparar con `'STAFF'`:
 
-- Una barbería que también recibe cosas para arreglar puede activar el aviso de servicio listo sin cambiarse de rubro.
 - Agregar un rubro nuevo es agregar una fila de valores por defecto y de textos, no buscar condiciones repartidas por el código.
 
-`Business.notifyCompleted` ya sigue esta regla: es una diferencia de rubro (pensada para el mecánico) expresada como un ajuste.
+El aviso de servicio listo (al marcar una reserva Completada) partió como un ajuste pensado para el mecánico (`Business.notifyCompleted`), pero hoy está siempre activado para todos los negocios y ya no es un ajuste.
 
 ### Textos
 
@@ -35,7 +34,7 @@ Un archivo de vocabulario por rubro en el frontend (por ejemplo `lib/vocabulary.
 
 Al elegir el rubro (en el registro o en Ajustes) se ponen sus ajustes por defecto. El dueño los puede cambiar después uno por uno.
 
-- Mecánico: `notifyCompleted` encendido. Más adelante, pedir patente y modelo del vehículo al reservar (primer caso de los "campos personalizados" que están en pendientes, con campos que vienen armados según el rubro).
+- Mecánico: pedir patente y modelo del vehículo al reservar (primer caso de los "campos personalizados" que están en pendientes, con campos que vienen armados según el rubro).
 - Barbería y otros: lo de hoy.
 
 ### Datos
@@ -70,7 +69,7 @@ Tablas nuevas:
 - **`Order`**: `businessId`, `customerId` (el mismo `Customer` de hoy), `pickupAt` (hora de retiro, UTC), `prepStartsAt` (calculado y guardado: ordena la cocina y permite cambiar después la forma de medir la capacidad sin migrar datos), `status`, `notes`, `manageToken` (enlace para que el cliente vea o cancele, como en `/reserva/[token]`), `createdAt`.
 - **`OrderItem`**: `orderId`, `productId`, `quantity`, `unitPrice` (el precio al momento del pedido: el del menú puede cambiar), `position`.
 
-Estados de `Order`: `PENDING` → `PREPARING` → `READY` (con aviso al cliente, como `notifyCompleted`) → `PICKED_UP`; además `CANCELLED`. Pensar desde el principio en un estado de pago aparte (ver riesgos).
+Estados de `Order`: `PENDING` → `PREPARING` → `READY` (con aviso al cliente, como el de servicio listo al completar una reserva) → `PICKED_UP`; además `CANCELLED`. Pensar desde el principio en un estado de pago aparte (ver riesgos).
 
 Se comparte con las citas: negocio, cuentas, roles, invitaciones, página pública (`/[slug]`), clientes, correos (`NotificationsService.send`), logo y color de marca, y bloqueos (`TimeBlock`, aquí para cerrar un día o una tarde).
 
