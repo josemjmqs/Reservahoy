@@ -29,27 +29,29 @@ export function ServicePicker({
   onToggle: (id: string) => void;
   maxReached?: boolean; // ya se eligió el máximo: no se pueden sumar más
 }) {
-  // Si alguno tiene foto, los que no la tienen muestran su inicial en el mismo
-  // recuadro: todas las filas se ven iguales y el texto queda alineado. Si
-  // ninguno tiene foto, la lista va sin recuadros
-  const withThumbs = services.some((s) => s.imageUrl);
-
-  const rows = (items: PublicService[]) => (
-    <div className="divide-y divide-gray-100">
-      {items.map((s) => (
-        <ServiceRow
-          key={s.id}
-          service={s}
-          withThumb={withThumbs}
-          selected={selectedIds.includes(s.id)}
-          disabled={maxReached && !selectedIds.includes(s.id)}
-          open={openId === s.id}
-          onOpenChange={(o) => setOpenId(o ? s.id : null)}
-          onToggle={onToggle}
-        />
-      ))}
-    </div>
-  );
+  // Por categoría: si alguno tiene foto, los que no la tienen muestran su
+  // inicial en el mismo recuadro, así las filas se ven iguales y el texto queda
+  // alineado. Una categoría sin fotos va sin recuadros (las iniciales solas
+  // ocupan espacio y parecen avatares)
+  const rows = (items: PublicService[]) => {
+    const withThumbs = items.some((s) => s.imageUrl);
+    return (
+      <div className="divide-y divide-gray-100">
+        {items.map((s) => (
+          <ServiceRow
+            key={s.id}
+            service={s}
+            withThumb={withThumbs}
+            selected={selectedIds.includes(s.id)}
+            disabled={maxReached && !selectedIds.includes(s.id)}
+            open={openId === s.id}
+            onOpenChange={(o) => setOpenId(o ? s.id : null)}
+            onToggle={onToggle}
+          />
+        ))}
+      </div>
+    );
+  };
 
   // Un solo servicio abierto a la vez (en cualquier categoría): su detalle trae
   // la foto, la descripción y el botón para elegirlo
@@ -89,7 +91,7 @@ export function ServicePicker({
               onClick={() => setOpen(isOpen ? null : name)}
               className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-gray-50 ${focusRing}`}
             >
-              <span className="min-w-0">
+              <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="font-semibold text-gray-900">{name}</span>
                   {/* cerrada, deja ver que adentro hay algo elegido */}
@@ -99,8 +101,10 @@ export function ServicePicker({
                     </span>
                   )}
                 </span>
-                <span className="block text-sm text-gray-500">
-                  {items.length} {items.length === 1 ? "servicio" : "servicios"}
+                {/* los nombres que quepan en una línea dicen qué hay adentro
+                  mejor que "4 servicios"; el resto se corta con "…" */}
+                <span className="block truncate text-sm text-gray-500">
+                  {items.map((s) => s.name).join(", ")}
                 </span>
               </span>
               <svg
@@ -236,7 +240,9 @@ function ServiceRow({
           </span>
         </button>
       ) : (
-        <div className={`flex transition ${selected ? "" : "hover:bg-gray-50"}`}>
+        <div
+          className={`flex transition ${selected ? "" : "hover:bg-gray-50"}`}
+        >
           {/* tocar la fila abre el detalle; el círculo agrega o quita */}
           <button
             ref={headerRef}
