@@ -9,7 +9,12 @@ import { api } from "@/lib/api";
 import { brandStyle, DEFAULT_BRAND } from "@/lib/brand";
 import { removeBusinessLogo, uploadBusinessLogo } from "@/lib/image";
 import { isOwner, useMe } from "@/lib/me";
-import type { BusinessInfo, NotifyScope, Settings } from "@/lib/types";
+import type {
+  BusinessInfo,
+  NotifyScope,
+  Settings,
+  TeamMember,
+} from "@/lib/types";
 
 type BusinessForm = {
   name: string;
@@ -315,8 +320,12 @@ function BusinessSection() {
 }
 
 export default function SettingsPage() {
-  const owner = isOwner(useMe());
+  const me = useMe();
+  const owner = isOwner(me);
+  const myMemberId = me.membership.memberId;
   const [settings, setSettings] = useState<Settings | null>(null);
+  // Cuántos miembros activos hay además de uno (solo se pide para un dueño)
+  const [others, setOthers] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -328,28 +337,53 @@ export default function SettingsPage() {
       );
   }, []);
 
+  useEffect(() => {
+    if (!owner) return;
+    api<TeamMember[]>("/members")
+      .then((list) =>
+        setOthers(list.filter((m) => m.active && m.id !== myMemberId).length),
+      )
+      // Sin saber del equipo, se muestran todas las opciones
+      .catch(() => setOthers(1));
+  }, [owner, myMemberId]);
+
+  // Un dueño sin equipo atiende todas las reservas: "todas" y "las que atiendo
+  // yo" son lo mismo, así que solo elige recibirlas o no. "Recibir" guarda ALL
+  // para que, al sumar a alguien, siga recibiendo las de todo el negocio
+  const alone = owner && others === 0;
+  const ready = settings !== null && (!owner || others !== null);
+  const isChecked = (value: NotifyScope) =>
+    alone
+      ? (value === "NONE") === (settings?.newBookings === "NONE")
+      : settings?.newBookings === value;
+
   // Todas las del negocio es solo para un dueño (el backend también lo niega):
   // un profesional no recibe datos de clientes de otros
-  const options: { value: NotifyScope; label: string; hint: string }[] = [
-    ...(owner
-      ? [
-          {
-            value: "ALL" as const,
-            label: "Todas las reservas del negocio",
-            hint: "Las de cualquier profesional.",
-          },
-        ]
-      : []),
-    {
-      value: "OWN",
-      label: "Solo las que atiendo yo",
-      hint: "Cuando un cliente reserva contigo.",
-    },
-    { value: "NONE", label: "Ninguna", hint: "No te escribimos." },
-  ];
+  const options: { value: NotifyScope; label: string; hint: string }[] = alone
+    ? [
+        { value: "ALL", label: "Recibir", hint: "Por cada reserva nueva." },
+        { value: "NONE", label: "No recibir", hint: "No te escribimos." },
+      ]
+    : [
+        ...(owner
+          ? [
+              {
+                value: "ALL" as const,
+                label: "Todas las reservas del negocio",
+                hint: "Las de cualquier profesional.",
+              },
+            ]
+          : []),
+        {
+          value: "OWN",
+          label: "Solo las que atiendo yo",
+          hint: "Cuando un cliente reserva contigo.",
+        },
+        { value: "NONE", label: "Ninguna", hint: "No te escribimos." },
+      ];
 
   async function changeNewBookings(newBookings: NotifyScope) {
-    if (!settings || newBookings === settings.newBookings) return;
+    if (!settings || isChecked(newBookings)) return;
     // Se marca al instante; si no se guarda, vuelve a la opción anterior
     const previous = settings;
     setSettings({ ...settings, newBookings });
@@ -381,7 +415,7 @@ export default function SettingsPage() {
         Notificaciones
       </h2>
       <div className="rounded-card border border-line bg-white p-4">
-        {settings ? (
+        {settings && ready ? (
           <fieldset disabled={saving}>
             <legend className="font-medium">
               Correo cuando entra una reserva
@@ -395,7 +429,7 @@ export default function SettingsPage() {
                 <label
                   key={o.value}
                   className={`flex min-h-10 cursor-pointer items-start gap-3 rounded-control border px-3 py-2 transition has-[:disabled]:cursor-default has-[:disabled]:opacity-60 ${
-                    settings.newBookings === o.value
+                    isChecked(o.value)
                       ? "border-indigo-600 bg-indigo-50"
                       : "border-gray-200 hover:bg-gray-50"
                   }`}
@@ -404,7 +438,7 @@ export default function SettingsPage() {
                     type="radio"
                     name="new-bookings"
                     value={o.value}
-                    checked={settings.newBookings === o.value}
+                    checked={isChecked(o.value)}
                     onChange={() => changeNewBookings(o.value)}
                     className="mt-1 h-4 w-4 accent-indigo-600"
                   />
