@@ -9,6 +9,7 @@ import {
   BanIcon,
   CalendarIcon,
   ClockIcon,
+  HelpIcon,
   SlidersIcon,
   TagIcon,
   UsersIcon,
@@ -33,6 +34,8 @@ const TABS = [
   { href: "/dashboard/blocks", label: "Bloqueos", Icon: BanIcon },
   { href: "/dashboard/settings", label: "Ajustes", Icon: SlidersIcon },
 ];
+
+const SUPPORT_HREF = "/dashboard/support";
 
 const ownerOnly = (pathname: string) =>
   TABS.some((t) => t.ownerOnly && pathname.startsWith(t.href));
@@ -152,13 +155,36 @@ export default function DashboardLayout({
               {owner ? "Ver mi página pública ↗" : "Ver la página del negocio ↗"}
             </Link>
           </div>
-          <Button
-            variant="secondary"
-            onClick={logout}
-            className="shrink-0 px-3 py-1.5 sm:px-4 sm:py-2"
-          >
-            Cerrar sesión
-          </Button>
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            {/* Ayuda y sugerencias: fuera de las pestañas (en el celular la
+                barra de abajo ya va llena). Lleva la pantalla actual para que
+                el mensaje diga desde dónde se escribió */}
+            <Link
+              href={
+                pathname === SUPPORT_HREF
+                  ? SUPPORT_HREF
+                  : `${SUPPORT_HREF}?from=${encodeURIComponent(pathname)}`
+              }
+              aria-current={pathname === SUPPORT_HREF ? "page" : undefined}
+              aria-label="Ayuda y sugerencias"
+              title="Ayuda y sugerencias"
+              className={`inline-flex h-10 items-center gap-1.5 rounded-control px-2 text-sm font-medium transition hover:bg-gray-100 sm:px-3 ${
+                pathname === SUPPORT_HREF
+                  ? "text-indigo-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <HelpIcon className="h-6 w-6 sm:h-5 sm:w-5" />
+              <span className="hidden sm:inline">Ayuda</span>
+            </Link>
+            <Button
+              variant="secondary"
+              onClick={logout}
+              className="px-3 py-1.5 sm:px-4 sm:py-2"
+            >
+              Cerrar sesión
+            </Button>
+          </div>
         </div>
         {/* Un solo menú que cambia de forma: en el celular es una barra fija
             abajo, una columna por pestaña con su ícono (como una app); desde

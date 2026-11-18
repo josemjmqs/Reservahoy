@@ -40,6 +40,7 @@ model Business {
   customers Customer[]
   bookings  Booking[]
   blocks    TimeBlock[]
+  supportRequests SupportRequest[]
 }
 
 model User {
@@ -74,6 +75,7 @@ model Member {
   bookings          Booking[]
   services          MemberService[]
   invitations       MemberInvitation[]
+  supportRequests   SupportRequest[]
 
   @@unique([userId, businessId])
   @@index([businessId])
@@ -225,4 +227,30 @@ model EmailVerificationToken {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+// Qué escribe un usuario del panel en "Ayuda y sugerencias"
+enum SupportKind {
+  PROBLEM // reporta un problema
+  SUGGESTION // sugiere una mejora o algo nuevo
+  QUESTION // tiene una duda
+}
+
+// Mensaje de un usuario del panel al equipo de Reservahoy. Se guarda aunque el
+// correo no salga, y queda como historial
+model SupportRequest {
+  id         String      @id @default(cuid())
+  kind       SupportKind
+  message    String
+  // Pantalla del panel desde donde se abrió (ej. /dashboard/agenda)
+  page       String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+  memberId   String
+  businessId String
+  member     Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, createdAt])
+  @@index([businessId, createdAt])
 }

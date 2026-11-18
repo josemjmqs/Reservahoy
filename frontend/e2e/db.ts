@@ -92,6 +92,17 @@ export async function deleteUserByEmail(email: string) {
   ]);
 }
 
+// Borra los mensajes de "Ayuda y sugerencias" de una cuenta: la API no los
+// borra y cuentan para el máximo por hora (5) de cada miembro
+export async function deleteSupportRequestsByEmail(email: string) {
+  await db().query(
+    `DELETE FROM "SupportRequest" WHERE "memberId" IN (
+       SELECT m.id FROM "Member" m JOIN "User" u ON u.id = m."userId"
+       WHERE u.email = $1)`,
+    [email.trim().toLowerCase()],
+  );
+}
+
 export async function closeDb() {
   await pool?.end();
   pool = undefined;
