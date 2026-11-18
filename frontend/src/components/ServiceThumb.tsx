@@ -4,15 +4,16 @@ import { useState } from "react";
 
 // Miniatura cuadrada de un servicio. Sin foto (o si la foto no carga) muestra
 // un ícono, así todas las filas reservan el mismo espacio y el texto queda alineado.
-// Con `name` (página pública) muestra en cambio la inicial en el color de marca:
-// un ícono de "sin foto" se vería como una imagen rota para el cliente
+// Con `blank` (página pública) deja en cambio el espacio vacío: un ícono de
+// "sin foto" se vería como una imagen rota para el cliente, y una inicial en
+// un recuadro de color parece un avatar y compite con las fotos de al lado
 export function ServiceThumb({
   src,
-  name,
+  blank = false,
   className = "h-14 w-14",
 }: {
   src: string | null;
-  name?: string;
+  blank?: boolean;
   className?: string;
 }) {
   const [failed, setFailed] = useState<string | null>(null);
@@ -28,17 +29,7 @@ export function ServiceThumb({
       />
     );
 
-  if (name !== undefined)
-    return (
-      <div
-        aria-hidden
-        // --brand-ring directo: la variable del tema se resuelve en :root
-        className={`${className} flex shrink-0 items-center justify-center rounded-control bg-brand/15 text-lg font-semibold text-[var(--brand-ring,#4f39f6)]`}
-      >
-        {/* Array.from: la inicial puede ser un emoji (dos unidades UTF-16) */}
-        {Array.from(name.trim())[0]?.toLocaleUpperCase("es")}
-      </div>
-    );
+  if (blank) return <div aria-hidden className={`${className} shrink-0`} />;
 
   return (
     <div

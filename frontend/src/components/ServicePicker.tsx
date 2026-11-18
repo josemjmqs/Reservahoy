@@ -31,10 +31,9 @@ export function ServicePicker({
   onToggle: (id: string) => void;
   maxReached?: boolean; // ya se eligió el máximo: no se pueden sumar más
 }) {
-  // Por categoría: si alguno tiene foto, los que no la tienen muestran su
-  // inicial en el mismo recuadro, así las filas se ven iguales y el texto queda
-  // alineado. Una categoría sin fotos va sin recuadros (las iniciales solas
-  // ocupan espacio y parecen avatares)
+  // Por categoría: si alguno tiene foto, los que no la tienen dejan ese espacio
+  // vacío, así el texto queda alineado. Una categoría sin fotos va sin ese
+  // espacio (solo sería un margen)
   const rows = (items: PublicService[]) => {
     const withThumbs = items.some((s) => s.imageUrl);
     return (
@@ -229,9 +228,9 @@ function ServiceRow({
   const info = (
     <>
       {/* abierto, la foto se ve completa abajo: no se repite en miniatura
-        (sin foto, la inicial se queda: abajo no hay nada que la reemplace) */}
+        (sin foto, el espacio vacío se queda: el texto no se corre) */}
       {withThumb && !(s.imageUrl && open) && (
-        <ServiceThumb src={s.imageUrl} name={s.name} className="h-12 w-12" />
+        <ServiceThumb src={s.imageUrl} blank className="h-12 w-12" />
       )}
       {/* el precio va en la línea de la duración (alineado a la derecha, en
         columna con los demás): así el nombre tiene todo el ancho y en el

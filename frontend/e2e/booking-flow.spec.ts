@@ -83,8 +83,8 @@ async function openPelo(page: Page) {
 }
 
 // La categoría muestra los nombres de sus servicios. Las miniaturas van por
-// categoría: donde algún servicio tiene foto, los demás muestran su inicial;
-// una categoría sin fotos va sin recuadros
+// categoría: donde algún servicio tiene foto, los demás dejan el espacio vacío
+// (sin inicial ni ícono); una categoría sin fotos va sin ese espacio
 test("las categorías muestran sus servicios y las miniaturas solo donde hay fotos", async ({
   page,
 }) => {
@@ -106,16 +106,25 @@ test("las categorías muestran sus servicios y las miniaturas solo donde hay fot
     "Perfilado de barba",
   );
 
-  // Pelo tiene una foto: "Lavado y peinado" muestra su inicial
+  // Pelo tiene una foto: "Lavado y peinado" deja el espacio vacío, así su
+  // nombre queda alineado con el de "Corte de pelo"
   const pelo = page.locator("#category-Pelo");
   await expect(pelo.locator(`img[src="${photo}"]`)).toBeVisible();
-  await expect(pelo.getByText("L", { exact: true })).toBeVisible();
+  await expect(pelo.getByText("L", { exact: true })).toHaveCount(0);
+  const left = async (name: string) =>
+    (await pelo.getByText(name, { exact: true }).boundingBox())!.x;
+  const withSpace = await left("Lavado y peinado");
+  expect(withSpace).toBeCloseTo(await left("Corte de pelo"), 0);
 
-  // Barba no tiene fotos: sin recuadro con la inicial
+  // Barba no tiene fotos: sin el espacio, el nombre va pegado al borde (abrir
+  // Barba cierra Pelo: por eso se midió antes)
   await page.getByRole("button", { name: /^Barba/ }).click();
   const barba = page.locator("#category-Barba");
   await expect(barba.getByText("Perfilado de barba")).toBeVisible();
-  await expect(barba.getByText("P", { exact: true })).toHaveCount(0);
+  expect(
+    (await barba.getByText("Perfilado de barba", { exact: true }).boundingBox())!
+      .x,
+  ).toBeLessThan(withSpace);
 });
 
 // Sin foto ni descripción no hay detalle que ver: la fila no es un botón (sin

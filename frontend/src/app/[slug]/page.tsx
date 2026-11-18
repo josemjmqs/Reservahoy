@@ -524,7 +524,7 @@ export default function PublicPage({
                       {withThumbs && (
                         <ServiceThumb
                           src={s.imageUrl}
-                          name={s.name}
+                          blank
                           className="h-10 w-10"
                         />
                       )}
