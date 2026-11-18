@@ -96,11 +96,9 @@ export async function openSlots(
   });
   if ((await categoryButton.getAttribute("aria-expanded")) === "false")
     await categoryButton.click();
-  // el círculo "+" de la fila agrega el servicio; si no tiene foto ni
-  // descripción no hay círculo aparte: la fila entera es ese botón
-  const add = page.getByRole("button", { name: `Agregar ${service}`, exact: true });
-  if (await add.count()) await add.click();
-  else await page.getByRole("button", { name: new RegExp(`^${service}`) }).click();
+  // tocar el servicio abre su detalle; se elige con "Seleccionar"
+  await page.getByRole("button", { name: new RegExp(`^${service}`) }).click();
+  await page.getByRole("button", { name: "Seleccionar", exact: true }).click();
   if (member)
     await page.getByRole("button", { name: member, exact: true }).click();
   // Espera la respuesta de ese día (y de ese profesional): las horas que haya
