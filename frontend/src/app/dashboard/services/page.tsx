@@ -73,7 +73,7 @@ function ServiceFields({
       </Field>
       <Field
         label="Categoría"
-        hint={`Sirve para agrupar servicios${editing ? ". Vacío = sin categoría" : ""}`}
+        hint={`Utilízalo para agrupar servicios${editing ? ". Vacío = sin categoría" : ""}`}
       >
         <CategoryInput
           value={value.category}
