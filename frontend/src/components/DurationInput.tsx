@@ -11,8 +11,8 @@ const UNITS = [
 
 type UnitId = (typeof UNITS)[number]["id"];
 
-// La mayor unidad en que el valor es exacto, como lo muestra formatTotal
-// (lib/format.ts): 2880 -> días, 120 -> horas, 90 -> min. Vacío parte en min
+// La mayor unidad en que el valor es exacto: 2880 -> días, 120 -> horas,
+// 90 -> min. Vacío parte en min
 function unitFor(minutes: string): UnitId {
   const n = Number(minutes);
   if (minutes === "" || !n) return "min";
