@@ -70,6 +70,9 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
+      # explícito: el que hace npm ci al instalar @prisma/client a veces no
+      # queda y las pruebas fallan con "did not initialize yet"
+      - run: npx prisma generate
       - run: npx prisma migrate deploy
       - run: npm run test:integration
   # App completa con el seed: aislamiento entre negocios en toda la API y el
@@ -111,6 +114,7 @@ jobs:
         working-directory: backend
         run: |
           npm ci
+          npx prisma generate
           npx prisma migrate deploy
           npx prisma db seed
           npm run build
