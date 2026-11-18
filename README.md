@@ -108,6 +108,7 @@ Navegador ──► Next.js (Vercel) ──► API NestJS (Render) ──► Pos
   2. Descifrar: `age -d -i clave.txt -o respaldo.dump archivo.dump.age`
   3. Restaurar: `pg_restore --no-owner -d <base> respaldo.dump`
 - **Correo:** Resend, dominio `mail.` con DKIM verificado.
+- **Correo de contacto:** `contacto@reservahoy.cl` es una dirección de Cloudflare Email Routing que reenvía a la casilla del dueño (no guarda correos). Para recibir en otra dirección del dominio se agrega una regla en Cloudflare → Email → Email Routing; el catch-all queda apagado para no recibir spam a direcciones inventadas. Solo recibe: las respuestas salen desde la casilla de destino.
 - **Fotos:** bucket público de Cloudflare R2 con dominio propio; variables `R2_*` en Render (ver `backend/.env.example`). Sin ellas la subida de fotos queda desactivada.
 - **Despliegue:** automático al hacer merge a `main` (Render y Vercel).
 
@@ -224,7 +225,6 @@ docker-compose.yml
 - Política de anticipación mínima para cancelar.
 - Trabajadores con cuenta propia (hoy solo el dueño inicia sesión).
 - Reparto por carga en vez de azar.
-- Correo de contacto con dominio propio (Cloudflare Email Routing)
 
 **Técnicas**
 

@@ -1,10 +1,11 @@
 import { LegalPage } from '@/components/LegalPage';
+import { CONTACT_EMAIL } from '@/lib/contact';
 
 export const metadata = { title: 'Términos de uso' };
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Términos de uso" updated="8 de noviembre de 2026">
+    <LegalPage title="Términos de uso" updated="17 de noviembre de 2026">
       <p>
         Al usar Reservahoy aceptas estos términos. Si no estás de acuerdo, no
         uses el servicio.
@@ -58,7 +59,7 @@ export default function TermsPage() {
 
       <h2>Contacto</h2>
       <p>
-        Para consultas: <strong>[joseignaciodiazh@gmail.com]</strong>.
+        Para consultas: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
       </p>
     </LegalPage>
   );

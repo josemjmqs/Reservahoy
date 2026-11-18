@@ -1,10 +1,11 @@
 import { LegalPage } from '@/components/LegalPage';
+import { CONTACT_EMAIL } from '@/lib/contact';
 
 export const metadata = { title: 'Política de privacidad' };
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Política de privacidad" updated="8 de noviembre de 2026">
+    <LegalPage title="Política de privacidad" updated="17 de noviembre de 2026">
       <p>
         Reservahoy es una plataforma que permite a negocios recibir reservas
         online. Esta política explica qué datos se recogen y cómo se usan.
@@ -64,7 +65,7 @@ export default function PrivacyPage() {
       <h2>Tus derechos</h2>
       <p>
         Puedes solicitar acceso, rectificación o eliminación de tus datos
-        escribiendo a <strong>[joseignaciodiazh@gmail.com]</strong>, o al negocio con el
+        escribiendo a <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>, o al negocio con el
         que reservaste.
       </p>
 
