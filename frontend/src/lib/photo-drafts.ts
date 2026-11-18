@@ -3,12 +3,14 @@
 // reserva, hasta que se envían. Así se puede sumar una foto, salir y volver
 // más tarde por otra. No salen del dispositivo hasta enviarlas, se guardan ya
 // reducidas (~150 KB) y se borran al enviar, a los 7 días, cuando la reserva
-// deja de estar activa y al cerrar la sesión (pueden ser cosas de clientes en
+// ya no se puede completar y al cerrar la sesión (pueden ser cosas de clientes en
 // un equipo compartido).
 //
 // Todo es "mejor esfuerzo": si IndexedDB no está (modo privado, sin espacio)
 // o falla, se responde como si no hubiera borradores y nunca se lanza, así el
 // diálogo funciona igual que sin borradores
+
+import { canComplete } from "./types";
 
 const DB_NAME = "reservahoy";
 const STORE = "photo-drafts";
@@ -78,18 +80,17 @@ export async function saveDraft(bookingId: string, photos: Blob[]) {
 
 export const deleteDraft = (bookingId: string) => saveDraft(bookingId, []);
 
-// Cuántas fotos guardadas tiene cada reserva activa de la lista (para el
-// aviso en la agenda). De paso borra los borradores vencidos y los de
-// reservas de la lista que ya no están activas (completadas o canceladas,
-// también desde otro dispositivo)
+// Cuántas fotos guardadas tiene cada reserva de la lista que todavía se puede
+// completar avisando al cliente (para el aviso en la agenda). De paso borra
+// los borradores vencidos y los de reservas de la lista que ya no (completadas
+// o canceladas, también desde otro dispositivo)
 export async function syncDrafts(
   bookings: { id: string; status: string }[],
 ): Promise<Record<string, number>> {
   try {
     const drafts = (await withStore<Draft[]>("readonly", (s) => s.getAll())) ?? [];
     const status = new Map(bookings.map((b) => [b.id, b.status]));
-    const active = (id: string) =>
-      status.get(id) === "PENDING" || status.get(id) === "CONFIRMED";
+    const active = (id: string) => canComplete(status.get(id));
     const now = Date.now();
     const stale = drafts.filter(
       (d) => !fresh(d, now) || (status.has(d.bookingId) && !active(d.bookingId)),

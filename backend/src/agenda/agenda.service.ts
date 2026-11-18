@@ -5,7 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { BookingStatus, Prisma } from '@prisma/client';
 import { DateTime } from 'luxon';
 import { getMembership, isOwner, scopeMemberId } from '../auth/membership';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -15,6 +15,10 @@ import { detectImageType } from '../storage/image-type';
 
 // Fotos que se pueden mandar en el correo de "servicio listo"
 export const MAX_COMPLETED_PHOTOS = 4;
+
+// Estados desde los que marcar Completada avisa al cliente: las activas y las
+// marcadas "No se presentó" (pudo ser un error: el cliente sí vino)
+const COMPLETABLE: BookingStatus[] = ['PENDING', 'CONFIRMED', 'NO_SHOW'];
 
 const BOOKING_SELECT = {
   id: true,
@@ -186,7 +190,8 @@ export class AgendaService {
 
     const done = await this.markCompleted(booking.businessId, id, photos);
     if (done) return { id, status: 'COMPLETED' as const, ...done };
-    // Ya no estaba activa: queda completada sin avisar, como con PATCH status
+    // Cancelada o ya completada: queda completada sin avisar, como con PATCH
+    // status
     const updated = await this.prisma.booking.update({
       where: { id },
       data: { status: 'COMPLETED' },
@@ -195,16 +200,16 @@ export class AgendaService {
     return { ...updated, notified: false };
   }
 
-  // Igual que al cancelar: solo quien pasa la reserva de activa a completada
-  // avisa (si el negocio tiene el aviso activado), así el correo sale una vez.
-  // null si ya no estaba activa
+  // Igual que al cancelar: solo quien pasa la reserva a completada (desde
+  // activa o "No se presentó") avisa, si el negocio tiene el aviso activado,
+  // así el correo sale una vez. null si estaba cancelada o ya completada
   private async markCompleted(
     businessId: string,
     id: string,
     photos: EmailPhoto[],
   ) {
     const { count } = await this.prisma.booking.updateMany({
-      where: { id, status: { in: ['PENDING', 'CONFIRMED'] } },
+      where: { id, status: { in: COMPLETABLE } },
       data: { status: 'COMPLETED' },
     });
     if (count !== 1) return null;

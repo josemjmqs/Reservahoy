@@ -11,6 +11,7 @@ import { CancelBookingDialog } from "@/components/CancelBookingDialog";
 import { CompleteBookingDialog } from "@/components/CompleteBookingDialog";
 import { RefreshIcon } from "@/components/icons";
 import { Button, Input } from "@/components/ui";
+import { canComplete } from "@/lib/types";
 import type {
   AgendaBooking,
   BookingStatus,
@@ -283,8 +284,9 @@ function AgendaContent() {
       </div>
 
       {/* En el celular, los tres en una fila y de 40 px de alto (cómodos
-          para el dedo); desde `sm`, más chicos */}
-      {(b.status === "CONFIRMED" || b.status === "PENDING") && (
+          para el dedo); desde `sm`, más chicos. "No se presentó" deja solo
+          Completada, por si se marcó por error y el cliente sí vino */}
+      {canComplete(b.status) && (
         <div className="mt-3 flex gap-1.5 sm:gap-2">
           <Button
             variant="secondary"
@@ -299,20 +301,24 @@ function AgendaContent() {
           >
             Completada
           </Button>
-          <Button
-            variant="secondary"
-            className={ACTION}
-            onClick={() => setStatus(b.id, "NO_SHOW")}
-          >
-            No se presentó
-          </Button>
-          <Button
-            variant="danger"
-            className={ACTION}
-            onClick={() => setToCancel(b)}
-          >
-            Cancelar
-          </Button>
+          {b.status !== "NO_SHOW" && (
+            <>
+              <Button
+                variant="secondary"
+                className={ACTION}
+                onClick={() => setStatus(b.id, "NO_SHOW")}
+              >
+                No se presentó
+              </Button>
+              <Button
+                variant="danger"
+                className={ACTION}
+                onClick={() => setToCancel(b)}
+              >
+                Cancelar
+              </Button>
+            </>
+          )}
         </div>
       )}
     </li>
