@@ -25,6 +25,13 @@ test("un negocio nuevo se registra y queda esperando confirmar su correo", async
   await expect(page.getByText("Confirma tu correo")).toBeVisible();
   await expect(page.getByText(email)).toBeVisible();
 
+  // Sin equipo, el correo de reservas nuevas es recibirlo o no (con equipo
+  // elige entre todas, las suyas o ninguna: staff-panel.spec.ts)
+  await page.getByRole("link", { name: "Ajustes" }).click();
+  await expect(page.getByRole("radio")).toHaveCount(2);
+  await expect(page.getByRole("radio", { name: /^Recibir/ })).toBeChecked();
+  await expect(page.getByRole("radio", { name: /^No recibir/ })).toBeVisible();
+
   // Su página pública existe, pero todavía no acepta reservas
   await page.goto(`/${slug}`);
   await expect(
