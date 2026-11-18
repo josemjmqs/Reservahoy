@@ -153,16 +153,47 @@ function ServiceRow({
   const headerRef = useRef<HTMLButtonElement>(null);
   const detailId = `service-${s.id}`;
 
+  // Dónde estaba la fila en la pantalla al tocarla (antes de centrarla), para
+  // devolverla ahí al cerrar. Si no, con los últimos servicios el centrado baja
+  // la página y al contraerse el detalle queda a la vista lo de abajo
+  // (profesional, día y hora) en vez de la lista
+  const topBeforeOpen = useRef<number | null>(null);
+  const restoreOnClose = useRef(false);
+
   // Al abrirse, el servicio (fila y detalle) queda centrado en la pantalla. Corre
-  // después de que se cierra el que estaba abierto, con las posiciones ya al día
+  // después de que se cierra el que estaba abierto, con las posiciones ya al día.
+  // Al cerrarse desde la misma fila vuelve a su lugar; si se cerró porque se
+  // abrió otro, manda el centrado de ese
   useEffect(() => {
-    if (open && rowRef.current) centerInView(rowRef.current);
+    const row = rowRef.current;
+    if (!row) return;
+    if (open) {
+      topBeforeOpen.current = row.getBoundingClientRect().top;
+      centerInView(row);
+    } else if (restoreOnClose.current && topBeforeOpen.current !== null) {
+      restoreOnClose.current = false;
+      const top = row.getBoundingClientRect().top - topBeforeOpen.current;
+      // solo si la fila quedó más arriba que donde estaba: nunca la baja
+      if (top < -1) {
+        const reduce = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+        window.scrollBy({ top, behavior: reduce ? "auto" : "smooth" });
+      }
+    }
   }, [open]);
+
+  // Cerrar desde esta fila (la fila, el detalle, "Seleccionar", "Quitar" o el
+  // check): la devuelve a donde estaba
+  function closeHere() {
+    restoreOnClose.current = true;
+    onOpenChange(false);
+  }
 
   // El foco vuelve a la fila al cerrar, no se pierde
   function close() {
-    onOpenChange(false);
-    headerRef.current?.focus();
+    closeHere();
+    headerRef.current?.focus({ preventScroll: true });
   }
 
   function choose() {
@@ -177,8 +208,8 @@ function ServiceRow({
   // el foco pasa a la fila
   function unselect() {
     onToggle(s.id);
-    if (open) onOpenChange(false);
-    headerRef.current?.focus();
+    if (open) closeHere();
+    headerRef.current?.focus({ preventScroll: true });
   }
 
   return (
@@ -199,7 +230,7 @@ function ServiceRow({
           type="button"
           aria-expanded={open}
           aria-controls={detailId}
-          onClick={() => onOpenChange(!open)}
+          onClick={() => (open ? closeHere() : onOpenChange(true))}
           className={`flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left transition ${focusRing} ${
             selected ? "" : "pr-4 hover:bg-gray-50"
           }`}
