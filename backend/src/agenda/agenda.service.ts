@@ -120,7 +120,7 @@ export class AgendaService {
         businessId: m.businessId,
         ...(!isOwner(m) && { memberId: m.memberId }),
       },
-      select: { id: true, businessId: true },
+      select: { id: true },
     });
     if (!booking) throw new NotFoundException('Reserva no encontrada');
     return booking;
@@ -132,7 +132,7 @@ export class AgendaService {
     status: string,
     reason?: string,
   ) {
-    const booking = await this.findScoped(userId, id);
+    await this.findScoped(userId, id);
 
     if (status === 'CANCELLED') {
       // Solo quien pasa la reserva de activa a cancelada avisa al cliente, así
@@ -147,10 +147,7 @@ export class AgendaService {
       }
     }
 
-    if (
-      status === 'COMPLETED' &&
-      (await this.markCompleted(booking.businessId, id, []))
-    ) {
+    if (status === 'COMPLETED' && (await this.markCompleted(id, []))) {
       return { id, status: 'COMPLETED' as const };
     }
 
@@ -172,9 +169,10 @@ export class AgendaService {
   // Completar desde el diálogo de la agenda, con fotos opcionales (JPG, PNG o
   // WebP, validadas por sus bytes) que van dentro del correo de "servicio
   // listo". No se guardan: el bucket es público y son fotos de cosas del
-  // cliente. `notified` dice si se le escribió (el negocio tiene el aviso)
+  // cliente. `notified` dice si se le escribió (no, si ya estaba completada o
+  // cancelada)
   async complete(userId: string, id: string, files: { buffer: Buffer }[] = []) {
-    const booking = await this.findScoped(userId, id);
+    await this.findScoped(userId, id);
     if (files.length > MAX_COMPLETED_PHOTOS) {
       throw new BadRequestException(
         `Puedes enviar hasta ${MAX_COMPLETED_PHOTOS} fotos`,
@@ -188,7 +186,7 @@ export class AgendaService {
       return { content: f.buffer, ...type };
     });
 
-    const done = await this.markCompleted(booking.businessId, id, photos);
+    const done = await this.markCompleted(id, photos);
     if (done) return { id, status: 'COMPLETED' as const, ...done };
     // Cancelada o ya completada: queda completada sin avisar, como con PATCH
     // status
@@ -201,24 +199,16 @@ export class AgendaService {
   }
 
   // Igual que al cancelar: solo quien pasa la reserva a completada (desde
-  // activa o "No se presentó") avisa, si el negocio tiene el aviso activado,
-  // así el correo sale una vez. null si estaba cancelada o ya completada
-  private async markCompleted(
-    businessId: string,
-    id: string,
-    photos: EmailPhoto[],
-  ) {
+  // activa o "No se presentó") le avisa al cliente, así el correo sale una
+  // vez. null si estaba cancelada o ya completada
+  private async markCompleted(id: string, photos: EmailPhoto[]) {
     const { count } = await this.prisma.booking.updateMany({
       where: { id, status: { in: COMPLETABLE } },
       data: { status: 'COMPLETED' },
     });
     if (count !== 1) return null;
-    const { notifyCompleted } = await this.prisma.business.findUniqueOrThrow({
-      where: { id: businessId },
-      select: { notifyCompleted: true },
-    });
-    if (notifyCompleted) void this.notifyCompleted(id, photos);
-    return { notified: notifyCompleted };
+    void this.notifyCompleted(id, photos);
+    return { notified: true };
   }
 
   // Correo al cliente de que su servicio está listo. Nunca lanza: un fallo

@@ -457,20 +457,12 @@ describe('AgendaService.updateStatus', () => {
   });
 
   describe('correo al cliente de que su servicio está listo', () => {
-    const setNotify = (notifyCompleted: boolean) =>
-      prisma.business.update({
-        where: { id: businessId },
-        data: { notifyCompleted },
-      });
-
     beforeEach(async () => {
       await settle();
       completed.length = 0;
     });
-    afterEach(() => setNotify(false));
 
-    it('con el aviso activado, completar le avisa una vez con el servicio y el negocio', async () => {
-      await setNotify(true);
+    it('completar le avisa una vez con el servicio y el negocio', async () => {
       await prisma.business.update({
         where: { id: businessId },
         data: { phone: '+56 9 1111 2222', address: 'Calle 1, Ñuñoa' },
@@ -501,7 +493,6 @@ describe('AgendaService.updateStatus', () => {
     });
 
     it('una reserva pendiente también avisa', async () => {
-      await setNotify(true);
       await service.updateStatus(
         ownerUserId,
         await book('02:00', 'PENDING'),
@@ -511,18 +502,7 @@ describe('AgendaService.updateStatus', () => {
       expect(completed).toHaveLength(1);
     });
 
-    it('con el aviso desactivado, completar no le escribe al cliente', async () => {
-      const id = await book('03:00');
-      expect(await service.updateStatus(ownerUserId, id, 'COMPLETED')).toEqual({
-        id,
-        status: 'COMPLETED',
-      });
-      await settle();
-      expect(completed).toEqual([]);
-    });
-
     it('completar dos veces al mismo tiempo manda un solo correo', async () => {
-      await setNotify(true);
       const id = await book('04:00');
       await Promise.all([
         service.updateStatus(ownerUserId, id, 'COMPLETED'),
@@ -533,7 +513,6 @@ describe('AgendaService.updateStatus', () => {
     });
 
     it('completar una que no estaba activa (cancelada) no le escribe', async () => {
-      await setNotify(true);
       const id = await book('05:00', 'CANCELLED');
       await service.updateStatus(ownerUserId, id, 'COMPLETED');
       await settle();
@@ -541,7 +520,6 @@ describe('AgendaService.updateStatus', () => {
     });
 
     it('marcar que no se presentó no le escribe', async () => {
-      await setNotify(true);
       await service.updateStatus(ownerUserId, await book('06:00'), 'NO_SHOW');
       await settle();
       expect(completed).toEqual([]);
@@ -549,7 +527,6 @@ describe('AgendaService.updateStatus', () => {
 
     // "No se presentó" marcado por error: el cliente sí vino
     it('completar una marcada "No se presentó" le avisa una vez', async () => {
-      await setNotify(true);
       const id = await book('08:00');
       await service.updateStatus(ownerUserId, id, 'NO_SHOW');
       expect(await service.updateStatus(ownerUserId, id, 'COMPLETED')).toEqual({
@@ -562,7 +539,6 @@ describe('AgendaService.updateStatus', () => {
     });
 
     it('si el correo falla, la reserva igual queda completada', async () => {
-      await setNotify(true);
       const logged = jest
         .spyOn(Logger.prototype, 'error')
         .mockImplementation(() => {});
@@ -602,20 +578,13 @@ describe('AgendaService.updateStatus', () => {
       book(time, status, memberId, day);
     const statusOf = async (id: string) =>
       (await prisma.booking.findUniqueOrThrow({ where: { id } })).status;
-    const setNotify = (notifyCompleted: boolean) =>
-      prisma.business.update({
-        where: { id: businessId },
-        data: { notifyCompleted },
-      });
 
     beforeEach(async () => {
       await settle();
       completed.length = 0;
     });
-    afterEach(() => setNotify(false));
 
-    it('con el aviso activado, completa y le manda las fotos al cliente', async () => {
-      await setNotify(true);
+    it('completa y le manda las fotos al cliente', async () => {
       const id = await at('09:00');
       expect(
         await service.complete(ownerUserId, id, [
@@ -632,7 +601,6 @@ describe('AgendaService.updateStatus', () => {
     });
 
     it('sin fotos también avisa', async () => {
-      await setNotify(true);
       const id = await at('10:00');
       expect(await service.complete(ownerUserId, id)).toMatchObject({
         notified: true,
@@ -641,17 +609,7 @@ describe('AgendaService.updateStatus', () => {
       expect(completed[0].photos).toEqual([]);
     });
 
-    it('con el aviso desactivado completa sin escribirle (notified: false)', async () => {
-      const id = await at('11:00');
-      expect(
-        await service.complete(ownerUserId, id, [{ buffer: JPG }]),
-      ).toEqual({ id, status: 'COMPLETED', notified: false });
-      await settle();
-      expect(completed).toEqual([]);
-    });
-
     it('una marcada "No se presentó" se completa y le manda las fotos', async () => {
-      await setNotify(true);
       const id = await at('16:00');
       await service.updateStatus(ownerUserId, id, 'NO_SHOW');
       expect(
@@ -663,7 +621,6 @@ describe('AgendaService.updateStatus', () => {
     });
 
     it('una que no estaba activa queda completada sin avisar', async () => {
-      await setNotify(true);
       const id = await at('12:00', 'CANCELLED');
       expect(await service.complete(ownerUserId, id)).toEqual({
         id,
@@ -675,7 +632,6 @@ describe('AgendaService.updateStatus', () => {
     });
 
     it('rechaza un archivo que no es imagen y la reserva sigue igual (400)', async () => {
-      await setNotify(true);
       const id = await at('13:00');
       await expect(
         service.complete(ownerUserId, id, [

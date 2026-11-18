@@ -16,8 +16,8 @@ const preview = (blob: Blob): Picked => ({
   url: URL.createObjectURL(blob),
 });
 
-// Se abre al marcar Completada cuando el negocio tiene el aviso de "servicio
-// listo": deja claro que se le escribe al cliente y permite sumar fotos de
+// Se abre al marcar Completada (siempre se le avisa al cliente que su
+// servicio está listo): deja claro que se le escribe y permite sumar fotos de
 // cómo quedó, que van dentro del correo. Las fotos quedan guardadas en este
 // navegador como borrador de la reserva (lib/photo-drafts.ts): se puede
 // cerrar, volver más tarde y sumar otra antes de enviar. Usa <dialog> nativo,

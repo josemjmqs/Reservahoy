@@ -117,8 +117,6 @@ function AgendaContent() {
   // sin el filtro ni el "Con {nombre}" (ambos aparecen con más de un miembro)
   const me = useMe();
   const owner = isOwner(me);
-  // Ajuste del negocio: al marcar Completada se le escribe al cliente
-  const notifyCompleted = me.membership.business.notifyCompleted;
   useEffect(() => {
     if (!owner) return;
     api<TeamMember[]>("/members")
@@ -268,7 +266,7 @@ function AgendaContent() {
           )}
           {/* Fotos elegidas en el diálogo de Completada que aún no se envían
               (quedan en este dispositivo) */}
-          {notifyCompleted && drafts[b.id] > 0 && (
+          {drafts[b.id] > 0 && (
             <p className="mt-1 text-xs font-medium text-amber-700">
               {drafts[b.id] === 1
                 ? "1 foto guardada, sin enviar"
@@ -292,11 +290,9 @@ function AgendaContent() {
             variant="secondary"
             className={ACTION}
             onClick={() =>
-              // Con el aviso de "servicio listo" se confirma en un diálogo
-              // (y se pueden sumar fotos); sin él, se marca al instante
-              notifyCompleted
-                ? setToComplete(b)
-                : setStatus(b.id, "COMPLETED")
+              // Se confirma en un diálogo que dice que se le escribirá al
+              // cliente que su servicio está listo (y deja sumar fotos)
+              setToComplete(b)
             }
           >
             Completada

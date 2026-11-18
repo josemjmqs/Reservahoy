@@ -127,8 +127,12 @@ test("en la Agenda el día cabe en una fila y los botones de la reserva son cóm
     expect(box.x + box.width).toBeLessThanOrEqual(375);
   }
 
-  // Deja la reserva cerrada (no se puede borrar desde la API)
+  // Deja la reserva cerrada (no se puede borrar desde la API). Completada
+  // siempre pasa por el diálogo que avisa al cliente
   await card.getByRole("button", { name: "Completada" }).click();
+  const dialog = page.getByRole("dialog", { name: "Avisar que está listo" });
+  await dialog.getByRole("button", { name: "Completar y avisar" }).click();
+  await expect(dialog).toBeHidden();
   await expect(card).toContainText("Completada");
   await expect(card.getByRole("button", { name: "Cancelar" })).toHaveCount(0);
 });
