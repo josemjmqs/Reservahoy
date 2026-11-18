@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo, LogoMark } from "@/components/Logo";
 import { WhatsAppLink, WhatsAppNumber } from "@/components/WhatsAppLink";
+import { CONTACT_EMAIL } from "@/lib/contact";
 
 const primaryLink =
   "inline-flex items-center justify-center rounded-xl bg-indigo-600 font-semibold text-white transition hover:bg-indigo-700";
@@ -405,6 +406,9 @@ export default function Home() {
               Términos
             </Link>
             <WhatsAppLink className="hover:underline">WhatsApp</WhatsAppLink>
+            <a href={`mailto:${CONTACT_EMAIL}`} className="hover:underline">
+              {CONTACT_EMAIL}
+            </a>
           </nav>
         </div>
       </footer>

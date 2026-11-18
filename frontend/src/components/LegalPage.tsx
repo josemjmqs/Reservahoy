@@ -16,7 +16,7 @@ export function LegalPage({
       </Link>
       <h1 className="mt-3 text-2xl font-semibold tracking-tight">{title}</h1>
       <p className="mt-1 text-sm text-gray-500">Última actualización: {updated}</p>
-      <div className="mt-6 space-y-4 text-sm leading-relaxed text-gray-700 [&_h2]:mt-6 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-gray-900 [&_ul]:list-disc [&_ul]:pl-5">
+      <div className="mt-6 space-y-4 text-sm leading-relaxed text-gray-700 [&_h2]:mt-6 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-gray-900 [&_ul]:list-disc [&_ul]:pl-5 [&_a]:font-medium [&_a]:text-indigo-600 [&_a:hover]:underline">
         {children}
       </div>
     </main>
