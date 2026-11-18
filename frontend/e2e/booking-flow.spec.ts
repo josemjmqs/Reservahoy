@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   bookFirstSlot,
   DEMO,
@@ -52,18 +52,96 @@ test("el cliente elige con qué profesional reserva", async ({ page }) => {
   await expect(card).toContainText(`Con ${STAFF.name}`);
 });
 
-// Tocar un servicio abre su detalle (foto y descripción) sin elegirlo: se elige
-// con "Seleccionar" y se quita con "Quitar" o tocando el check de la fila
-test("tocar un servicio muestra su detalle y se elige con Seleccionar", async ({
-  page,
-}) => {
+// Cambia los servicios que recibe la página pública (los del seed no tienen
+// foto ni descripción). Solo la respuesta: el negocio demo no cambia
+async function patchPublicServices(
+  page: Page,
+  patch: (services: { name: string; description: string | null }[]) => unknown[],
+) {
+  await page.route(`**/api/public/${DEMO.slug}`, async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    await route.fulfill({
+      response,
+      json: { ...body, services: patch(body.services) },
+    });
+  });
+}
+
+async function openPelo(page: Page) {
   await page.goto(`/${DEMO.slug}`);
   const category = page.getByRole("button", { name: /^Pelo/ });
   if ((await category.getAttribute("aria-expanded")) === "false")
     await category.click();
+}
+
+// Sin foto ni descripción no hay detalle que ver: tocar la fila agrega el
+// servicio y tocarla otra vez lo quita
+test("un servicio sin detalle se agrega y se quita tocando la fila", async ({
+  page,
+}) => {
+  await openPelo(page);
+  const row = page.getByRole("button", { name: /^Corte de pelo/ });
+  const seeTimes = page.getByRole("link", { name: "Ver horas" });
+
+  await expect(row).toHaveAttribute("aria-pressed", "false");
+  await row.click();
+  await expect(row).toHaveAttribute("aria-pressed", "true");
+  await expect(seeTimes).toBeVisible();
+
+  await row.click();
+  await expect(row).toHaveAttribute("aria-pressed", "false");
+  await expect(seeTimes).toHaveCount(0);
+});
+
+// Con el máximo elegido, tocar otro servicio (aunque no tenga detalle) abre su
+// detalle con el aviso de por qué no se puede sumar
+test("con el máximo elegido, otro servicio explica por qué no se suma", async ({
+  page,
+}) => {
+  // dos servicios más en Pelo para llegar al máximo (5) y que sobre uno
+  await patchPublicServices(page, (services) => [
+    ...services,
+    { ...services[0], id: "e2e-extra-1", name: "Extra uno", category: "Pelo" },
+    { ...services[0], id: "e2e-extra-2", name: "Extra dos", category: "Pelo" },
+  ]);
+  await openPelo(page);
+  for (const name of [
+    /^Corte de pelo/,
+    /^Color completo/,
+    /^Lavado y peinado/,
+    /^Extra uno/,
+    /^Extra dos/,
+  ])
+    await page.getByRole("button", { name }).click();
+
+  await page.getByRole("button", { name: /^Barba/ }).click();
+  const row = page.getByRole("button", { name: /^Perfilado de barba/ });
+  await row.click();
+  await expect(row).toHaveAttribute("aria-expanded", "true");
+  await expect(
+    page.getByRole("button", { name: "Agregar", exact: true }),
+  ).toBeDisabled();
+  await expect(page.getByText("Ya elegiste el máximo")).toBeVisible();
+});
+
+// Con foto o descripción, tocar la fila abre su detalle sin elegirlo: se
+// agrega con "Agregar" y se quita con "Quitar". El círculo de la derecha
+// agrega o quita sin abrir el detalle
+test("un servicio con detalle se abre al tocarlo y se agrega con el círculo o con Agregar", async ({
+  page,
+}) => {
+  await patchPublicServices(page, (services) =>
+    services.map((s) =>
+      ["Corte de pelo", "Lavado y peinado"].includes(s.name)
+        ? { ...s, description: "Incluye lavado y secado." }
+        : s,
+    ),
+  );
+  await openPelo(page);
 
   const row = page.getByRole("button", { name: /^Corte de pelo/ });
-  const select = page.getByRole("button", { name: "Seleccionar", exact: true });
+  const select = page.getByRole("button", { name: "Agregar", exact: true });
   const seeTimes = page.getByRole("link", { name: "Ver horas" });
 
   await row.click();
@@ -92,11 +170,14 @@ test("tocar un servicio muestra su detalle y se elige con Seleccionar", async ({
   await page.getByRole("button", { name: "Quitar", exact: true }).click();
   await expect(seeTimes).toHaveCount(0);
 
-  // el check de un servicio elegido lo quita sin abrir su detalle
-  await row.click();
-  await select.click();
+  // el círculo agrega y quita sin abrir el detalle; es el mismo botón (de "+"
+  // a check), así que el foco no se pierde
+  await page.getByRole("button", { name: "Agregar Corte de pelo" }).click();
   await expect(seeTimes).toBeVisible();
-  await page.getByRole("button", { name: "Desmarcar Corte de pelo" }).click();
+  await expect(row).toHaveAttribute("aria-expanded", "false");
+  const remove = page.getByRole("button", { name: "Quitar Corte de pelo" });
+  await expect(remove).toBeFocused();
+  await remove.click();
   await expect(seeTimes).toHaveCount(0);
   await expect(row).toHaveAttribute("aria-expanded", "false");
 });
@@ -109,12 +190,9 @@ test("la barra de abajo muestra el detalle de lo elegido", async ({ page }) => {
   if ((await category.getAttribute("aria-expanded")) === "false")
     await category.click();
 
-  for (const name of [/^Corte de pelo/, /^Lavado y peinado/]) {
+  // sin foto ni descripción, tocar la fila agrega el servicio
+  for (const name of [/^Corte de pelo/, /^Lavado y peinado/])
     await page.getByRole("button", { name }).click();
-    await page
-      .getByRole("button", { name: "Seleccionar", exact: true })
-      .click();
-  }
 
   const toggle = page.getByRole("button", {
     name: "Lo que estás reservando: Corte de pelo + Lavado y peinado",

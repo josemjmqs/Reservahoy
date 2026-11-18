@@ -14,9 +14,10 @@ const focusRing =
   "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-ring";
 
 // Servicios de la página pública: una tarjeta por categoría (una sola, sin
-// título, si no hay categorías) con los servicios como filas. Tocar una fila
-// abre su detalle (foto y descripción) y ahí se elige con "Seleccionar"; el
-// check de un servicio elegido lo quita
+// título, si no hay categorías) con los servicios como filas. El círculo de la
+// derecha agrega el servicio con un toque ("+") y lo quita (check). Tocar una
+// fila con foto o descripción abre su detalle; una sin nada que mostrar se
+// agrega o se quita igual que con el círculo
 export function ServicePicker({
   services,
   selectedIds,
@@ -154,6 +155,12 @@ function ServiceRow({
     if (open && rowRef.current) centerInView(rowRef.current);
   }, [open]);
 
+  // Sin foto ni descripción no hay detalle que ver: la fila entera agrega o
+  // quita el servicio con un toque. Con el máximo elegido, en cambio, abre el
+  // detalle, que explica por qué no se puede sumar
+  const hasDetail = Boolean(s.imageUrl || s.description);
+  const rowToggles = !hasDetail && !disabled;
+
   // El foco vuelve a la fila al cerrar, no se pierde
   function close() {
     onOpenChange(false);
@@ -162,19 +169,45 @@ function ServiceRow({
 
   function choose() {
     onToggle(s.id);
-    // elegido (o quitado) se cierra: la fila ya muestra el check y la lista
+    // agregado (o quitado) se cierra: la fila ya muestra el check y la lista
     // queda corta para seguir eligiendo
     close();
   }
 
-  // Desde el check de la fila: si su detalle estaba abierto se cierra (como con
-  // "Quitar"), pero no toca otro detalle abierto. El check desaparece, así que
-  // el foco pasa a la fila
-  function unselect() {
+  // Desde el círculo (o la fila sin detalle): agrega o quita sin abrir el
+  // detalle; si estaba abierto se cierra, sin tocar otro detalle abierto. El
+  // botón sigue ahí (cambia de "+" a check), así que el foco no se mueve
+  function toggle() {
+    if (disabled) return onOpenChange(true);
     onToggle(s.id);
     if (open) onOpenChange(false);
-    headerRef.current?.focus();
   }
+
+  const content = (
+    <>
+      {/* abierto, la foto se ve completa abajo: no se repite en miniatura
+        (sin foto, la inicial se queda: abajo no hay nada que la reemplace) */}
+      {withThumb && !(s.imageUrl && open) && (
+        <ServiceThumb src={s.imageUrl} name={s.name} className="h-12 w-12" />
+      )}
+      {/* el precio va en la línea de la duración (alineado a la derecha, en
+        columna con los demás): así el nombre tiene todo el ancho y en el
+        celular no se parte en varias líneas */}
+      <span className="min-w-0 flex-1">
+        <span className="block font-medium text-gray-900">{s.name}</span>
+        <span className="flex items-baseline justify-between gap-3">
+          <span className="text-sm text-gray-500">
+            {publicDuration(s.durationMin, s.totalMin)}
+          </span>
+          {s.price !== null && (
+            <span className="shrink-0 font-semibold tabular-nums text-gray-900">
+              ${s.price.toLocaleString("es-CL")}
+            </span>
+          )}
+        </span>
+      </span>
+    </>
+  );
 
   return (
     <div
@@ -187,83 +220,49 @@ function ServiceRow({
           : ""
       }
     >
-      <div className="flex">
-        {/* tocar la fila solo abre el detalle; elegir es el botón de adentro */}
+      {rowToggles ? (
         <button
           ref={headerRef}
           type="button"
-          aria-expanded={open}
-          aria-controls={detailId}
-          onClick={() => onOpenChange(!open)}
-          className={`flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left transition ${focusRing} ${
-            selected ? "" : "pr-4 hover:bg-gray-50"
+          aria-pressed={selected}
+          onClick={toggle}
+          className={`flex w-full items-center gap-3 py-3 pl-4 pr-4 text-left transition ${focusRing} ${
+            selected ? "" : "hover:bg-gray-50"
           }`}
         >
-          {/* abierto, la foto se ve completa abajo: no se repite en miniatura
-            (sin foto, la inicial se queda: abajo no hay nada que la reemplace) */}
-          {withThumb && !(s.imageUrl && open) && (
-            <ServiceThumb
-              src={s.imageUrl}
-              name={s.name}
-              className="h-12 w-12"
-            />
-          )}
-          <span className="min-w-0 flex-1">
-            <span className="block font-medium text-gray-900">{s.name}</span>
-            <span className="block text-sm text-gray-500">
-              {publicDuration(s.durationMin, s.totalMin)}
-            </span>
+          {content}
+          <span className="flex shrink-0">
+            <ToggleMark selected={selected} disabled={false} />
           </span>
-          {s.price !== null && (
-            <span className="shrink-0 font-semibold tabular-nums text-gray-900">
-              ${s.price.toLocaleString("es-CL")}
-            </span>
-          )}
-          {!selected && (
-            <svg
-              aria-hidden
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className={`h-5 w-5 shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
-            >
-              <path
-                fillRule="evenodd"
-                d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z"
-                clipRule="evenodd"
-              />
-            </svg>
-          )}
         </button>
-        {selected && (
-          // el check es un botón aparte (no se anida en la fila): tocarlo quita
-          // el servicio sin abrir el detalle. Ocupa todo el alto de la fila para
-          // que sea fácil de tocar en el celular
+      ) : (
+        <div className={`flex transition ${selected ? "" : "hover:bg-gray-50"}`}>
+          {/* tocar la fila abre el detalle; el círculo agrega o quita */}
+          <button
+            ref={headerRef}
+            type="button"
+            aria-expanded={open}
+            aria-controls={detailId}
+            onClick={() => onOpenChange(!open)}
+            className={`flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left ${focusRing}`}
+          >
+            {content}
+          </button>
+          {/* botón aparte (no se anida en la fila), de todo el alto de la fila
+            para que sea fácil de tocar en el celular */}
           <button
             type="button"
-            aria-label={`Desmarcar ${s.name}`}
-            onClick={unselect}
+            aria-label={`${selected ? "Quitar" : "Agregar"} ${s.name}`}
+            onClick={toggle}
             className={`flex shrink-0 items-center pl-3 pr-4 ${focusRing}`}
           >
-            <span className="flex h-5 w-5 items-center justify-center rounded-full border border-brand-ring bg-brand text-brand-fg">
-              <svg
-                aria-hidden
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="h-3.5 w-3.5"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0Z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </span>
+            <ToggleMark selected={selected} disabled={disabled} />
           </button>
-        )}
-      </div>
+        </div>
+      )}
       {open && (
         // tocar cualquier parte del detalle (foto, descripción, aviso) lo
-        // cierra, salvo sus botones. Un botón deshabilitado ("Seleccionar" con
+        // cierra, salvo sus botones. Un botón deshabilitado ("Agregar" con
         // el máximo elegido) también se excluye: Chrome pasa su clic al padre
         // y cerrar escondería el aviso de por qué no se puede. Con teclado se
         // cierra desde la fila
@@ -308,7 +307,7 @@ function ServiceRow({
                 disabled={disabled}
                 className="h-10 w-full rounded-control bg-brand text-sm font-medium text-brand-fg hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Seleccionar
+                Agregar
               </button>
               {disabled && (
                 <p className="text-center text-sm text-gray-600">
@@ -321,5 +320,39 @@ function ServiceRow({
         </div>
       )}
     </div>
+  );
+}
+
+// Círculo de la fila: "+" para agregar, check si ya está elegido. Con el
+// máximo elegido el "+" se atenúa (tocarlo abre el detalle con el aviso)
+function ToggleMark({
+  selected,
+  disabled,
+}: {
+  selected: boolean;
+  disabled: boolean;
+}) {
+  return (
+    <span
+      aria-hidden
+      // --brand-ring directo: la variable del tema se resuelve en :root
+      className={`flex h-7 w-7 items-center justify-center rounded-full border border-brand-ring transition-colors ${
+        selected
+          ? "bg-brand text-brand-fg"
+          : "bg-white text-[var(--brand-ring,#4f39f6)]"
+      } ${disabled ? "opacity-40" : ""}`}
+    >
+      <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+        {selected ? (
+          <path
+            fillRule="evenodd"
+            d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0Z"
+            clipRule="evenodd"
+          />
+        ) : (
+          <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+        )}
+      </svg>
+    </span>
   );
 }
