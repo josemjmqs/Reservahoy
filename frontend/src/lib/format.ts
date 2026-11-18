@@ -1,10 +1,14 @@
+// Duración legible: días si es exacta en días, si no horas y minutos
+// (90 -> "1 h 30 min", 120 -> "2 h", 45 -> "45 min")
 export function formatTotal(min: number): string {
   if (min % 1440 === 0) {
     const d = min / 1440;
     return d === 1 ? '1 día' : `${d} días`;
   }
-  if (min >= 60 && min % 60 === 0) return `${min / 60} h`;
-  return `${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m} min`;
+  return m === 0 ? `${h} h` : `${h} h ${m} min`;
 }
 
 // Hora en formato de 24 horas ("13:45"), en la zona del negocio. Sin
