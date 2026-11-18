@@ -3,6 +3,7 @@ import {
   bookFirstSlot,
   DEMO,
   loginAsDemo,
+  openSlots,
   STAFF,
   workdayFrom,
 } from "./helpers";
@@ -199,6 +200,23 @@ test("tocar un servicio muestra su detalle y se elige con Seleccionar", async ({
 
 // En la barra de abajo, tocar los servicios elegidos despliega qué se está
 // reservando (cada servicio con su duración y precio) y permite quitarlos
+// En el celular "Tus datos" queda debajo de la grilla de horas, fuera de la
+// pantalla: al tocar una hora la página baja hasta ahí
+test("elegir una hora lleva a Tus datos", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  const [time] = await openSlots(page, {
+    category: "Pelo",
+    service: "Corte de pelo",
+    date: workdayFrom(10),
+  });
+  expect(time, "debería haber horas libres ese día").toBeTruthy();
+
+  await page.getByRole("button", { name: time, exact: true }).click();
+  const heading = page.getByRole("heading", { name: "Tus datos" });
+  await expect(heading).toBeInViewport();
+  await expect(page.getByLabel("Nombre")).toBeInViewport();
+});
+
 test("la barra de abajo muestra el detalle de lo elegido", async ({ page }) => {
   await page.goto(`/${DEMO.slug}`);
   const category = page.getByRole("button", { name: /^Pelo/ });
