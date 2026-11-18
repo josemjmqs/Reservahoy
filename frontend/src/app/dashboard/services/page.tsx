@@ -57,7 +57,7 @@ function ServiceFields({
             e.currentTarget.setCustomValidity("");
             set({ name: e.target.value });
           }}
-          placeholder="Ej. Corte de pelo"
+          placeholder="Ej. Corte clásico"
           required
           maxLength={NAME_MAX}
           // al menos 2 caracteres sin contar espacios, como valida el backend
@@ -71,12 +71,15 @@ function ServiceFields({
           }
         />
       </Field>
-      <Field label="Categoría" hint={editing ? "Vacío = sin categoría" : undefined}>
+      <Field
+        label="Categoría"
+        hint={`Sirve para agrupar servicios${editing ? ". Vacío = sin categoría" : ""}`}
+      >
         <CategoryInput
           value={value.category}
           onChange={(category) => set({ category })}
           options={categories}
-          placeholder="Ej. Uñas"
+          placeholder="Ej. Cortes de pelo"
           maxLength={CATEGORY_MAX}
         />
       </Field>
