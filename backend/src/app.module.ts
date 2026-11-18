@@ -18,6 +18,7 @@ import { StorageModule } from './storage/storage.module';
 import { SettingsModule } from './settings/settings.module';
 import { BusinessModule } from './business/business.module';
 import { InvitationsModule } from './invitations/invitations.module';
+import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { InvitationsModule } from './invitations/invitations.module';
     SettingsModule,
     BusinessModule,
     InvitationsModule,
+    SupportModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
