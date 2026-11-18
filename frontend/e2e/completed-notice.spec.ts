@@ -108,3 +108,48 @@ test("con el aviso de servicio listo, Completada abre un diálogo con fotos y le
     });
   }
 });
+
+// "No se presentó" marcado por error: la tarjeta deja solo Completada, que
+// sigue avisándole al cliente (que salga un solo correo lo prueba
+// agenda.service.int-spec.ts)
+test("una reserva marcada No se presentó por error todavía se completa avisando al cliente", async ({
+  page,
+}) => {
+  const date = workdayFrom(22);
+  const customer = `No vino E2E ${Date.now().toString(36)}`;
+  await bookFirstSlot(page, {
+    category: "Barba",
+    service: "Perfilado de barba",
+    date,
+    customer,
+  });
+  await loginAsDemo(page);
+  await page.request.patch("/api/business", {
+    data: { notifyCompleted: true },
+  });
+
+  try {
+    await page.goto(`/dashboard/agenda?date=${date}`);
+    const card = page.getByRole("listitem").filter({ hasText: customer });
+
+    await card.getByRole("button", { name: "No se presentó" }).click();
+    await expect(card.getByRole("button", { name: "No se presentó" })).toHaveCount(0);
+    await expect(card.getByRole("button", { name: "Cancelar" })).toHaveCount(0);
+    await expect(card).toContainText("No se presentó");
+
+    await card.getByRole("button", { name: "Completada" }).click();
+    const dialog = page.getByRole("dialog", { name: "Avisar que está listo" });
+    await dialog.getByRole("button", { name: "Completar y avisar" }).click();
+
+    await expect(dialog).toBeHidden();
+    await expect(page.getByRole("status")).toHaveText(
+      `Le avisamos a ${customer} por correo que su servicio está listo.`,
+    );
+    await expect(card).toContainText("Completada");
+    await expect(card.getByRole("button")).toHaveCount(0);
+  } finally {
+    await page.request.patch("/api/business", {
+      data: { notifyCompleted: false },
+    });
+  }
+});

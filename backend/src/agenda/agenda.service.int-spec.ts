@@ -547,6 +547,20 @@ describe('AgendaService.updateStatus', () => {
       expect(completed).toEqual([]);
     });
 
+    // "No se presentó" marcado por error: el cliente sí vino
+    it('completar una marcada "No se presentó" le avisa una vez', async () => {
+      await setNotify(true);
+      const id = await book('08:00');
+      await service.updateStatus(ownerUserId, id, 'NO_SHOW');
+      expect(await service.updateStatus(ownerUserId, id, 'COMPLETED')).toEqual({
+        id,
+        status: 'COMPLETED',
+      });
+      await service.updateStatus(ownerUserId, id, 'COMPLETED');
+      await settle();
+      expect(completed).toHaveLength(1);
+    });
+
     it('si el correo falla, la reserva igual queda completada', async () => {
       await setNotify(true);
       const logged = jest
@@ -634,6 +648,18 @@ describe('AgendaService.updateStatus', () => {
       ).toEqual({ id, status: 'COMPLETED', notified: false });
       await settle();
       expect(completed).toEqual([]);
+    });
+
+    it('una marcada "No se presentó" se completa y le manda las fotos', async () => {
+      await setNotify(true);
+      const id = await at('16:00');
+      await service.updateStatus(ownerUserId, id, 'NO_SHOW');
+      expect(
+        await service.complete(ownerUserId, id, [{ buffer: JPG }]),
+      ).toEqual({ id, status: 'COMPLETED', notified: true });
+      await settle();
+      expect(completed).toHaveLength(1);
+      expect(completed[0].photos).toHaveLength(1);
     });
 
     it('una que no estaba activa queda completada sin avisar', async () => {
