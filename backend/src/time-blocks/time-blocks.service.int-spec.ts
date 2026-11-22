@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { DateTime } from 'luxon';
 import type { PrismaService } from '../prisma/prisma.service';
@@ -152,5 +152,70 @@ describe('TimeBlocksService', () => {
     await expect(service.remove(otherUserId, blocks[0].id)).resolves.toEqual({
       id: blocks[0].id,
     });
+  });
+});
+
+describe('TimeBlocksService: períodos que no se aceptan', () => {
+  const today = () => DateTime.now().setZone(tz);
+  const count = () => prisma.timeBlock.count({ where: { businessId } });
+
+  // Rechaza con 400 y el mensaje dado, sin guardar nada
+  async function rejects(
+    dto: Parameters<TimeBlocksService['create']>[1],
+    message: string,
+  ) {
+    const before = await count();
+    const attempt = service.create(ownerUserId, dto);
+    await expect(attempt).rejects.toBeInstanceOf(BadRequestException);
+    await expect(attempt).rejects.toThrow(message);
+    expect(await count()).toBe(before);
+  }
+
+  it('un período que ya pasó', async () => {
+    const yesterday = today().minus({ days: 1 }).toISODate()!;
+    await rejects(
+      { startDate: yesterday, endDate: yesterday, allDay: true },
+      'Ese período ya pasó',
+    );
+  });
+
+  it('el día de hoy completo todavía se acepta, aunque ya empezó', async () => {
+    const date = today().toISODate()!;
+    const block = await service.create(ownerUserId, {
+      startDate: date,
+      endDate: date,
+      allDay: true,
+    });
+    expect(block.allDay).toBe(true);
+  });
+
+  it('un término anterior o igual al inicio', async () => {
+    await rejects(
+      { startDate: '2031-05-02', endDate: '2031-05-01', allDay: true },
+      'El término debe ser posterior al inicio',
+    );
+    await rejects(
+      {
+        startDate: '2031-05-02',
+        endDate: '2031-05-02',
+        allDay: false,
+        startTime: '15:00',
+        endTime: '15:00',
+      },
+      'El término debe ser posterior al inicio',
+    );
+  });
+
+  it('más de un año: 366 días de calendario se aceptan y 367 no', async () => {
+    const block = await service.create(ownerUserId, {
+      startDate: '2033-01-01',
+      endDate: '2034-01-01',
+      allDay: true,
+    });
+    expect(block.allDay).toBe(true);
+    await rejects(
+      { startDate: '2035-01-01', endDate: '2036-01-02', allDay: true },
+      'Un bloqueo no puede durar más de un año',
+    );
   });
 });
