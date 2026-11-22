@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DateTime } from 'luxon';
+import * as Sentry from '@sentry/nestjs';
 import {
   AvailabilityService,
   blockFor,
@@ -210,6 +211,7 @@ export class BookingsService {
         ),
       );
     } catch (e) {
+      Sentry.captureException(e);
       this.logger.error('Error avisando la reserva nueva', e as Error);
     }
   }

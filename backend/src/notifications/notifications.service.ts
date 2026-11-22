@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 import { Resend } from 'resend';
+import * as Sentry from '@sentry/nestjs';
+import { scrubText } from '../monitoring/scrub';
 
 type EmailOptions = Parameters<Resend['emails']['send']>[0];
 interface SendError {
@@ -127,6 +129,13 @@ export class NotificationsService {
   constructor(config: ConfigService) {
     const key = config.get<string>('RESEND_API_KEY');
     this.resend = key ? new Resend(key) : null;
+    // Con Sentry activo (producción) esto significa que no sale ningún correo
+    if (!key) {
+      Sentry.captureMessage(
+        'RESEND_API_KEY no configurada: no se envía ningún correo',
+        'warning',
+      );
+    }
     this.from =
       config.get<string>('MAIL_FROM') ??
       'Reservahoy <reservas@mail.reservahoy.cl>';
@@ -165,6 +174,19 @@ export class NotificationsService {
         this.logger.error(
           `Correo "${label}" no enviado tras ${attempt + 1} intento(s): ${error.name}: ${error.message}`,
         );
+        // Un correo que no sale no rompe nada en pantalla: sin este aviso nadie
+        // se entera (ej. la cuota diaria de Resend agotada). Agrupado por tipo
+        // de correo y de error; sin el destinatario
+        Sentry.captureMessage(`Correo "${label}" no enviado: ${error.name}`, {
+          level: 'error',
+          fingerprint: ['email-not-sent', label, error.name],
+          tags: { email: label, resendError: error.name },
+          extra: {
+            attempts: attempt + 1,
+            statusCode: error.statusCode,
+            message: scrubText(error.message),
+          },
+        });
         return;
       }
       this.logger.warn(

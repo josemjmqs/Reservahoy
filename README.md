@@ -110,6 +110,7 @@ Navegador ──► Next.js (Vercel) ──► API NestJS (Render) ──► Pos
 - **Correo:** Resend, dominio `mail.` con DKIM verificado.
 - **Correo de contacto:** `contacto@reservahoy.cl` es una dirección de Cloudflare Email Routing que reenvía a la casilla del dueño (no guarda correos). Para recibir en otra dirección del dominio se agrega una regla en Cloudflare → Email → Email Routing; el catch-all queda apagado para no recibir spam a direcciones inventadas. Solo recibe: las respuestas salen desde la casilla de destino.
 - **Fotos:** bucket público de Cloudflare R2 con dominio propio; variables `R2_*` en Render (ver `backend/.env.example`). Sin ellas la subida de fotos queda desactivada.
+- **Errores:** Sentry (plan gratis) avisa por correo de los errores 500 del backend, los errores en el navegador y en el servidor de Next, y los correos que no salieron tras los reintentos. Variables `SENTRY_DSN` en Render y `NEXT_PUBLIC_SENTRY_DSN` en Vercel (solo Production; se incluye al compilar, así que cambiarla pide redeploy). Sin ellas no se envía nada. No recibe datos personales: se apaga lo que Sentry recolecta por defecto y se borran correos, teléfonos, ids y tokens de las rutas (`backend/src/monitoring/scrub.ts`).
 - **Despliegue:** automático al hacer merge a `main` (Render y Vercel).
 
 ## Correrlo en local

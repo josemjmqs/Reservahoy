@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { BookingStatus, Prisma } from '@prisma/client';
 import { DateTime } from 'luxon';
+import * as Sentry from '@sentry/nestjs';
 import { getMembership, isOwner, scopeMemberId } from '../auth/membership';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { EmailPhoto } from '../notifications/notifications.service';
@@ -238,6 +239,7 @@ export class AgendaService {
         photos,
       });
     } catch (e) {
+      Sentry.captureException(e);
       this.logger.error(
         'Error avisando que el servicio está listo',
         e as Error,
@@ -275,6 +277,7 @@ export class AgendaService {
         reason,
       });
     } catch (e) {
+      Sentry.captureException(e);
       this.logger.error('Error avisando la cancelación', e as Error);
     }
   }

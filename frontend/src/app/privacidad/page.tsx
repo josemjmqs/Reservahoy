@@ -5,7 +5,7 @@ export const metadata = { title: 'Política de privacidad' };
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Política de privacidad" updated="17 de noviembre de 2026">
+    <LegalPage title="Política de privacidad" updated="22 de noviembre de 2026">
       <p>
         Reservahoy es una plataforma que permite a negocios recibir reservas
         online. Esta política explica qué datos se recogen y cómo se usan.
@@ -45,9 +45,11 @@ export default function PrivacyPage() {
       <h2>Quién los procesa</h2>
       <p>
         Usamos proveedores de infraestructura: Vercel (alojamiento web), Render
-        (servidor), Neon (base de datos), Resend (envío de correos) y Cloudflare
-        (DNS y almacenamiento de respaldos cifrados). Algunos operan fuera de
-        Chile, por lo que los datos pueden almacenarse en otros países.
+        (servidor), Neon (base de datos), Resend (envío de correos), Cloudflare
+        (DNS y almacenamiento de respaldos cifrados) y Sentry (aviso de errores
+        técnicos: recibe qué falló y en qué pantalla, sin nombres, correos,
+        teléfonos ni enlaces de reservas). Algunos operan fuera de Chile, por
+        lo que los datos pueden almacenarse en otros países.
       </p>
 
       <h2>Cookies</h2>
