@@ -1,9 +1,11 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { DateTime } from 'luxon';
 import { AvailabilityService } from '../availability/availability.service';
 import type { NotificationsService } from '../notifications/notifications.service';
@@ -180,5 +182,166 @@ describe('reservas con varios servicios', () => {
       ...customer(),
     });
     expect(new Date(r.endsAt).toISOString()).toBe(at('14:30'));
+  });
+});
+
+describe('dos clientes por la misma hora', () => {
+  // Disponibilidad que deja pasar la hora y justo después otra reserva la
+  // toma: la carrera que solo frena booking_no_overlap al guardar
+  const taken: string[] = [];
+  class RacingAvailability extends AvailabilityService {
+    override async slotsForMember(
+      ...args: Parameters<AvailabilityService['slotsForMember']>
+    ) {
+      const slots = await super.slotsForMember(...args);
+      const customerId = (
+        await prisma.customer.create({
+          data: {
+            businessId,
+            name: 'Rápido',
+            email: `rapido-${run}@test.local`,
+          },
+        })
+      ).id;
+      const b = await prisma.booking.create({
+        data: {
+          startsAt: new Date(at('15:00')),
+          endsAt: new Date(at('15:30')),
+          businessId,
+          memberId: args[0],
+          customerId,
+          items: { create: { serviceId: corte, position: 0 } },
+        },
+      });
+      taken.push(b.id);
+      return slots;
+    }
+  }
+
+  it('si otra reserva toma la hora al guardar, responde 409 y no deja nada a medias', async () => {
+    const racing = new BookingsService(
+      db,
+      new RacingAvailability(db, storage),
+      notifications,
+    );
+    const email = `perdio-${run}@test.local`;
+    const attempt = racing.create(slug, {
+      serviceIds: [corte],
+      memberId: beto,
+      startsAt: at('15:00'),
+      name: 'Cliente',
+      email,
+    });
+    await expect(attempt).rejects.toBeInstanceOf(ConflictException);
+    await expect(attempt).rejects.toThrow('Esa hora ya fue tomada');
+
+    const at15 = await prisma.booking.findMany({
+      where: { memberId: beto, startsAt: new Date(at('15:00')) },
+    });
+    expect(at15.map((b) => b.id)).toEqual(taken);
+    // El cliente se crea en la misma transacción: tampoco queda
+    expect(await prisma.customer.count({ where: { businessId, email } })).toBe(
+      0,
+    );
+  });
+
+  it('con varias reservas a la vez, una gana y las demás reciben 409', async () => {
+    const results = await Promise.allSettled(
+      Array.from({ length: 6 }, () =>
+        bookings.create(slug, {
+          serviceIds: [corte],
+          memberId: beto,
+          startsAt: at('15:30'),
+          ...customer(),
+        }),
+      ),
+    );
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    for (const r of results) {
+      if (r.status === 'rejected') {
+        expect(r.reason).toBeInstanceOf(ConflictException);
+      }
+    }
+    expect(
+      await prisma.booking.count({
+        where: { memberId: beto, startsAt: new Date(at('15:30')) },
+      }),
+    ).toBe(1);
+  });
+
+  it('un deadlock de PostgreSQL también cuenta como hora tomada; otro error no', () => {
+    const isOverlap = (e: unknown) => bookings['isOverlap'](e);
+    const meta = { clientVersion: Prisma.prismaVersion.client };
+    // Cada caso trae una sola señal, para que quitar cualquiera se note:
+    // como lo informa Prisma (P2034, con la palabra) y como lo informa
+    // PostgreSQL (solo el código)
+    expect(
+      isOverlap(
+        new Prisma.PrismaClientKnownRequestError(
+          'Transaction failed due to a write conflict or a deadlock. Please retry your transaction',
+          { ...meta, code: 'P2034' },
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      isOverlap(
+        new Prisma.PrismaClientUnknownRequestError(
+          'db error: ERROR: code 40P01',
+          meta,
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      isOverlap(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+          ...meta,
+          code: 'P2002',
+        }),
+      ),
+    ).toBe(false);
+    expect(isOverlap(new Error('booking_no_overlap'))).toBe(false);
+  });
+});
+
+describe('máximo de reservas por correo', () => {
+  const email = `repetido-${run}@test.local`;
+  const book = (time: string, mail = email) =>
+    bookings.create(slug, {
+      serviceIds: [corte],
+      memberId: ana,
+      startsAt: at(time),
+      name: 'Cliente',
+      email: mail,
+    });
+
+  it('la cuarta reserva en una hora con el mismo correo responde 429 y no se guarda', async () => {
+    await book('16:00');
+    await book('16:30');
+    await book('17:00');
+
+    const fourth = book('17:30');
+    await expect(fourth).rejects.toBeInstanceOf(HttpException);
+    await expect(fourth).rejects.toMatchObject({
+      status: HttpStatus.TOO_MANY_REQUESTS,
+    });
+    expect(
+      await prisma.booking.count({
+        where: { businessId, customer: { email } },
+      }),
+    ).toBe(3);
+  });
+
+  it('otro correo sigue reservando', async () => {
+    await expect(
+      book('17:30', `otro-${run}@test.local`),
+    ).resolves.toMatchObject({ status: 'CONFIRMED' });
+  });
+
+  it('las reservas de hace más de una hora no cuentan', async () => {
+    await prisma.booking.updateMany({
+      where: { businessId, customer: { email } },
+      data: { createdAt: new Date(Date.now() - 61 * 60 * 1000) },
+    });
+    await expect(book('11:00')).resolves.toMatchObject({ status: 'CONFIRMED' });
   });
 });
