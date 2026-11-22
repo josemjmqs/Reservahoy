@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -22,6 +23,7 @@ import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     // 60 peticiones por minuto por IP. THROTTLE_LIMIT solo se sube en las pruebas
     // e2e, donde todas las peticiones del navegador llegan con la misma IP
@@ -44,6 +46,12 @@ import { SupportModule } from './support/support.module';
     SupportModule,
   ],
   controllers: [AppController, HealthController],
-  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Envía a Sentry los errores inesperados (los que terminan en 500). Las
+    // HttpException (404, 403, 409, 503 sin R2...) son respuestas esperadas y no
+    { provide: APP_FILTER, useClass: SentryGlobalFilter },
+  ],
 })
 export class AppModule {}

@@ -1,3 +1,5 @@
+// Primero que todo: Sentry tiene que iniciarse antes de cargar el resto
+import './instrument';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
