@@ -9,6 +9,15 @@ import { scrubBreadcrumb, scrubEvent } from './monitoring/scrub';
 Sentry.init({
   dsn: process.env.SENTRY_DSN || undefined,
   environment: process.env.SENTRY_ENVIRONMENT || 'production',
+  // Commit desplegado (Render lo pone solo): cada error dice de qué versión es,
+  // así se ve si apareció justo después de un merge
+  release: process.env.RENDER_GIT_COMMIT || undefined,
+  // Con release, Sentry también manda "sesiones" (la vida del proceso y un
+  // resumen de peticiones por minuto): solo queremos los errores
+  integrations: (defaults) => [
+    ...defaults.filter((i) => i.name !== 'ProcessSession' && i.name !== 'Http'),
+    Sentry.httpIntegration({ sessions: false }),
+  ],
   dataCollection: {
     userInfo: false,
     cookies: false,

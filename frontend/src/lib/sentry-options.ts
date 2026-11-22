@@ -8,6 +8,16 @@ import { scrubBreadcrumb, scrubEvent } from "./sentry-scrub";
 export const sentryOptions = {
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || undefined,
   environment: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT || "production",
+  // Commit desplegado (next.config.ts lo toma de Vercel al compilar): cada
+  // error dice de qué versión es, así se ve si apareció justo después de un merge
+  release: process.env.NEXT_PUBLIC_SENTRY_RELEASE || undefined,
+  // Con release, Sentry también manda "sesiones": el navegador, una por visita
+  // (también en la página pública), y el servidor, la vida del proceso. Solo
+  // queremos los errores. Las del servidor por petición: instrumentation.ts
+  integrations: <T extends { name: string }>(defaults: T[]) =>
+    defaults.filter(
+      (i) => i.name !== "BrowserSession" && i.name !== "ProcessSession",
+    ),
   dataCollection: {
     userInfo: false,
     cookies: false,
