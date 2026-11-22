@@ -18,8 +18,9 @@ import { detectImageType } from '../storage/image-type';
 export const MAX_COMPLETED_PHOTOS = 4;
 
 // Estados desde los que marcar Completada avisa al cliente: las activas y las
-// marcadas "No se presentó" (pudo ser un error: el cliente sí vino)
-const COMPLETABLE: BookingStatus[] = ['PENDING', 'CONFIRMED', 'NO_SHOW'];
+// marcadas "No se presentó" (pudo ser un error: el cliente sí vino). La misma
+// regla que canComplete en el frontend (lib/types.ts): shared-rules.spec.ts
+export const COMPLETABLE: BookingStatus[] = ['PENDING', 'CONFIRMED', 'NO_SHOW'];
 
 const BOOKING_SELECT = {
   id: true,

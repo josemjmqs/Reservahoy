@@ -42,7 +42,9 @@ export class DayHoursDto {
 
 // Reglas entre campos de un día (las horas HH:MM se comparan como texto).
 // El almuerzo queda dentro del horario y los dos tramos que deja, la mañana y
-// la tarde, no se solapan ni quedan vacíos. Devuelve el error o null
+// la tarde, no se solapan ni quedan vacíos. Devuelve el error o null. El panel
+// avisa con la misma regla (dayError, frontend/src/lib/hours.ts), lo revisa
+// shared-rules.spec.ts
 export function dayHoursError(d: DayHoursDto): string | null {
   if (d.opensAt >= d.closesAt) {
     return 'La hora de apertura debe ser anterior al cierre';

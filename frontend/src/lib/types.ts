@@ -56,7 +56,8 @@ export type SettableStatus = Exclude<BookingStatus, "PENDING">;
 
 // Se puede marcar Completada (y avisar al cliente) desde una reserva activa o
 // desde "No se presentó", por si se marcó por error y el cliente sí vino. La
-// misma regla que COMPLETABLE en el backend (agenda.service.ts)
+// misma regla que COMPLETABLE en el backend (agenda.service.ts); lo revisa
+// backend/src/shared-rules.spec.ts
 export const canComplete = (status?: string) =>
   status === "PENDING" || status === "CONFIRMED" || status === "NO_SHOW";
 
