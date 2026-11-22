@@ -58,7 +58,9 @@ describe('scrub (lo que va a Sentry)', () => {
       },
       user: { ip_address: '1.2.3.4', email: 'a@b.cl' },
       message: 'falló para cliente@gmail.com',
-      exception: { values: [{ type: 'Error', value: 'dup cliente@gmail.com' }] },
+      exception: {
+        values: [{ type: 'Error', value: 'dup cliente@gmail.com' }],
+      },
       breadcrumbs: [
         { category: 'console', message: 'cliente@gmail.com' },
         {
@@ -84,5 +86,48 @@ describe('scrub (lo que va a Sentry)', () => {
 
   it('descarta las migas de la consola', () => {
     expect(scrubBreadcrumb({ category: 'console', message: 'x' })).toBeNull();
+  });
+
+  it('de las migas de peticiones y navegación limpia las rutas y el mensaje', () => {
+    const token = 'a1'.repeat(32);
+    expect(
+      scrubBreadcrumb({
+        category: 'fetch',
+        message: 'falló para ana@gmail.com, +56 9 1234 5678',
+        data: {
+          method: 'POST',
+          url: `/api/manage/${token}/cancel?email=ana@gmail.com`,
+          status_code: 500,
+        },
+      }),
+    ).toEqual({
+      category: 'fetch',
+      message: 'falló para [correo], [número]',
+      data: { method: 'POST', url: '/api/manage/:id/cancel', status_code: 500 },
+    });
+
+    expect(
+      scrubBreadcrumb({
+        category: 'navigation',
+        data: {
+          from: `/invitacion/${token}`,
+          to: '/reserva/cmbx1q2w30000abcd1234efgh?nuevo=1',
+        },
+      }),
+    ).toEqual({
+      category: 'navigation',
+      data: { from: '/invitacion/:id', to: '/reserva/:id' },
+    });
+  });
+
+  it('una miga sin datos ni mensaje queda igual', () => {
+    expect(scrubBreadcrumb({ category: 'http' })).toEqual({ category: 'http' });
+  });
+
+  it('limpia el nombre de la transacción', () => {
+    const event = {
+      transaction: 'GET /manage/cmbx1q2w30000abcd1234efgh',
+    } as unknown as ErrorEvent;
+    expect(scrubEvent(event).transaction).toBe('GET /manage/:id');
   });
 });
