@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { isOwner, useMe } from '@/lib/me';
 import { Button } from '@/components/ui';
 import { TimePicker } from '@/components/TimePicker';
+import { dayError, type DayHours } from '@/lib/hours';
 import type { TeamMember, WorkingHour } from '@/lib/types';
 
 // Orden de la semana para mostrar: lunes primero (weekday 0 = domingo)
@@ -23,14 +24,8 @@ const DAYS = [
 // Día que ofrece "Copiar a los días marcados" (el primero de la lista)
 const COPY_FROM = 1;
 
-interface DayState {
+interface DayState extends DayHours {
   enabled: boolean;
-  opensAt: string;
-  closesAt: string;
-  // Almuerzo: al quitarlo se conservan las horas por si se vuelve a agregar
-  hasBreak: boolean;
-  breakStartsAt: string;
-  breakEndsAt: string;
 }
 
 const defaultDay: DayState = {
@@ -41,22 +36,6 @@ const defaultDay: DayState = {
   breakStartsAt: '13:00',
   breakEndsAt: '14:00',
 };
-
-// Mismas reglas que el backend (dayHoursError), para avisar qué día está mal
-// antes de guardar. Las horas HH:MM se comparan como texto
-function dayError(d: DayState): string | null {
-  if (d.opensAt >= d.closesAt) {
-    return 'la hora de apertura debe ser anterior al cierre';
-  }
-  if (!d.hasBreak) return null;
-  if (d.breakStartsAt >= d.breakEndsAt) {
-    return 'el almuerzo debe empezar antes de terminar';
-  }
-  if (d.breakStartsAt <= d.opensAt || d.breakEndsAt >= d.closesAt) {
-    return 'el almuerzo debe quedar dentro del horario, después de abrir y antes de cerrar';
-  }
-  return null;
-}
 
 
 const emptyWeek = () =>

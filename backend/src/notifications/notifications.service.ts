@@ -39,7 +39,8 @@ export interface BookingEmailData {
 }
 
 // Enlace de búsqueda de Google Maps: no necesita clave y en el celular abre la
-// app de Maps
+// app de Maps. Igual que mapsUrl en el frontend (lib/maps.ts), lo revisa
+// shared-rules.spec.ts
 export const mapsUrl = (address: string) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 

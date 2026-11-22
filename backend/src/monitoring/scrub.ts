@@ -5,7 +5,8 @@ import type { Breadcrumb, ErrorEvent } from '@sentry/nestjs';
 // headers, las cookies y la query de cada petición, los correos que aparezcan
 // en un mensaje y los identificadores de las rutas (el enlace de una reserva o
 // de una invitación es un id más y quien lo tiene puede cancelarla o aceptarla).
-// La misma regla está en frontend/src/lib/sentry-scrub.ts (iguales)
+// La misma regla está en frontend/src/lib/sentry-scrub.ts (iguales: los mismos
+// casos corren contra las dos en scrub.spec.ts)
 
 const EMAIL = /[^\s@<>"'(),;:]+@[^\s@<>"'(),;:]+\.[a-z]{2,}/gi;
 // cuid (ids y manageToken) y tokens hex de 64: un segmento largo de letras,
