@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals'; // en modo ESM, jest no es global
 import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import {
@@ -11,7 +12,10 @@ type Result = {
 };
 
 // Resend simulado: devuelve las respuestas en orden y anota cada llamada
-function setup(responses: (Result | Error)[]) {
+function setup(
+  responses: (Result | Error)[],
+  env: Record<string, string> = {},
+) {
   const calls: {
     to: unknown;
     subject?: string;
@@ -21,7 +25,7 @@ function setup(responses: (Result | Error)[]) {
     idempotencyKey?: string;
   }[] = [];
   const service = new NotificationsService({
-    get: () => undefined,
+    get: (key: string) => env[key],
   } as unknown as ConfigService);
   Object.assign(service, {
     retryDelaysMs: [0, 0],
@@ -254,6 +258,174 @@ describe('NotificationsService: ayuda y sugerencias', () => {
     const { service, calls } = setup([]);
     await service.supportRequest(data);
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe('NotificationsService: cancelación por el negocio', () => {
+  const data = {
+    to: 'cliente@test.local',
+    customerName: 'Ana <b>',
+    businessName: 'Taller & Cía',
+    businessSlug: 'taller',
+    businessPhone: '+56 9 1234 5678',
+    serviceName: 'Corte + Barba',
+    // 12:00 en Santiago (verano, UTC-3)
+    startsAt: new Date('2026-12-01T15:00:00Z'),
+    timezone: 'America/Santiago',
+    reason: 'Se cortó la luz <script>',
+  };
+
+  it('le dice qué se canceló, cuándo y por qué, escapado, con el enlace para reservar otra hora', async () => {
+    const { service, calls } = setup([]);
+    await service.bookingCancelledByBusiness(data);
+    const html = calls[0].html ?? '';
+    expect(calls[0].to).toBe('cliente@test.local');
+    expect(calls[0].subject).toBe('Tu reserva en Taller & Cía fue cancelada');
+    expect(html).toContain('Hola Ana &lt;b&gt;');
+    expect(html).toContain('<strong>Taller &amp; Cía</strong> canceló');
+    expect(html).toContain('<strong>Corte + Barba</strong>');
+    expect(html).toContain(
+      '<strong>martes 1 de diciembre a las 12:00</strong>',
+    );
+    expect(html).toContain('Motivo: Se cortó la luz &lt;script&gt;');
+    expect(html).toContain('href="http://localhost:3001/taller"');
+    expect(html).toContain('llamar al +56 9 1234 5678');
+    expect(html).not.toMatch(/<b>|<script>/);
+  });
+
+  it('sin motivo ni teléfono no muestra esas líneas', async () => {
+    const { service, calls } = setup([]);
+    await service.bookingCancelledByBusiness({
+      ...data,
+      reason: null,
+      businessPhone: null,
+    });
+    const html = calls[0].html ?? '';
+    expect(html).not.toContain('Motivo');
+    expect(html).not.toContain('llamar');
+  });
+
+  it('el enlace usa la dirección pública del sitio', async () => {
+    const { service, calls } = setup([], {
+      FRONTEND_URL: 'https://reservahoy.cl',
+    });
+    await service.bookingCancelledByBusiness(data);
+    expect(calls[0].html).toContain('href="https://reservahoy.cl/taller"');
+  });
+});
+
+describe('NotificationsService: reserva nueva al negocio', () => {
+  // Lo que escribió el cliente en la página pública llega al correo del
+  // negocio: todo va escapado
+  const data = {
+    to: 'duena@test.local',
+    recipientName: 'Carla',
+    businessName: 'Taller & Cía',
+    customerName: 'Ana <img src=x>',
+    customerEmail: 'ana@test.local',
+    customerPhone: '+56 9 1111 2222',
+    serviceName: 'Corte',
+    memberName: 'Diego',
+    notes: 'Llego <b>tarde</b> & con mi perro',
+    // 23:00 del lunes 30 de noviembre en Santiago: ya es martes en UTC
+    startsAt: new Date('2026-12-01T02:00:00Z'),
+    timezone: 'America/Santiago',
+  };
+
+  it('trae la reserva, el cliente y su nota, escapados', async () => {
+    const { service, calls } = setup([]);
+    await service.newBookingForStaff(data);
+    const html = calls[0].html ?? '';
+    expect(calls[0].to).toBe('duena@test.local');
+    expect(calls[0].subject).toMatch(
+      /^Nueva reserva: Ana <img src=x>, lun .*23:00$/,
+    );
+    expect(html).toContain('Hola Carla');
+    expect(html).toContain('<strong>Taller &amp; Cía</strong>');
+    expect(html).toContain('lunes 30 de noviembre a las 23:00, con Diego');
+    expect(html).toContain(
+      'Ana &lt;img src=x&gt; · ana@test.local · +56 9 1111 2222',
+    );
+    expect(html).toContain(
+      'Nota: Llego &lt;b&gt;tarde&lt;/b&gt; &amp; con mi perro',
+    );
+    expect(html).not.toMatch(/<img|<b>/);
+  });
+
+  it('el enlace abre la agenda en el día de la reserva, en la zona del negocio', async () => {
+    const { service, calls } = setup([]);
+    await service.newBookingForStaff(data);
+    const html = calls[0].html ?? '';
+    expect(html).toContain(
+      'href="http://localhost:3001/dashboard/agenda?date=2026-11-30"',
+    );
+    expect(html).toContain('href="http://localhost:3001/dashboard/settings"');
+  });
+
+  it('sin teléfono ni nota no muestra esas líneas', async () => {
+    const { service, calls } = setup([]);
+    await service.newBookingForStaff({
+      ...data,
+      customerPhone: null,
+      notes: null,
+    });
+    const html = calls[0].html ?? '';
+    expect(html).toContain('Ana &lt;img src=x&gt; · ana@test.local</li>');
+    expect(html).not.toContain('Nota:');
+  });
+});
+
+describe('NotificationsService: verificación de correo e invitación', () => {
+  it('la verificación lleva el enlace con el token y el nombre escapado', async () => {
+    const { service, calls } = setup([]);
+    await service.emailVerification('nuevo@test.local', 'Ana & Co', 'a1b2c3');
+    expect(calls[0].to).toBe('nuevo@test.local');
+    expect(calls[0].subject).toBe('Confirma tu correo en Reservahoy');
+    expect(calls[0].html).toContain('Hola Ana &amp; Co');
+    expect(calls[0].html).toContain(
+      'href="http://localhost:3001/verify-email?token=a1b2c3"',
+    );
+  });
+
+  it('la invitación dice quién invita y a qué negocio, con su enlace', async () => {
+    const { service, calls } = setup([], {
+      FRONTEND_URL: 'https://reservahoy.cl',
+    });
+    await service.memberInvitation({
+      to: 'diego@test.local',
+      memberName: 'Diego <i>',
+      businessName: 'Taller & Cía',
+      inviterName: 'Carla "La jefa"',
+      token: 'f00d',
+    });
+    const html = calls[0].html ?? '';
+    expect(calls[0].to).toBe('diego@test.local');
+    expect(calls[0].subject).toBe('Te invitaron a Taller & Cía en Reservahoy');
+    expect(html).toContain('Hola Diego &lt;i&gt;');
+    expect(html).toContain('Carla &quot;La jefa&quot; te invitó');
+    expect(html).toContain('<strong>Taller &amp; Cía</strong>');
+    expect(html).toContain('href="https://reservahoy.cl/invitacion/f00d"');
+  });
+});
+
+describe('NotificationsService: sin RESEND_API_KEY', () => {
+  it('no envía ni lanza: deja un aviso en el log', async () => {
+    const warn = jest
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => {});
+    try {
+      const service = new NotificationsService({
+        get: () => undefined,
+      } as unknown as ConfigService);
+      await expect(
+        service.emailVerification('a@test.local', 'Ana', 'token'),
+      ).resolves.toBeUndefined();
+      expect(warn).toHaveBeenCalledWith(
+        'RESEND_API_KEY no configurada: correo "verificación de correo" omitido',
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 });
 
