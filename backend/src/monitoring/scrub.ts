@@ -18,18 +18,23 @@ const LONG_NUMBER = /\+?\d[\d\s-]{7,}\d/g;
 
 // Los errores de Prisma copian la consulta entera con sus valores (nombres,
 // teléfonos, notas de clientes): queda la primera línea, que dice qué consulta
-// falló, y el último párrafo, que dice por qué
-const PRISMA_INVOCATION = /invocation in\s*\n/;
+// falló, y el último párrafo, que dice por qué. Con el archivo de origen dice
+// "invocation in" y la ruta en la línea siguiente; sin él (en producción),
+// "invocation:"
+const PRISMA_INVOCATION = /invocation(?: in|:)\s*\n/;
 function shortenPrisma(text: string): string {
   if (!PRISMA_INVOCATION.test(text)) return text;
   const trimmed = text.trim();
-  const first = trimmed.split('\n')[0].replace(/ in$/, '');
-  const reason = trimmed.slice(trimmed.lastIndexOf('\n\n') + 2);
-  return `${first}: ${reason}`;
+  const first = trimmed.split('\n')[0].replace(/(?: in|:)$/, '');
+  const cut = trimmed.lastIndexOf('\n\n');
+  if (cut === -1) return first;
+  return `${first}: ${trimmed.slice(cut + 2)}`;
 }
 
 export const scrubText = (text: string) =>
-  shortenPrisma(text).replace(EMAIL, '[correo]').replace(LONG_NUMBER, '[número]');
+  shortenPrisma(text)
+    .replace(EMAIL, '[correo]')
+    .replace(LONG_NUMBER, '[número]');
 
 export function scrubUrl(url: string): string {
   const [path] = url.split(/[?#]/);

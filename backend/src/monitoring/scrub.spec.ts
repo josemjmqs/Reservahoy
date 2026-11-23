@@ -39,6 +39,39 @@ describe.each([
       );
     });
 
+    it('acorta también el error de Prisma como sale en producción (sin archivo de origen)', () => {
+      // Tal como llegó a Sentry desde Render
+      const prisma = [
+        '',
+        'Invalid `prisma.customer.update()` invocation:',
+        '',
+        '{',
+        '  where: { id: "cmw8kthif0001dl3bpgrppvg9" },',
+        '  data: { name: "Ana Pérez", notes: "alérgica al tinte" }',
+        '        ~~~~',
+        '}',
+        '',
+        'Invalid value for argument `name`: Expected String.',
+      ].join('\n');
+      expect(scrubText(prisma)).toBe(
+        'Invalid `prisma.customer.update()` invocation: Invalid value for argument `name`: Expected String.',
+      );
+    });
+
+    it('de un error de Prisma sin motivo deja solo la consulta que falló', () => {
+      expect(
+        scrubText(
+          'Invalid `prisma.customer.update()` invocation:\n{ name: "Ana" }',
+        ),
+      ).toBe('Invalid `prisma.customer.update()` invocation');
+    });
+
+    it('un texto que no es de Prisma queda igual', () => {
+      expect(scrubText('No se pudo completar la invocation: timeout')).toBe(
+        'No se pudo completar la invocation: timeout',
+      );
+    });
+
     it('reemplaza ids y tokens de la ruta y quita la query', () => {
       expect(scrubUrl('/manage/cmbx1q2w30000abcd1234efgh/cancel')).toBe(
         '/manage/:id/cancel',
