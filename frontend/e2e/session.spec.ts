@@ -6,15 +6,29 @@ import { AUTH_FILE, loginAsDemo } from "./helpers";
 // session.spec.ts en el backend). Si vence con el panel abierto, la siguiente
 // petición lleva al login con un aviso en vez de mostrar "Unauthorized"
 
-test("la sesión del dueño dura 30 días", async () => {
+test("la sesión del dueño dura 30 días y el JavaScript de la página no la lee", async ({
+  page,
+}) => {
   const { cookies } = JSON.parse(readFileSync(AUTH_FILE, "utf8")) as {
-    cookies: { name: string; expires: number }[];
+    cookies: {
+      name: string;
+      expires: number;
+      httpOnly: boolean;
+      sameSite: string;
+      path: string;
+    }[];
   };
   const token = cookies.find((c) => c.name === "token");
   expect(token, "auth.setup.ts guarda la cookie de sesión").toBeTruthy();
   const days = (token!.expires * 1000 - Date.now()) / 86_400_000;
   expect(days).toBeGreaterThan(29);
   expect(days).toBeLessThanOrEqual(30);
+
+  // httpOnly: un script inyectado en la página no puede robarla. (secure solo
+  // va en producción, donde hay https)
+  expect(token).toMatchObject({ httpOnly: true, sameSite: "Lax", path: "/" });
+  await loginAsDemo(page);
+  expect(await page.evaluate(() => document.cookie)).not.toContain("token=");
 });
 
 test("si la sesión vence con el panel abierto, va al login con un aviso", async ({
