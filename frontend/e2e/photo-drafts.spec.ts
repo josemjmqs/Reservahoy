@@ -85,7 +85,10 @@ test("las fotos de Completada quedan guardadas hasta enviarlas y se borran al ce
     const w = window as unknown as { sentPhotos: number };
     const original = window.fetch;
     window.fetch = (input, init) => {
-      if (String(input).includes("/complete") && init?.body instanceof FormData) {
+      if (
+        String(input).includes("/complete") &&
+        init?.body instanceof FormData
+      ) {
         w.sentPhotos = init.body.getAll("photos").length;
       }
       return original(input, init);
@@ -121,4 +124,80 @@ test("las fotos de Completada quedan guardadas hasta enviarlas y se borran al ce
   await expect(card(second)).not.toContainText("guardada");
   await open(second);
   await expect(dialog.getByRole("img")).toHaveCount(0);
+});
+
+// Una reserva nueva con una foto guardada sin enviar, en la agenda de su día
+async function bookingWithDraft(page: Page, date: string, customer: string) {
+  await bookFirstSlot(page, {
+    category: "Barba",
+    service: "Perfilado de barba",
+    date,
+    customer,
+  });
+  await loginAsDemo(page);
+  await page.goto(`/dashboard/agenda?date=${date}`);
+  const card = page.getByRole("listitem").filter({ hasText: customer });
+  const dialog = page.getByRole("dialog", { name: "Avisar que está listo" });
+  await card.getByRole("button", { name: "Completada" }).click();
+  await dialog.getByLabel("Elegir fotos").setInputFiles(photo("a.png"));
+  await expect(dialog.getByRole("img")).toHaveCount(1);
+  await dialog.getByRole("button", { name: "Volver" }).click();
+  await expect(card).toContainText("1 foto guardada, sin enviar");
+  return card;
+}
+
+// Pueden ser fotos de cosas de clientes en un equipo compartido: no se quedan
+// para siempre. El reloj del navegador se adelanta con page.clock
+test("las fotos guardadas se borran a los 7 días", async ({ page }) => {
+  await page.clock.install();
+  const date = workdayFrom(29);
+  const card = await bookingWithDraft(
+    page,
+    date,
+    `Vence E2E ${Date.now().toString(36)}`,
+  );
+
+  const later = async (days: number) => {
+    await page.clock.setSystemTime(Date.now() + days * 86_400_000);
+    await page.reload();
+    await expect(card).toBeVisible();
+  };
+  // A los 6 días sigue ahí; a los 8, la agenda la borra al cargar
+  await later(6);
+  await expect(card).toContainText("1 foto guardada, sin enviar");
+  await later(8);
+  await expect(card).not.toContainText("guardada");
+  expect(await storedDrafts(page)).toBe(0);
+});
+
+test("ver otro día no borra las fotos guardadas; cancelar la reserva desde otro lado sí", async ({
+  page,
+}) => {
+  const date = workdayFrom(31);
+  const customer = `Cancelada E2E ${Date.now().toString(36)}`;
+  const card = await bookingWithDraft(page, date, customer);
+
+  // Otro día de la agenda no trae esa reserva: su borrador se queda
+  await page.goto(`/dashboard/agenda?date=${workdayFrom(33)}`);
+  await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  expect(await storedDrafts(page)).toBe(1);
+  await page.goto(`/dashboard/agenda?date=${date}`);
+  await expect(card).toContainText("1 foto guardada, sin enviar");
+
+  // Alguien la cancela desde otro equipo (aquí, directo por la API): al volver
+  // a cargar la agenda, la foto ya no sirve y se borra
+  const agenda = await page.request.get(`/api/agenda?from=${date}&to=${date}`);
+  const booking = (
+    (await agenda.json()) as { id: string; customer: { name: string } }[]
+  ).find((b) => b.customer.name === customer);
+  expect(booking, "la reserva está en la agenda").toBeTruthy();
+  const cancel = await page.request.patch(`/api/agenda/${booking!.id}/status`, {
+    data: { status: "CANCELLED" },
+  });
+  expect(cancel.ok()).toBeTruthy();
+  await page.reload();
+  await expect(card).toContainText("Cancelada");
+  await expect(card).not.toContainText("guardada");
+  expect(await storedDrafts(page)).toBe(0);
 });
