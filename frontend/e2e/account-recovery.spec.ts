@@ -128,7 +128,7 @@ test("confirmar el correo con el enlace quita el aviso del panel y habilita las 
   // Un enlace que no existe
   await page.goto(`/verify-email?token=${"0".repeat(64)}`);
   await expect(
-    page.getByText(/^El enlace no es válido o expiró.* Puedes pedir uno nuevo/),
+    page.getByText("El enlace no es válido o expiró. Puedes pedir uno nuevo"),
   ).toBeVisible();
 
   const token = await createAccountToken("verify-email", account.email);
