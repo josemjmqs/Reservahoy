@@ -53,6 +53,28 @@ export async function createInvitation(
   return token;
 }
 
+// Crea un enlace vigente de restablecer la contraseña (1 hora) o de confirmar
+// el correo (24 horas) para una cuenta y devuelve su token: el del correo no
+// se puede leer y en la base solo queda el hash
+export async function createAccountToken(
+  kind: "reset-password" | "verify-email",
+  email: string,
+): Promise<string> {
+  const token = randomBytes(32).toString("hex");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const [table, ttl] =
+    kind === "reset-password"
+      ? ['"PasswordResetToken"', "1 hour"]
+      : ['"EmailVerificationToken"', "24 hours"];
+  const { rowCount } = await db().query(
+    `INSERT INTO ${table} (id, "tokenHash", "expiresAt", "userId")
+     SELECT $1, $2, now() + $3::interval, id FROM "User" WHERE email = $4`,
+    [randomUUID(), tokenHash, ttl, email.trim().toLowerCase()],
+  );
+  if (rowCount !== 1) throw new Error(`No existe la cuenta ${email}`);
+  return token;
+}
+
 // Activa o desactiva un miembro directo en la base, sin pasar por la API (que
 // además cierra sus sesiones): simula una sesión que quedó abierta sin acceso
 export async function setMemberActive(memberId: string, active: boolean) {
