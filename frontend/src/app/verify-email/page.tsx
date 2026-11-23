@@ -6,6 +6,10 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { Card } from '@/components/ui';
 
+// Los mensajes de la API no terminan en punto ("El enlace no es válido o
+// expiró") y aquí los sigue otra oración
+const sentence = (text: string) => (/[.!?]$/.test(text) ? text : `${text}.`);
+
 function VerifyResult() {
   const token = useSearchParams().get('token') ?? '';
   const [state, setState] = useState<'loading' | 'ok' | 'error'>(
@@ -50,7 +54,7 @@ function VerifyResult() {
 
   return (
     <p className="mt-3 text-sm text-gray-600">
-      {error} Puedes pedir uno nuevo desde{' '}
+      {sentence(error)} Puedes pedir uno nuevo desde{' '}
       <Link href="/dashboard/agenda" className="text-indigo-600 underline">
         tu panel
       </Link>
