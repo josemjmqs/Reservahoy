@@ -154,7 +154,9 @@ describe('NotificationsService: servicio listo', () => {
     expect(html).toContain(
       'href="https://www.google.com/maps/search/?api=1&amp;query=Av.%20Matta%20100%2C%20%C3%91u%C3%B1oa"',
     );
-    expect(html).toContain('llamar al +56 9 1234 5678');
+    expect(html).toContain(
+      'escribir por WhatsApp al <a href="https://wa.me/56912345678">+56 9 1234 5678</a>',
+    );
   });
 
   it('las fotos van dentro del correo (cid) y como adjuntos en línea', async () => {
@@ -203,7 +205,7 @@ describe('NotificationsService: servicio listo', () => {
       businessPhone: null,
     });
     expect(calls[0].html).not.toContain('Dirección');
-    expect(calls[0].html).not.toContain('llamar');
+    expect(calls[0].html).not.toContain('Si tienes dudas');
   });
 });
 
@@ -289,7 +291,9 @@ describe('NotificationsService: cancelación por el negocio', () => {
     );
     expect(html).toContain('Motivo: Se cortó la luz &lt;script&gt;');
     expect(html).toContain('href="http://localhost:3001/taller"');
-    expect(html).toContain('llamar al +56 9 1234 5678');
+    expect(html).toContain(
+      'escribir por WhatsApp al <a href="https://wa.me/56912345678">+56 9 1234 5678</a>',
+    );
     expect(html).not.toMatch(/<b>|<script>/);
   });
 
@@ -302,7 +306,18 @@ describe('NotificationsService: cancelación por el negocio', () => {
     });
     const html = calls[0].html ?? '';
     expect(html).not.toContain('Motivo');
-    expect(html).not.toContain('llamar');
+    expect(html).not.toContain('Si tienes dudas');
+  });
+
+  it('un teléfono fijo (sin WhatsApp) queda para llamar', async () => {
+    const { service, calls } = setup([]);
+    await service.bookingCancelledByBusiness({
+      ...data,
+      businessPhone: '+56 2 2123 4567',
+    });
+    const html = calls[0].html ?? '';
+    expect(html).toContain('puedes llamar al +56 2 2123 4567.');
+    expect(html).not.toContain('wa.me');
   });
 
   it('el enlace usa la dirección pública del sitio', async () => {

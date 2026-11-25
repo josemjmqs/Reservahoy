@@ -8,14 +8,9 @@ import type { BookingResult, PublicBusiness } from "@/lib/types";
 import { ServicePicker } from "@/components/ServicePicker";
 import { ServiceThumb } from "@/components/ServiceThumb";
 import { DayStrip, todayISO } from "@/components/DayStrip";
-import {
-  ChatPhoneIcon,
-  CheckIcon,
-  MapPinIcon,
-  PhoneIcon,
-} from "@/components/icons";
+import { CheckIcon, MapPinIcon } from "@/components/icons";
+import { PhoneLink } from "@/components/PhoneLink";
 import { mapsUrl } from "@/lib/maps";
-import { whatsappUrl } from "@/lib/whatsapp";
 import { formatTime, formatTotal, publicDuration } from "@/lib/format";
 import { brandStyle } from "@/lib/brand";
 
@@ -39,35 +34,6 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 // El texto encima usa `--brand-fg` (blanco u oscuro según el color, brandStyle)
 const headerBand =
   "-mx-6 -mt-10 px-6 pb-7 pt-[max(2.5rem,env(safe-area-inset-top))] sm:mx-0 sm:mt-0 sm:rounded-card sm:p-6";
-
-// Un celular abre WhatsApp (en el teléfono, la app; en el computador, WhatsApp
-// Web); un fijo, la llamada
-function PhoneLink({ phone, className }: { phone: string; className: string }) {
-  const whatsapp = whatsappUrl(phone);
-  if (!whatsapp) {
-    return (
-      <a href={`tel:${phone.replace(/[^\d+]/g, "")}`} className={className}>
-        <PhoneIcon className="h-4 w-4 shrink-0 opacity-80" />
-        {phone}
-      </a>
-    );
-  }
-  return (
-    <a
-      href={whatsapp}
-      target="_blank"
-      rel="noopener noreferrer"
-      title="Escribir por WhatsApp"
-      className={className}
-    >
-      <ChatPhoneIcon className="h-4 w-4 shrink-0 opacity-80" />
-      <span>
-        <span className="sr-only">WhatsApp </span>
-        {phone}
-      </span>
-    </a>
-  );
-}
 
 function BusinessHeader({
   name,

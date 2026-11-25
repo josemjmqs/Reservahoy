@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { PhoneLink } from '@/components/PhoneLink';
 import { Button, Card } from '@/components/ui';
 import { formatTime, formatTotal } from '@/lib/format';
 import { mapsUrl } from '@/lib/maps';
@@ -131,7 +132,11 @@ export default function ManageBookingPage({
           <p
             className={`${booking.business.address ? 'mt-1' : 'mt-4'} text-sm text-gray-600`}
           >
-            Contacto: {booking.business.phone}
+            Contacto:{' '}
+            <PhoneLink
+              phone={booking.business.phone}
+              className="inline-flex items-center gap-1 align-bottom font-medium text-indigo-700 underline underline-offset-2 hover:text-indigo-900"
+            />
           </p>
         )}
       </Card>

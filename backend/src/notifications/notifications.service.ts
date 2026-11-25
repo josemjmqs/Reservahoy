@@ -44,6 +44,36 @@ export interface BookingEmailData {
 export const mapsUrl = (address: string) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 
+// Enlace de WhatsApp (wa.me) para el teléfono del negocio, o null si es un fijo
+// chileno (no tiene WhatsApp) o no se reconoce. Sin código de país se asume
+// Chile. Igual que whatsappUrl en el frontend (lib/whatsapp.ts), lo revisa
+// shared-rules.spec.ts
+export function whatsappUrl(phone: string): string | null {
+  let digits = phone.replace(/\D/g, '');
+  const international = phone.trim().startsWith('+') || digits.startsWith('00');
+  digits = digits.replace(/^0+/, '');
+  if (!international && digits.length === 9) digits = `56${digits}`;
+  // Chile: los celulares son +56 9 y ocho cifras; el resto son fijos
+  if (digits.startsWith('56')) {
+    return digits.length === 11 && digits[2] === '9'
+      ? `https://wa.me/${digits}`
+      : null;
+  }
+  return international && digits.length >= 8 && digits.length <= 15
+    ? `https://wa.me/${digits}`
+    : null;
+}
+
+// "Si tienes dudas…" al final de los correos al cliente: un celular, con
+// enlace a WhatsApp para escribirle; un fijo, para llamar
+function questionsLine(phone: string | null) {
+  if (!phone) return '';
+  const whatsapp = whatsappUrl(phone);
+  return whatsapp
+    ? `<p>Si tienes dudas, puedes escribir por WhatsApp al <a href="${escapeHtml(whatsapp)}">${escapeHtml(phone)}</a>.</p>`
+    : `<p>Si tienes dudas, puedes llamar al ${escapeHtml(phone)}.</p>`;
+}
+
 export interface CancelledByBusinessEmailData {
   to: string;
   customerName: string;
@@ -242,11 +272,7 @@ export class NotificationsService {
           <strong>${escapeHtml(data.serviceName)}</strong> del <strong>${when}</strong>.</p>
           ${data.reason ? `<p>Motivo: ${escapeHtml(data.reason)}</p>` : ''}
           <p><a href="${rebook}">Reservar otra hora</a></p>
-          ${
-            data.businessPhone
-              ? `<p>Si tienes dudas, puedes llamar al ${escapeHtml(data.businessPhone)}.</p>`
-              : ''
-          }
+          ${questionsLine(data.businessPhone)}
         `,
     });
   }
@@ -283,11 +309,7 @@ export class NotificationsService {
           <strong>${escapeHtml(data.serviceName)}</strong>. Ya puedes pasar a buscarlo.</p>
           ${gallery}
           ${address}
-          ${
-            data.businessPhone
-              ? `<p>Si tienes dudas, puedes llamar al ${escapeHtml(data.businessPhone)}.</p>`
-              : ''
-          }
+          ${questionsLine(data.businessPhone)}
         `,
     });
   }
