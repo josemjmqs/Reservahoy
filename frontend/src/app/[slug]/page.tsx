@@ -459,6 +459,19 @@ export default function PublicPage({
         todayHours={business.todayHours}
       />
 
+      {/* Negocio de demostración: el backend no guarda la reserva y responde
+          con un mensaje que se muestra al confirmar */}
+      {business.demo && (
+        <p className="mt-6 rounded-card border border-line bg-white p-4 text-sm text-muted">
+          <strong className="font-semibold text-ink">Negocio de demostración.</strong>{" "}
+          Puedes probar la reserva completa, pero no se guarda. ¿Quieres ver el
+          otro lado?{" "}
+          <Link href="/login" className="font-medium text-accent underline hover:no-underline">
+            Ver el panel del negocio
+          </Link>
+        </p>
+      )}
+
       <SectionTitle
         aside={
           serviceIds.length >= MAX_SERVICES

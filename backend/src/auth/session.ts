@@ -21,7 +21,17 @@ export interface SessionUser {
   email: string;
   sv: number;
   iat: number; // segundos (estándar JWT)
+  demo: boolean; // cuenta del negocio de demostración: solo lectura
 }
+
+export const DEMO_READ_ONLY =
+  'Es una cuenta de demostración: puedes recorrer todo, pero los cambios no se guardan';
+
+// La cuenta demo solo lee: cualquier método que no sea de lectura se rechaza
+// en JwtAuthGuard, antes de llegar a los servicios (así una ruta nueva queda
+// bloqueada sin tener que acordarse)
+export const blockedForDemo = (user: Pick<SessionUser, 'demo'>, method: string) =>
+  user.demo && !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase());
 
 export const shouldRenew = (iat: number, now = Date.now()) =>
   now - iat * 1000 > RENEW_AFTER_MS;

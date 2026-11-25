@@ -1,6 +1,11 @@
 import { JwtService } from '@nestjs/jwt';
 import type { Request, Response } from 'express';
-import { SESSION_DAYS, renewSession, shouldRenew } from './session';
+import {
+  SESSION_DAYS,
+  blockedForDemo,
+  renewSession,
+  shouldRenew,
+} from './session';
 
 const jwt = new JwtService({ secret: 'test-secret', signOptions: { expiresIn: '30d' } });
 const HOUR = 60 * 60 * 1000;
@@ -11,7 +16,7 @@ const iatHoursAgo = (h: number) => Math.floor((now - h * HOUR) / 1000);
 const fakeHttp = (iat: number, viaCookie: boolean) => {
   const cookies: { name: string; value: string; options: { maxAge?: number } }[] = [];
   const req = {
-    user: { userId: 'u1', email: 'a@b.cl', sv: 3, iat },
+    user: { userId: 'u1', email: 'a@b.cl', sv: 3, iat, demo: false },
     cookies: viaCookie ? { token: 'viejo' } : {},
   } as unknown as Request;
   const res = {
@@ -28,6 +33,26 @@ describe('shouldRenew', () => {
 
   it('renueva un token de más de un día', () => {
     expect(shouldRenew(iatHoursAgo(25), now)).toBe(true);
+  });
+});
+
+describe('blockedForDemo', () => {
+  it('la cuenta demo puede leer', () => {
+    for (const method of ['GET', 'HEAD', 'OPTIONS', 'get']) {
+      expect(blockedForDemo({ demo: true }, method)).toBe(false);
+    }
+  });
+
+  it('la cuenta demo no puede crear, cambiar ni borrar', () => {
+    for (const method of ['POST', 'PUT', 'PATCH', 'DELETE', 'patch']) {
+      expect(blockedForDemo({ demo: true }, method)).toBe(true);
+    }
+  });
+
+  it('una cuenta normal no se bloquea', () => {
+    for (const method of ['GET', 'POST', 'PATCH', 'DELETE']) {
+      expect(blockedForDemo({ demo: false }, method)).toBe(false);
+    }
   });
 });
 

@@ -31,6 +31,10 @@ model Business {
   logoKey    String?
   // Color de marca de la página pública, "#rrggbb" en minúsculas
   brandColor String?
+  // Negocio de demostración (prisma/demo.mts): sus cuentas entran sin
+  // contraseña con POST /auth/demo y no pueden cambiar nada, y su página
+  // pública no guarda reservas
+  demo      Boolean     @default(false)
   createdAt DateTime    @default(now())
   members   Member[]
   services  Service[]

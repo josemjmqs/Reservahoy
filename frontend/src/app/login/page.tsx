@@ -48,6 +48,24 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [demoError, setDemoError] = useState("");
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  // Panel de demostración sin contraseña (solo lectura: POST /auth/demo)
+  async function enterDemo() {
+    setDemoError("");
+    setDemoLoading(true);
+    try {
+      await api("/auth/demo", {
+        method: "POST",
+        body: JSON.stringify({ role: "owner" }),
+      });
+      router.push("/dashboard/agenda");
+    } catch (err) {
+      setDemoError(err instanceof Error ? err.message : "Error inesperado");
+      setDemoLoading(false);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -108,6 +126,23 @@ export default function LoginPage() {
           </Link>
         </p>
       </Card>
+      <section className="mt-4 rounded-card border border-line p-5 text-sm">
+        <h2 className="font-semibold text-ink">¿Solo quieres ver cómo funciona?</h2>
+        <p className="mt-1 text-muted">
+          Entra al panel de una peluquería de ejemplo, sin cuenta. Puedes
+          recorrer todo; los cambios no se guardan.
+        </p>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={enterDemo}
+          disabled={demoLoading}
+          className="mt-3 h-10 w-full sm:h-auto"
+        >
+          {demoLoading ? "Entrando..." : "Ver el panel de demostración"}
+        </Button>
+        {demoError && <p className="mt-2 text-red-600">{demoError}</p>}
+      </section>
     </main>
   );
 }

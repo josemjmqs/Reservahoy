@@ -27,6 +27,8 @@ export interface PublicBusiness {
   brandColor: string | null;
   logoUrl: string | null;
   acceptsBookings: boolean;
+  // Negocio de demostración: se puede probar la reserva, pero no se guarda
+  demo: boolean;
   // Hoy, de la primera apertura al último cierre del equipo ("HH:mm"); null si
   // hoy no atiende nadie (AvailabilityService.todayHours)
   todayHours: { opensAt: string; closesAt: string } | null;
@@ -113,6 +115,8 @@ export interface Me {
       id: string;
       name: string;
       slug: string;
+      // Panel de demostración: solo lectura (el backend rechaza los cambios)
+      demo: boolean;
     };
   };
 }

@@ -1,0 +1,53 @@
+name: Demo
+
+# Vuelve a crear la demo de solo lectura (reservahoy.cl/demo) en producción para
+# que sus reservas sigan alrededor de hoy (prisma/demo.mts). Solo toca el
+# negocio "demo" y sus dos cuentas.
+on:
+  schedule:
+    - cron: "47 6 * * *" # todos los días, 06:47 UTC (de madrugada en Chile), después del respaldo
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo
+  cancel-in-progress: false
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      R2_IMAGES_BUCKET: ${{ secrets.R2_IMAGES_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Negocio demo
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          npm ci
+          npx prisma generate
+          npm run demo
+
+      # Las fotos de los cortes (frontend/public/seed/cortes) en el bucket de
+      # fotos, donde las busca R2_PUBLIC_URL. Solo si existe el secreto
+      # R2_IMAGES_BUCKET y la clave de R2 puede escribir en ese bucket
+      - name: Fotos de los cortes
+        if: env.R2_IMAGES_BUCKET != ''
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          aws s3 sync frontend/public/seed/cortes "s3://$R2_IMAGES_BUCKET/seed/cortes" \
+            --endpoint-url "https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com" \
+            --content-type image/webp --cache-control "public, max-age=86400"

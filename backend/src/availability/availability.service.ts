@@ -131,6 +131,7 @@ export class AvailabilityService {
       select: {
         name: true,
         slug: true,
+        demo: true,
         timezone: true,
         phone: true,
         address: true,

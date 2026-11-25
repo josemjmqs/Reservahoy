@@ -20,6 +20,8 @@ const RESERVED_SLUGS = [
   'privacidad',
   'terminos',
   'invitacion',
+  // el negocio de demostración (prisma/demo.mts) se crea directo en la base
+  'demo',
 ];
 
 export class RegisterDto {
