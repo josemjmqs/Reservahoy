@@ -18,7 +18,7 @@ Plataforma de reservas online para pequeños negocios. Cada negocio tiene una p�
 - Backend: `npm run start:dev`, `npx nest build`, `npm test`, `npm run test:integration`
 - Frontend: `npm run dev` (puerto 3001), `npx tsc --noEmit`, `npm run lint`, `npm run build`
 - Base local: `docker compose up -d`; consola: `docker compose exec db psql -U reservaya -d reservaya`
-- Datos de prueba: `npx prisma db seed` (en `backend/`, `prisma/seed.mts`): negocio demo `demo-peluqueria`, login de la dueña `demo@reservahoy.local` / `demo1234` y del profesional (STAFF) `diego@reservahoy.local` / `demo1234`; `SEED_TODAY=1` agrega reservas hoy. Solo corre contra bases locales
+- Datos de prueba: `npx prisma db seed` (en `backend/`, `prisma/seed.mts`): negocio demo `demo-peluqueria`, login de la dueña `demo@reservahoy.local` / `demo1234` y del profesional (STAFF) `diego@reservahoy.local` / `demo1234`; `SEED_TODAY=1` agrega reservas hoy. Solo corre contra bases locales. La categoría "Cortes" trae tipos de corte con foto (`frontend/public/seed/cortes`, fotos libres de Unsplash; créditos en `seed.mts`): la API arma la URL con `R2_PUBLIC_URL`, así que en local se ven con `R2_PUBLIC_URL=http://localhost:3001` en `backend/.env` (sin eso, y en CI, quedan sin foto). Va después de Pelo y Barba para que las e2e sigan usando "Corte de pelo" en la primera categoría
 
 ## Reglas del proyecto
 - El `businessId` SIEMPRE se obtiene de la membresía del usuario autenticado, nunca del cliente, con `getMembership` (`auth/membership.ts`), que solo acepta membresías activas. Recursos de otro negocio responden 404

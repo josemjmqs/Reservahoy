@@ -11,7 +11,7 @@ Plataforma de reservas online para pequeños negocios (talleres, peluquerías, c
 
 | El cliente reserva desde el celular | El negocio ve su agenda |
 | :---: | :---: |
-| <img src="docs/capturas/publica-celular.png" alt="Página pública: elección de profesional, día y hora" width="300"> | <img src="docs/capturas/agenda-celular.png" alt="Agenda del día en el panel, en el celular" width="300"> |
+| <img src="docs/capturas/publica-celular.png" alt="Página pública: tipos de corte con su foto y elección de profesional" width="300"> | <img src="docs/capturas/agenda-celular.png" alt="Agenda del día en el panel, en el celular" width="300"> |
 
 **Horario de atención de cada profesional**
 
@@ -204,7 +204,7 @@ Abre http://localhost:3001/register, crea una cuenta y ya puedes crear servicios
 
 ### 4. Datos de prueba (opcional)
 
-Para no partir de cero, crea un negocio demo con equipo, servicios, horarios y reservas alrededor de hoy (ayer, los próximos días y una cancelada):
+Para no partir de cero, crea un negocio demo con equipo, servicios (entre ellos tipos de corte con foto), horarios y reservas alrededor de hoy (ayer, los próximos días y una cancelada). Las fotos de los cortes se ven si agregas `R2_PUBLIC_URL=http://localhost:3001` en `backend/.env`: están en `frontend/public/seed/cortes` (fotos libres de Unsplash).
 
 ```bash
 cd backend
