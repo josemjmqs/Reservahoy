@@ -7,7 +7,22 @@ Plataforma de reservas online para pequeños negocios (talleres, peluquerías, c
 **Demo:** https://reservahoy.cl/taller-demo
 **Panel del negocio:** https://reservahoy.cl/login (para recorrerlo con datos de ejemplo, ver [Datos de prueba](#4-datos-de-prueba-opcional))
 
-<!-- Capturas: agregar en docs/ y enlazar aquí (página pública, agenda en el celular, horario). -->
+## Capturas
+
+| El cliente reserva desde el celular | El negocio ve su agenda |
+| :---: | :---: |
+| <img src="docs/capturas/publica-celular.png" alt="Página pública: elección de profesional, día y hora" width="300"> | <img src="docs/capturas/agenda-celular.png" alt="Agenda del día en el panel, en el celular" width="300"> |
+
+**Horario de atención de cada profesional**
+
+<img src="docs/capturas/horario-escritorio.png" alt="Horario semanal de un profesional en el panel" width="800">
+
+<details>
+<summary>Página pública completa en escritorio</summary>
+
+<img src="docs/capturas/publica-escritorio.png" alt="Página pública del negocio demo en escritorio" width="800">
+
+</details>
 
 ## Funcionalidades
 
