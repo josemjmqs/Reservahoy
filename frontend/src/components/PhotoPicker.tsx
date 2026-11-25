@@ -12,7 +12,7 @@ export function PhotoPicker({
   noun = "foto",
   alt = "Foto del servicio",
   hint = "Opcional. JPG, PNG o WebP; se ajusta de tamaño automáticamente",
-  square = false,
+  round = false,
 }: {
   imageUrl: string | null;
   busy?: boolean;
@@ -21,10 +21,12 @@ export function PhotoPicker({
   noun?: "foto" | "logo";
   alt?: string;
   hint?: string;
-  square?: boolean; // vista previa cuadrada (logo) en vez de apaisada (foto)
+  // Vista previa circular y recortada (logo, como sale en la página pública)
+  // en vez de apaisada y entera (foto)
+  round?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
-  const size = square ? "h-20 w-20" : "h-20 w-28";
+  const shape = round ? "h-20 w-20 rounded-full" : "h-20 w-28 rounded-control";
 
   return (
     <div className="flex flex-col gap-1">
@@ -37,11 +39,11 @@ export function PhotoPicker({
           <img
             src={imageUrl}
             alt={alt}
-            className={`${size} shrink-0 rounded-control border border-gray-200 bg-gray-50 object-contain`}
+            className={`${shape} shrink-0 border border-gray-200 bg-gray-50 ${round ? "object-cover" : "object-contain"}`}
           />
         ) : (
           <div
-            className={`${size} flex shrink-0 items-center justify-center rounded-control border border-dashed border-gray-300 text-xs text-gray-400`}
+            className={`${shape} flex shrink-0 items-center justify-center border border-dashed border-gray-300 text-xs text-gray-400`}
           >
             Sin {noun}
           </div>
