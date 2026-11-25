@@ -12,6 +12,7 @@ import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { DemoLoginDto } from './dto/demo-login.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { Throttle } from '@nestjs/throttler';
 import {
@@ -43,6 +44,20 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const { accessToken } = await this.auth.login(dto);
+    res.cookie('token', accessToken, COOKIE);
+    return { ok: true };
+  }
+
+  // Panel de demostración sin contraseña (solo lectura). Límite propio, aparte
+  // del login, para que probar la demo no gaste los intentos de iniciar sesión
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Post('demo')
+  @HttpCode(200)
+  async demo(
+    @Body() dto: DemoLoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { accessToken } = await this.auth.demoLogin(dto.role);
     res.cookie('token', accessToken, COOKIE);
     return { ok: true };
   }

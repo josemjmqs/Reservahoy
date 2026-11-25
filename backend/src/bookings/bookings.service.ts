@@ -31,6 +31,16 @@ export class BookingsService {
   async create(slug: string, dto: CreateBookingDto) {
     const business = await this.prisma.business.findUnique({ where: { slug } });
     if (!business) throw new NotFoundException('Negocio no encontrado');
+    // En el negocio demo se puede probar todo el formulario, pero no se guarda:
+    // si no, cualquiera vería en el panel demo los datos de quien reservó
+    if (business.demo) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'DEMO_READ_ONLY',
+        message:
+          'Es un negocio de demostración: la reserva no se guarda. ¡Gracias por probar!',
+      });
+    }
     if (!(await this.availability.acceptsBookings({ id: business.id }))) {
       throw new ForbiddenException(
         'Este negocio todavía no recibe reservas online',

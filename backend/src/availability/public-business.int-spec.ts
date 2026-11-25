@@ -115,6 +115,7 @@ describe('AvailabilityService.getBusiness (página pública)', () => {
         'acceptsBookings',
         'address',
         'brandColor',
+        'demo',
         'logoUrl',
         'members',
         'name',

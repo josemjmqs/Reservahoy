@@ -65,6 +65,7 @@ const PUBLIC_ROUTES = [
   "GET /health/live",
   "POST /auth/register",
   "POST /auth/login",
+  "POST /auth/demo",
   "POST /auth/logout",
   "POST /auth/forgot-password",
   "POST /auth/reset-password",

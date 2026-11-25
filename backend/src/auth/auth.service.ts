@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -119,7 +120,7 @@ export class AuthService {
       select: {
         displayName: true,
         business: {
-          select: { name: true, slug: true },
+          select: { name: true, slug: true, demo: true },
         },
       },
     });
@@ -140,8 +141,13 @@ export class AuthService {
   }
 
   async forgotPassword(email: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
-    if (user) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      include: { members: { select: { business: { select: { demo: true } } } } },
+    });
+    // Las cuentas demo no tienen contraseña ni correo real: no se les escribe
+    const demo = user?.members.some((m) => m.business.demo) ?? false;
+    if (user && !demo) {
       const token = randomBytes(32).toString('hex');
       await this.prisma.passwordResetToken.create({
         data: {
@@ -256,10 +262,45 @@ export class AuthService {
   }): Promise<SessionUser | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { sessionVersion: true },
+      select: {
+        sessionVersion: true,
+        // Si es una cuenta del negocio demo, JwtAuthGuard solo la deja leer
+        members: {
+          where: { active: true, business: { demo: true } },
+          select: { id: true },
+          take: 1,
+        },
+      },
     });
     const sv = payload.sv ?? 0;
     if (!user || user.sessionVersion !== sv) return null;
-    return { userId: payload.sub, email: payload.email, sv, iat: payload.iat };
+    return {
+      userId: payload.sub,
+      email: payload.email,
+      sv,
+      iat: payload.iat,
+      demo: user.members.length > 0,
+    };
+  }
+
+  // Entrar al panel de demostración sin contraseña, como la dueña o como el
+  // profesional del negocio demo (prisma/demo.mts). Esas cuentas solo leen
+  // (JwtAuthGuard), así que no hay contraseña que publicar
+  async demoLogin(role: 'owner' | 'staff') {
+    const member = await this.prisma.member.findFirst({
+      where: {
+        active: true,
+        role: role === 'owner' ? 'OWNER' : 'STAFF',
+        business: { demo: true },
+        user: { isNot: null },
+      },
+      orderBy: { id: 'asc' },
+      select: { user: { select: { id: true, email: true, sessionVersion: true } } },
+    });
+    if (!member?.user) {
+      throw new NotFoundException('La demostración no está disponible ahora');
+    }
+    const { id, email, sessionVersion } = member.user;
+    return this.signToken(id, email, sessionVersion);
   }
 }

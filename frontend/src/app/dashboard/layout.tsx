@@ -85,6 +85,44 @@ function VerifyEmailBanner({ email }: { email: string }) {
   );
 }
 
+// Panel de demostración (POST /auth/demo): todo se puede abrir, pero el backend
+// rechaza los cambios. Deja cambiar de cuenta para ver el panel de cada rol
+function DemoBanner({ owner }: { owner: boolean }) {
+  const [switching, setSwitching] = useState(false);
+
+  async function switchRole() {
+    setSwitching(true);
+    await api("/auth/demo", {
+      method: "POST",
+      body: JSON.stringify({ role: owner ? "staff" : "owner" }),
+    }).catch(() => {});
+    // Navegación completa a propósito: el panel vuelve a cargar /auth/me con la
+    // otra cuenta y deja atrás el estado de la anterior
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign("/dashboard/agenda");
+  }
+
+  return (
+    <div className="border-b border-accent/20 bg-accent-soft">
+      <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5 text-sm text-ink sm:px-6">
+        <p className="min-w-0">
+          <strong className="font-semibold">Panel de demostración</strong>, como{" "}
+          {owner ? "la dueña" : "un profesional"}. Recorre todo: los cambios no
+          se guardan.
+        </p>
+        <button
+          type="button"
+          onClick={switchRole}
+          disabled={switching}
+          className="font-medium whitespace-nowrap text-accent underline hover:no-underline disabled:opacity-50"
+        >
+          {owner ? "Ver como profesional" : "Ver como dueña"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardLayout({
   children,
 }: {
@@ -218,6 +256,7 @@ export default function DashboardLayout({
       {/* Solo el dueño: sin su correo verificado el negocio no recibe reservas
           ni puede invitar (quien acepta una invitación entra ya verificado) */}
       {owner && !me.emailVerifiedAt && <VerifyEmailBanner email={me.email} />}
+      {business.demo && <DemoBanner owner={owner} />}
       <MeProvider value={me}>
         {/* En el celular deja lugar abajo para la barra de navegación */}
         <main className="mx-auto max-w-3xl px-4 pt-6 pb-[calc(var(--tabbar-h)+2.5rem+var(--safe-bottom-max))] sm:px-6 sm:pb-6">
