@@ -4,7 +4,7 @@ import { use, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { PhoneLink } from '@/components/PhoneLink';
 import { Button, Card } from '@/components/ui';
-import { formatTime, formatTotal } from '@/lib/format';
+import { capitalize, formatTime, formatTotal } from '@/lib/format';
 import { mapsUrl } from '@/lib/maps';
 import type { BookingStatus, ManagedBooking } from '@/lib/types';
 
@@ -111,7 +111,7 @@ export default function ManageBookingPage({
         </div>
 
         <div className="mt-4 border-t border-gray-100 pt-4">
-          <p className="capitalize">{day}</p>
+          <p>{capitalize(day)}</p>
           <p className="text-3xl time">{time}</p>
         </div>
 

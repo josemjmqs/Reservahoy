@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
-import { formatTime } from "@/lib/format";
+import { capitalize, formatTime } from "@/lib/format";
 import { isOwner, useMe } from "@/lib/me";
 import { completeBooking } from "@/lib/image";
 import { syncDrafts } from "@/lib/photo-drafts";
@@ -382,7 +382,7 @@ function AgendaContent() {
           también en el celular: deja claro que la agenda no está en vivo */}
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm capitalize text-gray-600">{dayLabel}</p>
+          <p className="text-sm text-gray-600">{capitalize(dayLabel)}</p>
           {updatedAt && (
             <p className="mt-0.5 text-xs text-gray-500">
               Actualizada a las {time(updatedAt)}
@@ -425,8 +425,8 @@ function AgendaContent() {
           <h2 className="text-base font-semibold tracking-tight">
             Próxima reserva
           </h2>
-          <p className="mb-3 mt-1 text-sm capitalize text-gray-600">
-            {nextDay(next.startsAt)}
+          <p className="mb-3 mt-1 text-sm text-gray-600">
+            {capitalize(nextDay(next.startsAt))}
           </p>
           <ul className="divide-y divide-gray-200 rounded-card border border-line bg-white">
             {renderBooking(next)}

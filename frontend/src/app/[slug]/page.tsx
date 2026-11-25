@@ -11,7 +11,12 @@ import { DayStrip, todayISO } from "@/components/DayStrip";
 import { CheckIcon, MapPinIcon } from "@/components/icons";
 import { PhoneLink } from "@/components/PhoneLink";
 import { mapsUrl } from "@/lib/maps";
-import { formatTime, formatTotal, publicDuration } from "@/lib/format";
+import {
+  capitalize,
+  formatTime,
+  formatTotal,
+  publicDuration,
+} from "@/lib/format";
 import { brandStyle } from "@/lib/brand";
 
 const MAX_SERVICES = 5; // igual que MAX_SERVICES_PER_BOOKING en el backend
@@ -23,10 +28,6 @@ const longDate = (iso: string, timeZone: string) =>
     month: "long",
     timeZone,
   });
-
-// Mayúscula solo al inicio ("Lunes, 16 de noviembre"); la clase `capitalize`
-// la pondría en cada palabra
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 // La franja de arriba sobre el color del negocio: es su letrero, lo que hace
 // que la página se vea suya y no de Reservahoy. En el celular llega de borde a
