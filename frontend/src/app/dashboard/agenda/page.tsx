@@ -286,7 +286,7 @@ function AgendaContent() {
           para el dedo); desde `sm`, más chicos. "No se presentó" deja solo
           Completada, por si se marcó por error y el cliente sí vino */}
       {canComplete(b.status) && (
-        <div className="mt-3 flex flex-wrap gap-1.5 sm:gap-2">
+        <div className="mt-3 flex flex-wrap gap-1 sm:gap-2">
           <Button
             variant="secondary"
             className={ACTION}

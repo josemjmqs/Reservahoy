@@ -5,7 +5,9 @@ import { bookFirstSlot, loginAsDemo, loginAsStaff, workdayFrom } from "./helpers
 // es una barra fija abajo con todas las pestañas a la vista, y ninguna
 // pantalla se sale de lado
 
-test.use({ viewport: { width: 375, height: 812 } });
+// isMobile: como un teléfono, sin la barra de desplazamiento de escritorio (que
+// con scrollbar-gutter resta 15 px al ancho)
+test.use({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
 
 const OWNER_TABS = ["Agenda", "Servicios", "Equipo", "Horario", "Bloqueos", "Ajustes"];
 const STAFF_TABS = ["Agenda", "Horario", "Bloqueos", "Ajustes"];
