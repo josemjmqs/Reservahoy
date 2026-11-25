@@ -283,9 +283,9 @@ function BusinessSection() {
             <div>
               <PhotoPicker
                 noun="logo"
-                square
+                round
                 alt="Logo del negocio"
-                hint="Opcional. Aparece en tu página en vez de las iniciales. JPG, PNG o WebP; mejor cuadrado."
+                hint="Opcional. Aparece en tu página en un círculo, en vez de las iniciales: puedes usar tu foto de perfil de Instagram. JPG, PNG o WebP."
                 imageUrl={logoUrl}
                 busy={logoBusy}
                 onPick={(file) => changeLogo(() => uploadBusinessLogo(file))}

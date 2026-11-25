@@ -64,19 +64,21 @@ function BusinessHeader({
   return (
     <header className={`${headerBand} bg-brand text-brand-fg`}>
       <div className="flex items-center gap-4">
+        {/* Circular, como la foto de perfil de Instagram, para que el negocio
+            use la misma imagen: recortada al círculo (object-cover) */}
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- el logo ya viene reducido; no usamos el optimizador de Vercel
           <img
             src={logoUrl}
             alt={`Logo de ${name}`}
-            className="h-16 w-16 shrink-0 rounded-card bg-white object-contain ring-1 ring-black/10"
+            className="h-16 w-16 shrink-0 rounded-full bg-white object-cover ring-1 ring-black/10"
           />
         ) : (
           // Las iniciales en el color de marca sobre blanco (oscurecido si es
           // claro, como los bordes: --brand-ring)
           <div
             aria-hidden
-            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-card bg-white text-2xl font-semibold text-brand-ring"
+            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white text-2xl font-semibold text-brand-ring"
           >
             {initials(name)}
           </div>
