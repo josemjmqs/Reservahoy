@@ -4,4 +4,4 @@ export const CONTACT_EMAIL = "contacto@reservahoy.cl";
 
 // Quién opera Reservahoy (persona natural): la ley de datos personales pide
 // identificarlo en la política de privacidad y en los términos
-export const OPERATOR_NAME = "Jose Ignacio Diaz Hormazabal";
+export const OPERATOR_NAME = "José Ignacio Díaz Hormazábal";

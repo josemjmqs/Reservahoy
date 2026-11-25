@@ -87,6 +87,7 @@ Plataforma de reservas online para pequeños negocios. Cada negocio tiene una p�
 - Tras cada cambio, anotar en `CODE_REVIEW.md` los archivos modificados en orden de lectura, agrupados por commit (hash + mensaje). Es una lista local (en `.gitignore`): el dueño lo lee de arriba hacia abajo y borra lo que ya revisó, así que las entradas nuevas van SIEMPRE al final y nunca se restauran las borradas
 
 ## Pendientes conocidos
+- Revisión legal de `/privacidad` y `/terminos` (Ley 21.719): si basta el nombre o hace falta RUT y domicilio; si aceptar los términos al registrarse alcanza como contrato de encargo o hace falta un check explícito; cómo informar las transferencias fuera de Chile; datos de salud en las notas de una reserva; la base "interés legítimo"; los plazos y el aviso de incidentes (detalle en el PR #146)
 - Borrar un negocio completo (con sus clientes, reservas y fotos en R2) o a un cliente: hoy no hay procedimiento y los términos prometen hacerlo en 30 días al cerrar una cuenta
 - Recordatorios por correo 24 h antes
 - Trabajadores con cuenta propia: los permisos por rol, las invitaciones por correo, quitar acceso, el panel según el rol, el panel en celular y que el invitado quede como segundo dueño están listos; faltan:
