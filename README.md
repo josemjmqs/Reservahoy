@@ -4,8 +4,8 @@
 
 Plataforma de reservas online para pequeños negocios (talleres, peluquerías, consultas). Cada negocio tiene su página pública donde sus clientes reservan una hora **sin crear cuenta**, y un panel donde el dueño administra servicios, horarios y agenda.
 
-**Demo:** https://reservahoy.cl/taller-demo
-**Panel del negocio:** https://reservahoy.cl/login (para recorrerlo con datos de ejemplo, ver [Datos de prueba](#4-datos-de-prueba-opcional))
+**Demo:** https://reservahoy.cl/demo (página pública de una peluquería de ejemplo)
+**Panel del negocio, sin cuenta:** en https://reservahoy.cl/login, "Ver el panel de demostración". Entra como la dueña o como un profesional; se puede recorrer todo, pero los cambios no se guardan
 
 ## Capturas
 
@@ -115,6 +115,8 @@ Navegador ──► Next.js (Vercel) ──► API NestJS (Render) ──► Pos
 
 **Sesiones que se pueden cerrar.** El JWT lleva una versión de sesión guardada en la base: restablecer la contraseña o desactivar a un miembro la incrementa y cierra al instante todas sus sesiones abiertas, sin una lista negra de tokens. Desactivar es una transacción condicional: solo quien pasa al miembro de activo a inactivo cierra sus sesiones y anula su invitación.
 
+**Una demo pública en producción que no se puede romper.** El panel de demostración se abre con un botón, sin contraseña que publicar. La sesión de esas cuentas sale marcada como demo y el guard de autenticación rechaza todo lo que no sea lectura, antes de llegar a los servicios: una ruta nueva queda protegida sin tener que acordarse. La página pública de la demo deja probar la reserva completa, pero no la guarda, para que nadie vea en el panel demo los datos de otra persona. Un workflow diario la vuelve a crear para que sus reservas sigan alrededor de hoy, y se detiene si el slug o los correos fueran de un negocio real.
+
 **Celulares de todo tamaño.** Chrome en Android con la letra grande deja la página en apenas 280 px, y Safari en iPhone agranda la página al tocar un campo de menos de 16 px y no la vuelve a achicar. Una prueba de Playwright recorre todas las páginas y diálogos a 280, 320, 360 y 412 px (y de lado) en Chromium y WebKit, revisando que no haya desplazamiento lateral y que los campos midan 16 px. En producción, un componente avisa a Sentry si una página igual queda más ancha que la pantalla, con la ruta, el ancho y las clases del elemento que se sale, nunca el texto de la página.
 
 **Reglas compartidas sin divergir.** Algunas reglas viven en el backend y en el panel (horario y almuerzo válidos, qué reservas se pueden completar, el enlace a Google Maps, la limpieza de datos para Sentry). Una prueba importa la copia del frontend y la compara caso por caso con la del backend, así que si una cambia sin la otra, el CI falla.
@@ -204,7 +206,7 @@ Abre http://localhost:3001/register, crea una cuenta y ya puedes crear servicios
 
 ### 4. Datos de prueba (opcional)
 
-Para no partir de cero, crea un negocio demo con equipo, servicios (entre ellos tipos de corte con foto), horarios y reservas alrededor de hoy (ayer, los próximos días y una cancelada). Las fotos de los cortes se ven si agregas `R2_PUBLIC_URL=http://localhost:3001` en `backend/.env`: están en `frontend/public/seed/cortes` (fotos libres de Unsplash).
+Para no partir de cero, crea un negocio demo con equipo, servicios (entre ellos tipos de corte con foto), horarios y reservas alrededor de hoy (ayer, los próximos días y una cancelada). Las fotos de los cortes se ven si agregas `R2_PUBLIC_URL=http://localhost:3001` en `backend/.env`: están en `frontend/public/seed/cortes` (fotos libres de Unsplash). También crea la demo de solo lectura (`/demo`), la misma de producción, para probar "Ver el panel de demostración" en `/login`.
 
 ```bash
 cd backend
