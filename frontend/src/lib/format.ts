@@ -1,3 +1,7 @@
+// Mayúscula solo al inicio ("Lunes, 16 de noviembre"): la clase `capitalize`
+// de CSS la pone en cada palabra ("Lunes, 16 De Noviembre")
+export const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 // Duración legible: días si es exacta en días, si no horas y minutos
 // (90 -> "1 h 30 min", 120 -> "2 h", 45 -> "45 min")
 export function formatTotal(min: number): string {

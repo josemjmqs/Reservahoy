@@ -22,6 +22,10 @@ test("el cliente cancela con su enlace y la hora vuelve a quedar libre", async (
   await expect(page.getByRole("heading", { name: "Tu reserva" })).toBeVisible();
   await expect(page.getByText("Lavado y peinado")).toBeVisible();
   await expect(page.getByText(time)).toBeVisible();
+  // El día con mayúscula solo al inicio ("Sábado, 9 de enero")
+  await expect(
+    page.getByText(/^[A-ZÁÉÍÓÚ][a-záéíóú]+, \d{1,2} de [a-z]+$/),
+  ).toBeVisible();
   // La dirección del negocio (la del seed), con su enlace a Google Maps
   await expect(
     page.getByRole("link", { name: "Av. Providencia 1234, Providencia" }),
