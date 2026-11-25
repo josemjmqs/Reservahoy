@@ -5,17 +5,9 @@
 Plataforma de reservas online para pequeños negocios (talleres, peluquerías, consultas). Cada negocio tiene su página pública donde sus clientes reservan una hora **sin crear cuenta**, y un panel donde el dueño administra servicios, horarios y agenda.
 
 **Demo:** https://reservahoy.cl/taller-demo
-**Panel del negocio:** https://reservahoy.cl/login
+**Panel del negocio:** https://reservahoy.cl/login (para recorrerlo con datos de ejemplo, ver [Datos de prueba](#4-datos-de-prueba-opcional))
 
-> El backend corre en el plan gratuito de Render: tras un rato sin uso, la primera carga puede tardar 30-60 segundos en despertar.
-
-## Capturas
-
-TODO: agregar 3 capturas en `docs/` y enlazarlas aquí
-
-- Página pública de reserva
-- Agenda del negocio
-- Horario de atención
+<!-- Capturas: agregar en docs/ y enlazar aquí (página pública, agenda en el celular, horario). -->
 
 ## Funcionalidades
 
@@ -24,41 +16,62 @@ TODO: agregar 3 capturas en `docs/` y enlazarlas aquí
 - Servicios agrupados por categoría (ej. Hombres, Mujeres): se muestran solo las categorías y al tocar una se despliegan sus servicios, con la duración que corresponde a cada uno
 - Al elegir un servicio ve su foto y su información adicional (qué incluye, qué traer, recomendaciones)
 - "Sin preferencia": el sistema asigna al azar un profesional que tenga la hora libre
+- Página con la marca del negocio: logo, color propio, "Hoy atiende de … a …", teléfono y dirección con enlace a Google Maps
 - Reserva con nombre, correo y teléfono, y recibe una confirmación por correo
 - Ve y cancela su reserva con un enlace privado, sin crear cuenta
+- Recibe un correo cuando su servicio está listo, con fotos si el negocio las adjunta
 
 **Negocio**
-- Registro e inicio de sesión (sesión con cookie `httpOnly`)
+- Registro, inicio de sesión (cookie `httpOnly`, 30 días renovados con el uso) y restablecer la contraseña por correo
 - Verificación del correo al registrarse: la página pública recibe reservas recién cuando el dueño confirma su correo
 - Gestión de servicios: categoría, tiempo de atención, duración total estimada, precio opcional, información adicional (hasta 300 caracteres), foto, edición y activar/desactivar
-- Equipo: profesionales con los servicios que realizan y su propio horario semanal
+- Equipo: profesionales con los servicios que realizan y su propio horario semanal, con almuerzo
 - Agenda diaria con filtro por profesional, estados de la reserva (completada, no se presentó, cancelada) y actualización automática; si hoy no hay reservas, muestra la próxima
-- Si el negocio cancela una reserva desde la agenda, confirma antes (con motivo opcional) y el cliente recibe un correo con el motivo y un enlace para reservar otra hora
-- Datos del negocio editables en Ajustes (nombre y teléfono); el teléfono se muestra en la página pública, en la reserva del cliente y en los correos
-- Correo al dueño por cada reserva nueva (servicio, hora, profesional y datos del cliente, con enlace a ese día de la agenda), activable y desactivable en Ajustes
+- Al cancelar una reserva desde la agenda confirma antes (con motivo opcional) y el cliente recibe un correo con el motivo y un enlace para reservar otra hora
+- Al marcarla completada puede sumar hasta 4 fotos para el cliente; quedan guardadas en ese navegador hasta enviarlas
+- Datos del negocio en Ajustes: nombre, teléfono, dirección, color de marca y logo
+- Correo por cada reserva nueva (servicio, hora, profesional y datos del cliente, con enlace a ese día de la agenda); cada miembro elige todas, solo las suyas o ninguna
 - Bloqueos de tiempo (vacaciones, feriados, trámites) por días completos o rangos de horas, para todo el negocio o un profesional; avisa si ya hay reservas en ese período
+- Ayuda y sugerencias: cualquier miembro escribe al equipo de Reservahoy desde el panel
 - Página pública propia (`/tu-negocio`) lista para compartir
+
+**Equipo con cuenta propia**
+- Roles: el dueño administra todo; el profesional ve y gestiona solo su agenda, su horario (en solo lectura) y sus bloqueos. El panel muestra solo lo de cada rol y el backend lo vuelve a negar
+- Invitaciones por correo con un enlace de un solo uso (7 días); quien acepta crea su cuenta y entra al negocio
+- Quitar acceso: desactivar a un miembro cierra sus sesiones al instante y anula su invitación pendiente
+
+**Celular primero**
+- En el celular el panel usa una barra de pestañas abajo, botones de 40 px y selectores de hora y color propios en vez de los del sistema
+- Todas las páginas caben sin desplazamiento lateral desde 280 px (la pantalla exterior de un plegable), probado en Chromium y WebKit (Safari)
+- Si en un teléfono real una página queda más ancha que la pantalla, llega un aviso a Sentry
 
 **Calidad y seguridad**
 - Sin dobles reservas, garantizado por una restricción de PostgreSQL y probado con peticiones concurrentes
-- Aislamiento entre negocios verificado en todas las rutas del panel con pruebas de punta a punta (sin sesión: 401; con la sesión de otro negocio: 404)
+- Aislamiento entre negocios y permisos por rol verificados en todas las rutas del panel con pruebas de punta a punta (sin sesión: 401; con la sesión de otro negocio: 404; lo que no es del rol: 403)
 - Límites de peticiones por IP y de reservas por correo
+- Errores reportados a Sentry sin datos personales
 - Respaldos diarios cifrados
+- Política de privacidad y términos según la Ley 21.719 de Chile
 
 ## Stack
 
-| Capa            | Tecnología                                        |
-| --------------- | ------------------------------------------------- |
-| Frontend        | Next.js (App Router), TypeScript, Tailwind CSS    |
-| Backend         | NestJS, TypeScript, Passport JWT, class-validator |
-| Base de datos   | PostgreSQL 16 + Prisma                            |
-| Infraestructura | Docker Compose (local), Vercel, Render, Neon      |
-| Testing         | Jest                                              |
+| Capa            | Tecnología                                                                   |
+| --------------- | ---------------------------------------------------------------------------- |
+| Frontend        | Next.js (App Router), TypeScript, Tailwind CSS v4                            |
+| Backend         | NestJS, TypeScript, Passport JWT, class-validator, luxon                     |
+| Base de datos   | PostgreSQL 16 + Prisma                                                       |
+| Infraestructura | Docker Compose (local), Vercel, Render, Neon, Cloudflare (DNS, R2), Resend   |
+| Monitoreo       | Sentry, UptimeRobot                                                          |
+| Testing         | Jest (unitarios e integración contra PostgreSQL), Playwright (Chromium y WebKit) |
+| CI/CD           | GitHub Actions; despliegue automático al hacer merge a `main`                |
 
 ## Arquitectura
 
 ```
 Navegador ──► Next.js (Vercel) ──► API NestJS (Render) ──► PostgreSQL (Neon)
+                                         │
+                                         ├──► Cloudflare R2 (fotos y logos)
+                                         └──► Resend (correos)
 ```
 
 ## Decisiones técnicas
@@ -81,7 +94,17 @@ Navegador ──► Next.js (Vercel) ──► API NestJS (Render) ──► Pos
 
 **Tiempo de atención vs. duración total.** Cada servicio tiene `durationMin` (el tiempo que el profesional está ocupado, que bloquea la agenda y alimenta la restricción anti-solape) y `totalMin` opcional (duración total del trabajo, solo informativa). Así un taller puede recibir varios vehículos el mismo día aunque una reparación tarde un día completo, mientras que un corte de pelo bloquea la hora entera.
 
-**Equipo con servicios y horarios propios.** Cada negocio puede tener varios profesionales, cada uno con los servicios que realiza y su propio horario semanal. Los profesionales no necesitan cuenta: los administra el dueño, y toda consulta se resuelve desde la membresía del usuario autenticado, así que un negocio nunca puede ver ni modificar profesionales de otro.
+**Equipo con servicios y horarios propios.** Cada negocio puede tener varios profesionales, cada uno con los servicios que realiza y su propio horario semanal. Un profesional puede existir sin cuenta (lo administra el dueño) o entrar con la suya por invitación, y toda consulta se resuelve desde la membresía del usuario autenticado, así que un negocio nunca puede ver ni modificar profesionales de otro.
+
+**Permisos por rol que parten cerrados.** El backend nunca pregunta "¿es profesional?", sino "¿es dueño?" (`isOwner`, `assertOwner`) y "¿qué profesional le toca ver?" (`scopeMemberId`). Así, un rol que se agregue en el futuro parte sin permisos en vez de heredar los del dueño por descuido. Lo que no es del rol responde 403 y un recurso de otro profesional, 404. Las reglas de cada rol están escritas como casos de prueba de integración y de punta a punta.
+
+**Sesiones que se pueden cerrar.** El JWT lleva una versión de sesión guardada en la base: restablecer la contraseña o desactivar a un miembro la incrementa y cierra al instante todas sus sesiones abiertas, sin una lista negra de tokens. Desactivar es una transacción condicional: solo quien pasa al miembro de activo a inactivo cierra sus sesiones y anula su invitación.
+
+**Celulares de todo tamaño.** Chrome en Android con la letra grande deja la página en apenas 280 px, y Safari en iPhone agranda la página al tocar un campo de menos de 16 px y no la vuelve a achicar. Una prueba de Playwright recorre todas las páginas y diálogos a 280, 320, 360 y 412 px (y de lado) en Chromium y WebKit, revisando que no haya desplazamiento lateral y que los campos midan 16 px. En producción, un componente avisa a Sentry si una página igual queda más ancha que la pantalla, con la ruta, el ancho y las clases del elemento que se sale, nunca el texto de la página.
+
+**Reglas compartidas sin divergir.** Algunas reglas viven en el backend y en el panel (horario y almuerzo válidos, qué reservas se pueden completar, el enlace a Google Maps, la limpieza de datos para Sentry). Una prueba importa la copia del frontend y la compara caso por caso con la del backend, así que si una cambia sin la otra, el CI falla.
+
+**Fotos del cliente que no quedan en la nube.** Las fotos de "servicio listo" son cosas del cliente y el bucket de fotos es público, así que no se suben a R2: viajan como imágenes dentro del correo. Hasta enviarlas quedan como borrador solo en el navegador (IndexedDB), que se borra al enviar, a los 7 días o al cerrar sesión, por si el equipo es compartido.
 
 **"Sin preferencia" asigna al azar entre quienes tienen la hora libre.** Si el cliente no elige profesional, el sistema mezcla a los candidatos que hacen el servicio y asigna al primero con esa hora disponible, lo que reparte la carga a la larga sin favorecer a quien se creó primero. La hora que se ofrece es la unión de las horas libres de todos.
 
@@ -174,7 +197,7 @@ npx prisma db seed                # hoy queda sin reservas
 SEED_TODAY=1 npx prisma db seed   # también agrega reservas para hoy (en PowerShell: $env:SEED_TODAY=1; npx prisma db seed)
 ```
 
-Entra en http://localhost:3001/login con `demo@reservahoy.local` / `demo1234`. La página pública queda en http://localhost:3001/demo-peluqueria. Puedes correrlo las veces que quieras: borra y vuelve a crear solo el negocio demo, y se niega a correr si `DATABASE_URL` no apunta a una base local.
+Entra en http://localhost:3001/login con `demo@reservahoy.local` / `demo1234` (la dueña) o `diego@reservahoy.local` / `demo1234` (un profesional, para ver el panel de ese rol). La página pública queda en http://localhost:3001/demo-peluqueria. Puedes correrlo las veces que quieras: borra y vuelve a crear solo el negocio demo, y se niega a correr si `DATABASE_URL` no apunta a una base local.
 
 ### Tests
 
@@ -184,16 +207,20 @@ npm test                  # unitarios
 npm run test:integration  # contra PostgreSQL (usa DATABASE_URL)
 ```
 
-**Pruebas de punta a punta (Playwright)**, en `frontend/e2e/`: levantan la app completa con los datos de prueba y revisan:
-- que ningún negocio pueda ver ni cambiar datos de otro en ninguna ruta de la API;
-- que un cliente pueda reservar desde la página pública y el dueño la vea en su agenda;
-- que un cliente pueda cancelar con su enlace y la hora vuelva a quedar libre;
-- el registro de un negocio nuevo (hasta el aviso de confirmar el correo);
-- que un servicio y un horario creados en el panel aparezcan en la página pública. Con la base local, el seed corrido y backend (`:3000`) y frontend (`:3001`) levantados:
+**Pruebas de punta a punta (Playwright)**, en `frontend/e2e/`: levantan la app completa con los datos de prueba y revisan, entre otras cosas:
+- que ningún negocio pueda ver ni cambiar datos de otro en ninguna ruta de la API, y lo que puede y no puede hacer un profesional (la prueba falla si se agrega una ruta sin clasificar);
+- reservar desde la página pública, cancelar con el enlace y que el dueño lo vea en su agenda;
+- el registro, confirmar el correo y restablecer la contraseña;
+- invitar a un profesional, aceptar la invitación y quitarle el acceso;
+- el panel de cada rol, en escritorio y en el celular;
+- todas las páginas y diálogos a 280, 320, 360 y 412 px y de lado, en Chromium y WebKit;
+- el logo y el color de marca, el aviso de servicio listo con sus fotos, y ayuda y sugerencias.
+
+Con la base local, el seed corrido y backend (`:3000`) y frontend (`:3001`) levantados:
 
 ```bash
 cd frontend
-npx playwright install chromium   # solo la primera vez
+npx playwright install chromium webkit   # solo la primera vez
 npm run e2e
 ```
 
@@ -210,8 +237,10 @@ Levanta el backend con `THROTTLE_LIMIT=1000`: en las pruebas todas las peticione
 ## Estructura
 
 ```
-backend/    API NestJS (auth, services, members, working-hours, time-blocks, availability, bookings, agenda)
-frontend/   Next.js (login, dashboard, página pública, gestión de reserva)
+backend/    API NestJS (auth, business, services, members, invitations, working-hours, time-blocks,
+            availability, bookings, agenda, notifications, settings, storage, support, health, monitoring)
+frontend/   Next.js (página pública, gestión de reserva, registro y cuenta, panel, invitaciones, privacidad y términos)
+            y pruebas de punta a punta en frontend/e2e
 docker-compose.yml
 ```
 
@@ -219,27 +248,26 @@ docker-compose.yml
 
 **Producto**
 
-- Notificaciones por WhatsApp (Cloud API de Meta) como segundo canal, aprovechando el `NotificationsService`.
 - Recordatorios automáticos antes de la hora reservada.
+- Permisos configurables: que el dueño elija qué puede hacer cada miembro invitado.
+- Rol de recepción: alguien que ve toda la agenda sin atender clientes.
+- Avisar al negocio cuando el cliente cancela con su enlace.
+- Panel instalable (PWA).
+- Borrar un negocio completo o un cliente desde la plataforma.
+- Notificaciones por WhatsApp (Cloud API de Meta) como segundo canal, aprovechando el `NotificationsService`.
 - Campos personalizados por negocio (por ejemplo, patente en un taller).
 - Pago de abono al reservar.
 - Política de anticipación mínima para cancelar.
-- Trabajadores con cuenta propia (hoy solo el dueño inicia sesión).
 - Reparto por carga en vez de azar.
 
 **Técnicas**
 
 - Leer la zona horaria del negocio en la agenda en vez de fijarla en el frontend.
-- Tests e2e de la app completa: `@nestjs/throttler` sigue en CommonJS y Jest solo carga ESM desde CommonJS en Node 24.9+.
+- Cargar el `AppModule` completo en Jest: `@nestjs/throttler` sigue en CommonJS y Jest solo carga ESM desde CommonJS en Node 24.9+ (mientras tanto, las rutas se prueban de punta a punta con Playwright).
 - Tabla de transiciones permitidas entre estados de una reserva.
 - Migrar a Prisma 7 cuando el ecosistema esté estable.
-- Modelar capacidad real (varios boxes o puestos simultáneos) con múltiples profesionales por negocio.
-- Con ‘Sin preferencia’, el profesional se elige al azar entre los que tienen la hora libre; la restricción de PostgreSQL evita dobles reservas si dos clientes compiten por el mismo.
-
-**Limitaciones conocidas del demo**
-
-- El backend corre en el plan gratuito de Render: tras un rato sin uso, la primera carga puede tardar 30-60 segundos.   
+- Modelar capacidad real (varios boxes o puestos simultáneos), independiente de los profesionales.
 
 ## Autor
 
-José Díaz · [GitHub](https://github.com/josemjmqs) · www.linkedin.com/in/josé-ignacio-díaz-hormazábal-9b515143b
+José Díaz · [GitHub](https://github.com/josemjmqs) · [LinkedIn](https://www.linkedin.com/in/jos%C3%A9-ignacio-d%C3%ADaz-hormaz%C3%A1bal-9b515143b)
