@@ -70,6 +70,12 @@ test("olvidé mi contraseña: con el enlace elige una nueva y entra con ella", a
   // Pide el enlace desde el login
   await page.goto("/login");
   await page.getByRole("link", { name: "¿Olvidaste tu contraseña?" }).click();
+  // El login también tiene un campo "Correo": sin esperar a la otra pantalla,
+  // el correo puede quedar escrito en el login y el formulario de recuperar,
+  // vacío, no se envía
+  await expect(
+    page.getByRole("heading", { name: "Recuperar contraseña" }),
+  ).toBeVisible();
   await page.getByPlaceholder("Correo").fill(account.email);
   await page.getByRole("button", { name: "Enviar enlace" }).click();
   await expect(page.getByText("Si el correo está registrado")).toBeVisible();
