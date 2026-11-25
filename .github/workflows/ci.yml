@@ -137,13 +137,15 @@ jobs:
       - name: Playwright
         working-directory: frontend
         run: |
-          # Solo el navegador (desde el CDN de Playwright), sin --with-deps: las
-          # librerías del sistema ya vienen en el runner (trae Chrome), y así no
-          # dependemos de los repositorios de Ubuntu, que a veces no responden
+          # Los navegadores desde el CDN de Playwright. Chromium sin --with-deps:
+          # sus librerías ya vienen en el runner (trae Chrome). WebKit (el motor
+          # de Safari, para mobile-viewports.spec.ts) sí necesita las suyas, que
+          # salen de los repositorios de Ubuntu: a veces no responden, por eso
+          # los reintentos
           for i in 1 2 3; do
-            npx playwright install chromium && break
+            npx playwright install chromium && npx playwright install --with-deps webkit && break
             [ "$i" = 3 ] && exit 1
-            echo "Falló la descarga del navegador; reintento en 15 s"; sleep 15
+            echo "Falló la descarga de los navegadores; reintento en 15 s"; sleep 15
           done
           npx playwright test
 

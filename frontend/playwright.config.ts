@@ -22,5 +22,13 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       dependencies: ["setup"],
     },
+    // El motor de Safari (en el iPhone todos los navegadores lo usan), solo
+    // para las páginas en celulares: dibuja distinto que Chromium
+    {
+      name: "webkit",
+      testMatch: /mobile-viewports\.spec\.ts/,
+      use: { ...devices["Desktop Safari"] },
+      dependencies: ["setup"],
+    },
   ],
 });
