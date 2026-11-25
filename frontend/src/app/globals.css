@@ -83,6 +83,15 @@
   letter-spacing: -0.005em;
 }
 
+/* Aviso de navegador antiguo (app/layout.tsx): se ve solo donde Tailwind v4 no
+   funciona. La condición es la de isOldBrowser (lib/overflow.ts). !important
+   para ganarle al estilo en línea del aviso */
+@supports (color: color-mix(in lab, red, red)) {
+  .old-browser {
+    display: none !important;
+  }
+}
+
 /* Reserva el espacio de la barra de desplazamiento: el contenido no se corre
    cuando la página crece y aparece la barra (escritorio) */
 html {
