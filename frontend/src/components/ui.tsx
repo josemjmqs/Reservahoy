@@ -46,12 +46,13 @@ export function Button({
   return <button {...props} className={buttonClass(variant, className)} />;
 }
 
-// Campos de texto: mismo borde y foco en Input y Textarea. En el celular, 16 px
-// (text-base): con menos, Safari en iPhone agranda la página al tocar el campo
-// y no la vuelve a achicar (el panel quedaba "con zoom" tras registrarse). Lo
-// revisa e2e/mobile-viewports.spec.ts
+// Campos de texto: mismo borde y foco en Input y Textarea. 16 px (text-base)
+// en toda pantalla táctil, también de lado o en tablet, y 14 px solo con mouse
+// desde sm: con menos de 16 px, Safari en iPhone agranda la página al tocar el
+// campo y no la vuelve a achicar (el panel quedaba "con zoom" tras
+// registrarse). Lo revisa e2e/mobile-viewports.spec.ts
 const fieldClass =
-  'w-full rounded-control border border-gray-300 bg-white px-3 py-2 text-base text-ink sm:text-sm ' +
+  'w-full rounded-control border border-gray-300 bg-white px-3 py-2 text-base text-ink sm:pointer-fine:text-sm ' +
   'placeholder:text-gray-400 hover:border-gray-400 ' +
   'focus:border-accent focus:outline-none focus:ring-3 focus:ring-accent-soft';
 

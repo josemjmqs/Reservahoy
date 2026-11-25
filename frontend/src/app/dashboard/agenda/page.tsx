@@ -245,7 +245,7 @@ function AgendaContent() {
   const renderBooking = (b: AgendaBooking) => (
     <li key={b.id} className="p-4">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           {/* La hora primero y grande (utilidad `time`): es lo que se busca
               al mirar la agenda; el término, más suave */}
           <p className="time text-xl leading-tight">
@@ -255,7 +255,8 @@ function AgendaContent() {
           <p className="mt-1 font-medium">
             {b.services.map((s) => s.name).join(" + ")}
           </p>
-          <p className="mt-0.5 text-sm text-gray-600">
+          {/* wrap-anywhere: un correo largo no tiene espacios donde cortarse */}
+          <p className="mt-0.5 text-sm text-gray-600 wrap-anywhere">
             {b.customer.name} · {b.customer.email}
             {b.customer.phone && ` · ${b.customer.phone}`}
           </p>
@@ -365,7 +366,7 @@ function AgendaContent() {
             aria-label="Profesional"
             value={memberId}
             onChange={(e) => setMemberId(e.target.value)}
-            className="w-full rounded-control border border-gray-300 bg-white px-3 py-2 text-base sm:w-auto sm:text-sm"
+            className="w-full rounded-control border border-gray-300 bg-white px-3 py-2 text-base sm:w-auto sm:pointer-fine:text-sm"
           >
             <option value="">Todos los profesionales</option>
             {members.map((m) => (

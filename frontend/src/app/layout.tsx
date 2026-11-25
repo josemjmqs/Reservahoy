@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Instrument_Sans } from "next/font/google";
 import "./globals.css";
+import { OverflowWatch } from "@/components/OverflowWatch";
 
 // Una sola familia para todo. El eje de ancho (wdth) da la versión angosta de
 // las horas (utilidad `time` en globals.css)
@@ -41,7 +42,30 @@ export default function RootLayout({
       lang="es"
       className={`${instrumentSans.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {/* Solo en navegadores donde Tailwind v4 no funciona (iPhone que no
+            pasa de iOS 16.3, Chrome sin actualizar): globals.css lo esconde en
+            los demás. Estilos en línea y sin JavaScript, porque ahí ni las
+            clases ni el JavaScript de Next funcionan bien */}
+        <div
+          className="old-browser"
+          role="alert"
+          style={{
+            background: "#fff7ed",
+            color: "#7c2d12",
+            borderBottom: "1px solid #fed7aa",
+            padding: "12px 16px",
+            fontSize: "15px",
+            lineHeight: 1.4,
+          }}
+        >
+          Tu navegador es antiguo y esta página puede verse mal. Actualiza el
+          sistema de tu teléfono (en Android, también Chrome) o ábrela desde
+          otro equipo.
+        </div>
+        {children}
+        <OverflowWatch />
+      </body>
     </html>
   );
 }

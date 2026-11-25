@@ -174,7 +174,7 @@ export default function BlocksPage() {
                 <select
                   value={memberId}
                   onChange={(e) => setMemberId(e.target.value)}
-                  className="w-full rounded-control border border-gray-300 bg-white px-3 py-2 text-base sm:text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  className="w-full rounded-control border border-gray-300 bg-white px-3 py-2 text-base sm:pointer-fine:text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                 >
                   <option value="">Todo el negocio</option>
                   {members.map((m) => (
