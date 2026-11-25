@@ -226,7 +226,7 @@ export default function Home() {
         <section className="mx-auto flex max-w-[1120px] flex-wrap items-center gap-12 px-6 pt-[72px] pb-14">
           <div className="min-w-0 flex-[999_1_460px]">
             <p className="inline-block rounded-full bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700">
-              Gratis mientras estamos empezando
+              Gratis para siempre si te sumas ahora
             </p>
             <h1 className="mt-5 text-[clamp(38px,5vw,58px)] leading-[1.05] font-bold tracking-tight">
               Reservas online para tu negocio, en minutos.
@@ -303,13 +303,17 @@ export default function Home() {
             <div className="min-w-0 flex-[1_1_360px]">
               <h2 className="text-[34px] font-bold tracking-tight">Precio</h2>
               <p className="mt-3 max-w-[30em] text-[17px] leading-relaxed text-gray-600">
-                Úsalo gratis, sin letra chica. Solo te pedimos que nos cuentes
-                qué te gusta y qué mejorarías.
+                Estamos empezando y queremos hacer Reservahoy junto a los
+                primeros negocios. Si te sumas ahora, nunca te cobraremos. Solo
+                te pedimos que nos cuentes qué te gusta y qué mejorarías.
               </p>
             </div>
             <div className="min-w-0 flex-[1_1_380px] rounded-[22px] border-2 border-indigo-600 bg-white p-8">
               <p className="text-[56px] leading-none font-bold tracking-tight">$0</p>
-              <p className="mt-2 text-lg font-semibold">Gratis mientras estamos empezando</p>
+              <p className="mt-2 text-lg font-semibold">Gratis para siempre</p>
+              <p className="mt-1 text-[15px] text-gray-600">
+                Para los negocios que se suman mientras estamos empezando
+              </p>
               <ul className="mt-5 flex flex-col gap-2.5">
                 {PRICE_POINTS.map((point) => (
                   <li key={point} className="flex items-center gap-2.5">
@@ -319,8 +323,13 @@ export default function Home() {
                 ))}
               </ul>
               <p className="mt-5 border-t border-gray-200 pt-4 text-sm leading-normal text-gray-600">
-                Si algún día cobramos, te avisamos con 30 días de anticipación y
-                decides si sigues.
+                Cuando empecemos a cobrar, será solo a los negocios nuevos, y lo
+                avisaremos con 30 días de anticipación. Tu negocio sigue gratis
+                para siempre con todo lo que Reservahoy tenga ese día; si después
+                sumamos algo de pago, tú decides si lo quieres.{" "}
+                <Link href="/terminos#precio" className="underline hover:text-gray-900">
+                  Ver los términos
+                </Link>
               </p>
               <Link href="/register" className={`${primaryLink} mt-5 min-h-[52px] w-full text-[17px]`}>
                 Crear mi negocio gratis

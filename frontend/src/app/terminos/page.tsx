@@ -6,7 +6,7 @@ export const metadata = { title: 'Términos de uso' };
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Términos de uso" updated="23 de noviembre de 2026">
+    <LegalPage title="Términos de uso" updated="25 de noviembre de 2026">
       <p>
         Reservahoy es operado por {OPERATOR_NAME}, persona natural (en estos
         términos, &quot;Reservahoy&quot;). Al usar Reservahoy aceptas estos
@@ -19,6 +19,17 @@ export default function TermsPage() {
         disponibilidad y reciban reservas online. El servicio está en una etapa
         temprana y se entrega &quot;tal cual&quot;, sin garantía de disponibilidad
         continua.
+      </p>
+
+      <h2 id="precio">Precio y negocios fundadores</h2>
+      <p>
+        Hoy Reservahoy es gratis. Los negocios que creen su cuenta antes del día
+        en que anunciemos que empezamos a cobrar son negocios fundadores: nunca
+        pagarán por las funciones que Reservahoy tenga ese día, mientras su
+        cuenta siga abierta. El cobro se anunciará por correo a todos los
+        negocios con al menos 30 días de anticipación, y solo se aplicará a los
+        negocios que se creen después. Si más adelante sumamos funciones de
+        pago, cada negocio fundador decide si las contrata.
       </p>
 
       <h2>Cuentas de negocio</h2>
