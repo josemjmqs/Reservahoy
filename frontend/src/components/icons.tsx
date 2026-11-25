@@ -28,6 +28,14 @@ export const PhoneIcon = (p: IconProps) => (
   </Svg>
 );
 
+// Globo de conversación con un teléfono: el enlace abre WhatsApp
+export const ChatPhoneIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3.5 20.5 5 16.4A8.5 8.5 0 1 1 8.4 19.2Z" />
+    <path d="M9.5 8.5h1.6l.8 2-1 .7a4.5 4.5 0 0 0 1.9 1.9l.7-1 2 .8v1.6a.8.8 0 0 1-.8.8A6.5 6.5 0 0 1 8.7 9.3a.8.8 0 0 1 .8-.8Z" />
+  </Svg>
+);
+
 export const MapPinIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M12 21s-7-6.1-7-11.5a7 7 0 0 1 14 0C19 14.9 12 21 12 21Z" />

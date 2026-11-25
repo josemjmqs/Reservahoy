@@ -265,7 +265,7 @@ function BusinessSection() {
             </Field>
             <Field
               label="Teléfono"
-              hint="Lo ven tus clientes en tu página, en su reserva y en los correos. Déjalo vacío para no mostrarlo."
+              hint="Lo ven tus clientes en tu página, en su reserva y en los correos. En tu página, si es un celular, les abre WhatsApp para escribirte; si es un fijo, la llamada. Déjalo vacío para no mostrarlo."
             >
               <Input
                 type="tel"
