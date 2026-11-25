@@ -108,7 +108,7 @@ function PhoneMockup() {
     <div
       role="img"
       aria-label="Ejemplo: página de reservas de una peluquería en un celular"
-      className="w-[300px] overflow-hidden rounded-[40px] border-[10px] border-gray-900 bg-white shadow-2xl shadow-gray-900/20"
+      className="w-[300px] max-w-full overflow-hidden rounded-[40px] border-[10px] border-gray-900 bg-white shadow-2xl shadow-gray-900/20"
     >
       <div className="flex flex-col gap-3.5 px-[18px] pt-[22px] pb-[18px]">
         <div>
@@ -248,7 +248,7 @@ export default function Home() {
               Sin tarjeta de crédito · Sin permanencia
             </p>
           </div>
-          <div className="flex flex-[1_1_300px] justify-center">
+          <div className="flex min-w-0 flex-[1_1_300px] justify-center">
             <PhoneMockup />
           </div>
         </section>
@@ -259,7 +259,7 @@ export default function Home() {
             <p className="mt-2.5 text-[17px] text-gray-600">
               Tres pasos y tu negocio ya recibe reservas.
             </p>
-            <ol className="mt-9 grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-5">
+            <ol className="mt-9 grid grid-cols-[repeat(auto-fit,minmax(min(260px,100%),1fr))] gap-5">
               {STEPS.map((step, i) => (
                 <li key={step.title} className="rounded-[18px] border border-gray-200 bg-gray-50 p-7">
                   <span className="flex size-10 items-center justify-center rounded-xl bg-indigo-600 text-lg font-bold text-white">
@@ -288,7 +288,7 @@ export default function Home() {
           <h2 className="mt-[72px] text-[34px] font-bold tracking-tight">
             Todo lo que necesitas, sin complicaciones
           </h2>
-          <div className="mt-7 grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-x-8 gap-y-7">
+          <div className="mt-7 grid grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))] gap-x-8 gap-y-7">
             {FEATURES.map((f) => (
               <div key={f.title}>
                 <h3 className="text-[17px] font-semibold">{f.title}</h3>

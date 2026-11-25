@@ -200,12 +200,14 @@ export default function DashboardLayout({
                 key={t.href}
                 href={t.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-w-0 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition sm:shrink-0 sm:border-b-2 sm:py-2 sm:text-sm ${
+                className={`flex min-w-0 flex-col items-center justify-center gap-0.5 text-[11px] font-medium max-[359px]:[font-stretch:85%] transition sm:shrink-0 sm:border-b-2 sm:py-2 sm:text-sm ${
                   active
                     ? "text-indigo-600 sm:border-indigo-600"
                     : "text-gray-600 hover:text-gray-900 sm:border-transparent"
                 }`}
               >
+                {/* Bajo 360 px (plegables, letra grande en Android) los nombres van
+                    angostos para no juntarse */}
                 <t.Icon className="h-6 w-6 sm:hidden" />
                 {t.label}
               </Link>

@@ -39,7 +39,7 @@ const BADGE: Record<BookingStatus, string> = {
 
 // Botones de una reserva: llenan la fila en el celular
 const ACTION =
-  "h-10 flex-1 whitespace-nowrap px-2 py-0 sm:h-auto sm:flex-none sm:px-3 sm:py-1";
+  "h-10 flex-1 whitespace-nowrap px-1.5 py-0 sm:h-auto sm:flex-none sm:px-3 sm:py-1";
 
 function iso(d: Date) {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -281,11 +281,12 @@ function AgendaContent() {
         </span>
       </div>
 
-      {/* En el celular, los tres en una fila y de 40 px de alto (cómodos
+      {/* En el celular, los tres en una fila (en dos si la pantalla es muy
+          angosta) y de 40 px de alto (cómodos
           para el dedo); desde `sm`, más chicos. "No se presentó" deja solo
           Completada, por si se marcó por error y el cliente sí vino */}
       {canComplete(b.status) && (
-        <div className="mt-3 flex gap-1.5 sm:gap-2">
+        <div className="mt-3 flex flex-wrap gap-1.5 sm:gap-2">
           <Button
             variant="secondary"
             className={ACTION}
@@ -327,11 +328,11 @@ function AgendaContent() {
       {/* En el celular: una fila con el día y otra con el filtro a todo el
           ancho */}
       <div className="my-4 flex flex-wrap items-center gap-2">
-        <div className="flex w-full items-center gap-2 sm:w-auto">
+        <div className="flex w-full items-center gap-1.5 sm:w-auto sm:gap-2">
           <Button
             variant="secondary"
             aria-label="Día anterior"
-            className="px-3 sm:px-4"
+            className="px-2.5 sm:px-4"
             onClick={() => shift(-1)}
           >
             ←
@@ -341,12 +342,12 @@ function AgendaContent() {
             aria-label="Día"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="min-w-0 flex-1 sm:w-auto sm:flex-none"
+            className="min-w-0 flex-1 px-2 sm:w-auto sm:flex-none sm:px-3"
           />
           <Button
             variant="secondary"
             aria-label="Día siguiente"
-            className="px-3 sm:px-4"
+            className="px-2.5 sm:px-4"
             onClick={() => shift(1)}
           >
             →
@@ -364,7 +365,7 @@ function AgendaContent() {
             aria-label="Profesional"
             value={memberId}
             onChange={(e) => setMemberId(e.target.value)}
-            className="w-full rounded-control border border-gray-300 bg-white px-3 py-2 text-sm sm:w-auto"
+            className="w-full rounded-control border border-gray-300 bg-white px-3 py-2 text-base sm:w-auto sm:text-sm"
           >
             <option value="">Todos los profesionales</option>
             {members.map((m) => (
