@@ -24,7 +24,11 @@ export async function resizeImage(
   canvas.height = Math.round(bitmap.height * scale);
   canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
+  return encodeCanvas(canvas, fallback);
+}
 
+// WebP, o `fallback` si el navegador no lo genera
+export async function encodeCanvas(canvas: HTMLCanvasElement, fallback: string) {
   const encode = (type: string) =>
     new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, QUALITY));
   // Safari antiguo no genera WebP: en ese caso entrega PNG y usamos el de respaldo
@@ -49,9 +53,8 @@ export function removeServiceImage(serviceId: string) {
   return api<Service>(`/services/${serviceId}/image`, { method: "DELETE" });
 }
 
-// El logo se muestra chico (56 px, hasta 3x en pantallas densas): 512 px sobra
-export async function uploadBusinessLogo(file: File) {
-  const blob = await resizeImage(file, { maxSide: 512, fallback: "image/png" });
+// El logo llega ya recortado y reducido por el LogoCropper (cuadrado de 512 px)
+export async function uploadBusinessLogo(blob: Blob) {
   const body = new FormData();
   body.append("logo", blob, fileName(blob, "logo"));
   return api<BusinessInfo>("/business/logo", { method: "POST", body });

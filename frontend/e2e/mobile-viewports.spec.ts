@@ -98,12 +98,28 @@ async function check(page: Page, name: string) {
   await expect.soft(page.locator(".old-browser"), "aviso de navegador antiguo").toBeHidden();
 }
 
+// Elegir una imagen para el logo abre el diálogo para encuadrarla (no se sube
+// nada: checkDialog lo cierra con Esc). PNG de 1x1
+const pickLogo = (page: Page) =>
+  page.locator('input[type="file"]').setInputFiles({
+    name: "logo.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+      "base64",
+    ),
+  });
+
 // Abre un diálogo, revisa que quepa entero en la pantalla y que su contenido no
 // se salga de lado (si es más alto que la pantalla, se desplaza por dentro), y
 // lo cierra con Esc
-async function checkDialog(page: Page, open: Locator, name: string) {
+async function checkDialog(
+  page: Page,
+  open: Locator | (() => Promise<unknown>),
+  name: string,
+) {
   const { width, height } = page.viewportSize()!;
-  await open.click();
+  await (typeof open === "function" ? open() : open.click());
   const dialog = page.locator("dialog[open]");
   await expect(dialog).toBeVisible();
   // Algunos entran deslizándose desde abajo
@@ -236,6 +252,7 @@ for (const width of WIDTHS) {
       await hoursDialog(page);
       await page.goto("/dashboard/settings");
       await checkDialog(page, page.getByRole("button", { name: "Otro color" }), "Otro color");
+      await checkDialog(page, () => pickLogo(page), "Ajustar logo");
     });
 
     test("panel del profesional", async ({ page }) => {
@@ -261,5 +278,7 @@ test.describe("celular de lado", () => {
     await loginAsDemo(page);
     await agendaDialogs(page);
     await hoursDialog(page);
+    await page.goto("/dashboard/settings");
+    await checkDialog(page, () => pickLogo(page), "Ajustar logo");
   });
 });

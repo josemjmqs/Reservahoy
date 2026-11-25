@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { ColorPicker } from "@/components/ColorPicker";
+import { LogoCropper } from "@/components/LogoCropper";
 import { PhotoPicker } from "@/components/PhotoPicker";
 import { Button, buttonClass, Field, Input } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -181,6 +182,8 @@ function BusinessSection() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoBusy, setLogoBusy] = useState(false);
   const [logoError, setLogoError] = useState("");
+  // Imagen recién elegida, mientras se encuadra antes de subirla
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -208,6 +211,11 @@ function BusinessSection() {
       setLogoBusy(false);
     }
   }
+
+  const logoUnreadable = useCallback((message: string) => {
+    setLogoFile(null);
+    setLogoError(message);
+  }, []);
 
   async function save(e: FormEvent) {
     e.preventDefault();
@@ -288,9 +296,30 @@ function BusinessSection() {
                 hint="Opcional. Aparece en tu página en un círculo, en vez de las iniciales: puedes usar tu foto de perfil de Instagram. JPG, PNG o WebP."
                 imageUrl={logoUrl}
                 busy={logoBusy}
-                onPick={(file) => changeLogo(() => uploadBusinessLogo(file))}
+                onPick={(file) => {
+                  setLogoError("");
+                  setLogoFile(file);
+                }}
                 onRemove={() => changeLogo(removeBusinessLogo)}
               />
+              {logoFile && (
+                <LogoCropper
+                  file={logoFile}
+                  businessName={form.name}
+                  // El color del formulario, aunque no esté guardado todavía
+                  brandColor={
+                    /^#[0-9a-f]{6}$/i.test(form.brandColor)
+                      ? form.brandColor
+                      : null
+                  }
+                  onCancel={() => setLogoFile(null)}
+                  onError={logoUnreadable}
+                  onSave={(logo) => {
+                    setLogoFile(null);
+                    changeLogo(() => uploadBusinessLogo(logo));
+                  }}
+                />
+              )}
               {logoError && (
                 <p className="mt-1 text-sm text-red-600">{logoError}</p>
               )}

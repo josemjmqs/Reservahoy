@@ -192,6 +192,21 @@ test("el dueño sube y quita el logo, y la página pública lo muestra en vez de
     mimeType: "image/png",
     buffer: PNG,
   });
+  // Antes de subirlo se encuadra en el círculo; cancelar no sube nada
+  const cropper = page.getByRole("dialog", { name: "Ajustar logo" });
+  await expect(cropper.getByText("Así se verá en tu página")).toBeVisible();
+  await cropper.getByRole("button", { name: "Cancelar" }).click();
+  await expect(cropper).toBeHidden();
+  await expect(page.getByText("Sin logo")).toBeVisible();
+  expect(requests).toEqual([]);
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "logo.png",
+    mimeType: "image/png",
+    buffer: PNG,
+  });
+  await cropper.getByRole("button", { name: "Guardar logo" }).click();
+  await expect(cropper).toBeHidden();
   await expect(
     page.getByRole("img", { name: "Logo del negocio" }),
   ).toHaveAttribute("src", logoUrl);
@@ -214,4 +229,76 @@ test("el dueño sube y quita el logo, y la página pública lo muestra en vez de
     page.getByRole("img", { name: "Logo de Peluquería Demo" }),
   ).toBeVisible();
   await expect(page.getByText("PD", { exact: true })).toHaveCount(0);
+});
+
+test("el logo se sube recortado tal como se encuadró en el círculo", async ({
+  page,
+}) => {
+  await loginAsDemo(page);
+  await page.goto("/dashboard/settings");
+  await expect(page.getByText("Sin logo")).toBeVisible();
+
+  // Imagen apaisada (200 × 100): mitad izquierda roja, derecha azul
+  const wide = await page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 200;
+    canvas.height = 100;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#ff0000";
+    ctx.fillRect(0, 0, 100, 100);
+    ctx.fillStyle = "#0000ff";
+    ctx.fillRect(100, 0, 100, 100);
+    return canvas.toDataURL("image/png").split(",")[1];
+  });
+
+  // Responde como logoUrl la imagen que se subió, para medirla en la página
+  await page.route("**/api/business/logo", async (route) => {
+    const req = route.request();
+    const body = req.postDataBuffer()!;
+    const boundary = `--${/boundary=(.+)$/.exec(req.headers()["content-type"])![1]}`;
+    const start = body.indexOf("\r\n\r\n") + 4;
+    const end = body.indexOf(`\r\n${boundary}`, start);
+    const type = /Content-Type: (\S+)/i.exec(body.subarray(0, start).toString())![1];
+    await route.fulfill({
+      json: {
+        logoUrl: `data:${type};base64,${body.subarray(start, end).toString("base64")}`,
+      },
+    });
+  });
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "logo.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(wide, "base64"),
+  });
+  const cropper = page.getByRole("dialog", { name: "Ajustar logo" });
+  const area = cropper.getByRole("group", { name: /Encuadre del logo/ });
+  await expect(area.locator("img")).toBeVisible();
+  // Arrastrar a la derecha deja a la vista solo la mitad izquierda (roja)
+  const box = (await area.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width, box.y + box.height / 2, { steps: 5 });
+  await page.mouse.up();
+  await cropper.getByRole("button", { name: "Guardar logo" }).click();
+
+  // Cuadrado de 512 px, rojo de un borde al otro
+  const logo = page.getByRole("img", { name: "Logo del negocio" });
+  await expect(logo).toHaveAttribute("src", /^data:image\//);
+  const pixels = await logo.evaluate(async (img: HTMLImageElement) => {
+    await img.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(img, 0, 0);
+    const at = (x: number) => [...ctx.getImageData(x, 256, 1, 1).data.slice(0, 3)];
+    return { w: img.naturalWidth, h: img.naturalHeight, left: at(10), right: at(500) };
+  });
+  expect(pixels.w).toBe(512);
+  expect(pixels.h).toBe(512);
+  for (const [r, g, b] of [pixels.left, pixels.right]) {
+    expect(r).toBeGreaterThan(200);
+    expect(g + b).toBeLessThan(60);
+  }
 });
