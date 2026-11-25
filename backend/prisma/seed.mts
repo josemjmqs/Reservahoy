@@ -120,6 +120,7 @@ async function main() {
     price: number,
     category: string,
     memberIds: string[],
+    extra: { description?: string; imageKey?: string } = {},
   ) =>
     prisma.service.create({
       data: {
@@ -128,6 +129,7 @@ async function main() {
         price,
         category,
         businessId,
+        ...extra,
         members: { create: memberIds.map((memberId) => ({ memberId })) },
       },
     });
@@ -144,6 +146,39 @@ async function main() {
   const lavado = await service('Lavado y peinado', 30, 10000, 'Pelo', [
     camila.id,
   ]);
+
+  // Tipos de corte con foto, en su propia categoría (va después de Pelo y
+  // Barba, así que parte cerrada). Las fotos están en frontend/public/seed/cortes:
+  // la API arma la URL con R2_PUBLIC_URL, así que en local se ven con
+  // R2_PUBLIC_URL=http://localhost:3001 (sin esa variable, los servicios quedan sin foto).
+  // Fotos de Unsplash (licencia de Unsplash, uso libre): degradado, Amritpal
+  // Singh; pompadour, Ahmad Ebadi; rapado, Mitchell Orr; bob, Lu; capas,
+  // "Jessie Dee" Dabrowski
+  const photo = (file: string) => `seed/cortes/${file}.webp`;
+  await service('Degradado', 45, 14000, 'Cortes', [camila.id, diego.id], {
+    description:
+      'Máquina a los costados que se funde con el largo de arriba. Puede llevar un diseño con navaja.',
+    imageKey: photo('degradado'),
+  });
+  await service('Pompadour', 50, 16000, 'Cortes', [camila.id, diego.id], {
+    description:
+      'Volumen hacia atrás arriba y costados cortos. Incluye el peinado con cera o pomada.',
+    imageKey: photo('pompadour'),
+  });
+  await service('Rapado', 20, 8000, 'Cortes', [camila.id, diego.id], {
+    description: 'Todo a máquina, al mismo largo o con un leve degradado en la nuca.',
+    imageKey: photo('rapado'),
+  });
+  await service('Corte bob', 60, 20000, 'Cortes', [camila.id], {
+    description:
+      'Recto, a la altura de la mandíbula o del mentón. Incluye lavado y secado.',
+    imageKey: photo('bob'),
+  });
+  await service('Corte en capas', 60, 22000, 'Cortes', [camila.id], {
+    description:
+      'Para pelo largo: capas que dan movimiento y quitan peso. Incluye lavado y secado.',
+    imageKey: photo('capas'),
+  });
 
   // Lunes a viernes 10:00–19:00 y sábado 10:00–14:00 para ambos
   for (const memberId of [camila.id, diego.id]) {
