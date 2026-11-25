@@ -2,9 +2,10 @@ import { BookingStatus } from '@prisma/client';
 import { dayError } from '../../frontend/src/lib/hours';
 import { mapsUrl as frontendMapsUrl } from '../../frontend/src/lib/maps';
 import { canComplete } from '../../frontend/src/lib/types';
+import { whatsappUrl as frontendWhatsappUrl } from '../../frontend/src/lib/whatsapp';
 import { COMPLETABLE } from './agenda/agenda.service';
 import { dayHoursError } from './working-hours/dto/set-working-hours.dto';
-import { mapsUrl } from './notifications/notifications.service';
+import { mapsUrl, whatsappUrl } from './notifications/notifications.service';
 
 // Reglas que están dos veces, en el backend y en el panel: el panel avisa antes
 // de enviar (o arma el mismo enlace) y el backend es quien decide. Si se cambia
@@ -29,6 +30,25 @@ describe('reglas repetidas en el frontend', () => {
       '  espacios  ',
     ]) {
       expect(frontendMapsUrl(address)).toBe(mapsUrl(address));
+    }
+  });
+
+  it('whatsappUrl arma el mismo enlace (o ninguno, para un fijo)', () => {
+    const cases: [string, string | null][] = [
+      ['+56 9 1234 5678', 'https://wa.me/56912345678'],
+      ['9 1234 5678', 'https://wa.me/56912345678'],
+      ['56912345678', 'https://wa.me/56912345678'],
+      ['0056 9 1234 5678', 'https://wa.me/56912345678'],
+      ['+54 9 11 1234 5678', 'https://wa.me/5491112345678'],
+      ['+1 (415) 555-0100', 'https://wa.me/14155550100'],
+      ['22 123 4567', null],
+      ['+56 2 2123 4567', null],
+      ['+56 41 212 3456', null],
+      ['8765 4321', null],
+    ];
+    for (const [phone, expected] of cases) {
+      expect([phone, whatsappUrl(phone)]).toEqual([phone, expected]);
+      expect([phone, frontendWhatsappUrl(phone)]).toEqual([phone, expected]);
     }
   });
 

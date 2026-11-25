@@ -26,6 +26,10 @@ test("el cliente cancela con su enlace y la hora vuelve a quedar libre", async (
   await expect(
     page.getByRole("link", { name: "Av. Providencia 1234, Providencia" }),
   ).toHaveAttribute("href", /^https:\/\/www\.google\.com\/maps\/search\//);
+  // El teléfono del negocio (un celular) abre WhatsApp
+  await expect(
+    page.getByRole("link", { name: "WhatsApp +56 9 1234 5678" }),
+  ).toHaveAttribute("href", "https://wa.me/56912345678");
   const manageUrl = page.url();
 
   // Mientras está reservada, esa hora no se ofrece
