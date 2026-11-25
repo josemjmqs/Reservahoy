@@ -293,7 +293,7 @@ function BusinessSection() {
                 noun="logo"
                 round
                 alt="Logo del negocio"
-                hint="Opcional. Aparece en tu página en un círculo, en vez de las iniciales: puedes usar tu foto de perfil de Instagram. JPG, PNG o WebP."
+                hint="Opcional. Aparece en tu página en un círculo, junto al nombre: puedes usar tu foto de perfil de Instagram. JPG, PNG o WebP."
                 imageUrl={logoUrl}
                 busy={logoBusy}
                 onPick={(file) => {

@@ -27,15 +27,6 @@ const longDate = (iso: string, timeZone: string) =>
 // la pondría en cada palabra
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-// "Peluquería Demo" -> "PD": la marca del negocio mientras no suba un logo
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join("");
-
 // La franja de arriba sobre el color del negocio: es su letrero, lo que hace
 // que la página se vea suya y no de Reservahoy. En el celular llega de borde a
 // borde y hasta arriba (anula el relleno del <main>); desde `sm`, una tarjeta.
@@ -65,23 +56,15 @@ function BusinessHeader({
     <header className={`${headerBand} bg-brand text-brand-fg`}>
       <div className="flex items-center gap-4">
         {/* Circular, como la foto de perfil de Instagram, para que el negocio
-            use la misma imagen: recortada al círculo (object-cover) */}
-        {logoUrl ? (
+            use la misma imagen: recortada al círculo (object-cover). Sin logo
+            no hay nada en su lugar: el nombre queda solo */}
+        {logoUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- el logo ya viene reducido; no usamos el optimizador de Vercel
           <img
             src={logoUrl}
             alt={`Logo de ${name}`}
             className="h-16 w-16 shrink-0 rounded-full bg-white object-cover ring-1 ring-black/10"
           />
-        ) : (
-          // Las iniciales en el color de marca sobre blanco (oscurecido si es
-          // claro, como los bordes: --brand-ring)
-          <div
-            aria-hidden
-            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white text-2xl font-semibold text-brand-ring"
-          >
-            {initials(name)}
-          </div>
         )}
         <div className="min-w-0">
           <h1 className="text-[1.75rem] leading-tight font-semibold tracking-tight text-balance">

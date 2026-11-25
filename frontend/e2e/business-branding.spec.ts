@@ -169,7 +169,7 @@ test("el profesional no ve el logo ni el color, y la API no lo deja cambiarlos",
   ).toBe(403);
 });
 
-test("el dueño sube y quita el logo, y la página pública lo muestra en vez de las iniciales", async ({
+test("el dueño sube y quita el logo, y la página pública lo muestra solo si hay uno", async ({
   page,
 }) => {
   await loginAsDemo(page);
@@ -214,9 +214,15 @@ test("el dueño sube y quita el logo, y la página pública lo muestra en vez de
   await expect(page.getByText("Sin logo")).toBeVisible();
   expect(requests).toEqual(["POST", "DELETE"]);
 
-  // Sin logo, la página pública muestra las iniciales; con logo, la imagen
+  // Sin logo, la página pública muestra solo el nombre (ni imagen ni
+  // iniciales); con logo, la imagen junto al nombre
   await page.goto(`/${DEMO.slug}`);
-  await expect(page.getByText("PD", { exact: true })).toBeVisible();
+  const header = page.locator("header").filter({
+    has: page.getByRole("heading", { name: "Peluquería Demo" }),
+  });
+  await expect(header).toBeVisible();
+  await expect(header.getByRole("img")).toHaveCount(0);
+  await expect(header.getByText("PD", { exact: true })).toHaveCount(0);
   await page.route(`**/api/public/${DEMO.slug}`, async (route) => {
     const res = await route.fetch();
     await route.fulfill({
@@ -228,7 +234,6 @@ test("el dueño sube y quita el logo, y la página pública lo muestra en vez de
   await expect(
     page.getByRole("img", { name: "Logo de Peluquería Demo" }),
   ).toBeVisible();
-  await expect(page.getByText("PD", { exact: true })).toHaveCount(0);
 });
 
 test("el logo se sube recortado tal como se encuadró en el círculo", async ({
