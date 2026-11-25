@@ -48,9 +48,10 @@ test("el dueño edita nombre, teléfono y dirección y se ven en el panel y en s
     await expect(
       page.getByRole("heading", { name: "Peluquería Demo Centro" }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: "+56 9 5555 0000" }),
-    ).toHaveAttribute("href", "tel:+56955550000");
+    // Un celular abre WhatsApp, en otra pestaña
+    const whatsapp = page.getByRole("link", { name: "WhatsApp +56 9 5555 0000" });
+    await expect(whatsapp).toHaveAttribute("href", "https://wa.me/56955550000");
+    await expect(whatsapp).toHaveAttribute("target", "_blank");
     const maps = page.getByRole("link", {
       name: "Av. Irarrázaval 2401, local 3, Ñuñoa",
     });
@@ -60,13 +61,24 @@ test("el dueño edita nombre, teléfono y dirección y se ven en el panel y en s
     );
     await expect(maps).toHaveAttribute("target", "_blank");
 
-    // Sin dirección, la página no muestra el enlace
-    await page.request.patch("/api/business", { data: { address: "" } });
+    // Sin dirección, la página no muestra el enlace. Un fijo (sin WhatsApp)
+    // llama, y sin código de país se asume Chile
+    await page.request.patch("/api/business", {
+      data: { address: "", phone: "22 123 4567" },
+    });
     await page.reload();
     await expect(
       page.getByRole("heading", { name: "Peluquería Demo Centro" }),
     ).toBeVisible();
     await expect(page.locator('a[href*="google.com/maps"]')).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "22 123 4567" }),
+    ).toHaveAttribute("href", "tel:221234567");
+    await page.request.patch("/api/business", { data: { phone: "9 8765 4321" } });
+    await page.reload();
+    await expect(
+      page.getByRole("link", { name: "WhatsApp 9 8765 4321" }),
+    ).toHaveAttribute("href", "https://wa.me/56987654321");
   } finally {
     // Deja el negocio demo como estaba
     await page.request.patch("/api/business", { data: ORIGINAL });
