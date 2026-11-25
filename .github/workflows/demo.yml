@@ -21,6 +21,7 @@ jobs:
     timeout-minutes: 10
     env:
       R2_IMAGES_BUCKET: ${{ secrets.R2_IMAGES_BUCKET }}
+      R2_IMAGES_ACCESS_KEY_ID: ${{ secrets.R2_IMAGES_ACCESS_KEY_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,15 +40,17 @@ jobs:
           npm run demo
 
       # Las fotos de los cortes (frontend/public/seed/cortes) en el bucket de
-      # fotos, donde las busca R2_PUBLIC_URL. Solo si existe el secreto
-      # R2_IMAGES_BUCKET y la clave de R2 puede escribir en ese bucket
+      # fotos, donde las busca R2_PUBLIC_URL. Usa su propia clave de R2 (la
+      # misma del backend en Render), no la de los respaldos, que solo puede
+      # escribir en el bucket de respaldos. Sin esos secretos el paso se salta
       - name: Fotos de los cortes
-        if: env.R2_IMAGES_BUCKET != ''
+        if: env.R2_IMAGES_BUCKET != '' && env.R2_IMAGES_ACCESS_KEY_ID != ''
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_IMAGES_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_IMAGES_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
+        # cp y no sync: no necesita permiso para listar el bucket
         run: |
-          aws s3 sync frontend/public/seed/cortes "s3://$R2_IMAGES_BUCKET/seed/cortes" \
+          aws s3 cp frontend/public/seed/cortes "s3://$R2_IMAGES_BUCKET/seed/cortes" --recursive \
             --endpoint-url "https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com" \
             --content-type image/webp --cache-control "public, max-age=86400"
