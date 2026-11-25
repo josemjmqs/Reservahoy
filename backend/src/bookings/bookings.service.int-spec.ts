@@ -245,6 +245,8 @@ describe('dos clientes por la misma hora', () => {
     );
   });
 
+  // Seis transacciones que chocan en la misma fila: en CI, con otras suites
+  // usando la misma base, a veces pasan de los 5 s por defecto de Jest
   it('con varias reservas a la vez, una gana y las demás reciben 409', async () => {
     const results = await Promise.allSettled(
       Array.from({ length: 6 }, () =>
@@ -267,7 +269,7 @@ describe('dos clientes por la misma hora', () => {
         where: { memberId: beto, startsAt: new Date(at('15:30')) },
       }),
     ).toBe(1);
-  });
+  }, 20_000);
 
   it('un deadlock de PostgreSQL también cuenta como hora tomada; otro error no', () => {
     const isOverlap = (e: unknown) => bookings['isOverlap'](e);
