@@ -240,7 +240,7 @@ export default function Home() {
               <Link href="/register" className={`${primaryLink} min-h-[52px] px-6 text-[17px]`}>
                 Crear mi negocio gratis
               </Link>
-              <Link href="/taller-demo" className={`${secondaryLink} min-h-[52px] px-6 text-[17px]`}>
+              <Link href="/demo" className={`${secondaryLink} min-h-[52px] px-6 text-[17px]`}>
                 Ver una página de ejemplo
               </Link>
             </div>
