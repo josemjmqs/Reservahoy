@@ -84,7 +84,7 @@ export function DayStrip({
           value={value}
           min={todayISO()}
           onChange={(e) => e.target.value && onChange(e.target.value)}
-          className="min-h-10 rounded-control border border-gray-300 bg-white px-3 text-base text-gray-900 sm:text-sm hover:border-gray-400 focus:border-brand-ring focus:outline-none focus:ring-3 focus:ring-brand/15"
+          className="min-h-10 rounded-control border border-gray-300 bg-white px-3 text-base text-gray-900 sm:pointer-fine:text-sm hover:border-gray-400 focus:border-brand-ring focus:outline-none focus:ring-3 focus:ring-brand/15"
         />
       </label>
     </div>

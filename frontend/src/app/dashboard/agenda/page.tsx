@@ -365,7 +365,7 @@ function AgendaContent() {
             aria-label="Profesional"
             value={memberId}
             onChange={(e) => setMemberId(e.target.value)}
-            className="w-full rounded-control border border-gray-300 bg-white px-3 py-2 text-base sm:w-auto sm:text-sm"
+            className="w-full rounded-control border border-gray-300 bg-white px-3 py-2 text-base sm:w-auto sm:pointer-fine:text-sm"
           >
             <option value="">Todos los profesionales</option>
             {members.map((m) => (
