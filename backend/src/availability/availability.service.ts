@@ -9,6 +9,11 @@ import { StorageService } from '../storage/storage.service';
 import { MAX_SERVICES_PER_BOOKING } from './booking-limits';
 import { findMemberSlots } from './member-slots';
 
+type DayHours = { opensAt: string; closesAt: string };
+
+// Días que muestra la grilla de la página pública (STRIP_DAYS en DayStrip.tsx)
+const PUBLIC_DAYS = 14;
+
 @Injectable()
 export class AvailabilityService {
   constructor(
@@ -163,11 +168,12 @@ export class AvailabilityService {
       },
     });
     if (!business) throw new NotFoundException('Negocio no encontrado');
-    const [acceptsBookings, todayHours] = await Promise.all([
+    const [acceptsBookings, days] = await Promise.all([
       this.acceptsBookings({ slug }),
-      this.todayHours(
+      this.dailyHours(
         { slug, timezone: business.timezone },
         business.members.map((m) => m.id),
+        PUBLIC_DAYS,
       ),
     ]);
     const services = business.services.map(({ imageKey, ...s }) => ({
@@ -180,7 +186,9 @@ export class AvailabilityService {
       logoUrl: this.storage.urlFor(logoKey),
       services,
       acceptsBookings,
-      todayHours,
+      todayHours: days[0].hours,
+      // Días de la grilla en que nadie atiende ("YYYY-MM-DD", zona del negocio)
+      closedDays: days.filter((d) => !d.hours).map((d) => d.date),
     };
   }
 
@@ -194,45 +202,77 @@ export class AvailabilityService {
     business: { slug: string; timezone: string },
     memberIds: string[],
     now: DateTime = DateTime.now(),
-  ): Promise<{ opensAt: string; closesAt: string } | null> {
-    if (memberIds.length === 0) return null;
+  ): Promise<DayHours | null> {
+    const [today] = await this.dailyHours(business, memberIds, 1, now);
+    return today.hours;
+  }
+
+  // Lo mismo que todayHours para cada uno de los próximos `days` días (desde
+  // hoy, en la zona del negocio), con dos consultas en total. La página pública
+  // marca como cerrados los días sin horario
+  async dailyHours(
+    business: { slug: string; timezone: string },
+    memberIds: string[],
+    days: number,
+    now: DateTime = DateTime.now(),
+  ): Promise<{ date: string; hours: DayHours | null }[]> {
     const today = now.setZone(business.timezone).startOf('day');
-    const [hours, blocks] = await Promise.all([
-      this.prisma.workingHours.findMany({
-        where: { memberId: { in: memberIds }, weekday: today.weekday % 7 },
-        select: { memberId: true, opensAt: true, closesAt: true },
-      }),
-      this.prisma.timeBlock.findMany({
-        where: {
-          business: { slug: business.slug },
-          startsAt: { lt: today.plus({ days: 1 }).toJSDate() },
-          endsAt: { gt: today.toJSDate() },
-        },
-        select: { memberId: true, startsAt: true, endsAt: true },
-      }),
-    ]);
-    const at = (hhmm: string) => {
-      const [hour, minute] = hhmm.split(':').map(Number);
-      return today.set({ hour, minute }).toJSDate();
-    };
-    const working = hours.filter(
-      (h) =>
-        !blocks.some(
-          (b) =>
-            (b.memberId === null || b.memberId === h.memberId) &&
-            b.startsAt <= at(h.opensAt) &&
-            b.endsAt >= at(h.closesAt),
-        ),
+    const dates = Array.from({ length: days }, (_, i) =>
+      today.plus({ days: i }),
     );
-    if (working.length === 0) return null;
-    // "HH:mm" se ordena igual como texto que como hora
-    return {
-      opensAt: working.map((h) => h.opensAt).sort()[0],
-      closesAt: working
-        .map((h) => h.closesAt)
-        .sort()
-        .at(-1)!,
-    };
+    const [hours, blocks] = memberIds.length
+      ? await Promise.all([
+          this.prisma.workingHours.findMany({
+            where: {
+              memberId: { in: memberIds },
+              weekday: { in: [...new Set(dates.map((d) => d.weekday % 7))] },
+            },
+            select: {
+              memberId: true,
+              weekday: true,
+              opensAt: true,
+              closesAt: true,
+            },
+          }),
+          this.prisma.timeBlock.findMany({
+            where: {
+              business: { slug: business.slug },
+              startsAt: { lt: today.plus({ days }).toJSDate() },
+              endsAt: { gt: today.toJSDate() },
+            },
+            select: { memberId: true, startsAt: true, endsAt: true },
+          }),
+        ])
+      : [[], []];
+    return dates.map((day) => {
+      const at = (hhmm: string) => {
+        const [hour, minute] = hhmm.split(':').map(Number);
+        return day.set({ hour, minute }).toJSDate();
+      };
+      const working = hours.filter(
+        (h) =>
+          h.weekday === day.weekday % 7 &&
+          !blocks.some(
+            (b) =>
+              (b.memberId === null || b.memberId === h.memberId) &&
+              b.startsAt <= at(h.opensAt) &&
+              b.endsAt >= at(h.closesAt),
+          ),
+      );
+      return {
+        date: day.toISODate()!,
+        // "HH:mm" se ordena igual como texto que como hora
+        hours: working.length
+          ? {
+              opensAt: working.map((h) => h.opensAt).sort()[0],
+              closesAt: working
+                .map((h) => h.closesAt)
+                .sort()
+                .at(-1)!,
+            }
+          : null,
+      };
+    });
   }
 
   // Un negocio recibe reservas solo cuando un dueño activo verificó el correo:

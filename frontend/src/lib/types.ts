@@ -32,6 +32,10 @@ export interface PublicBusiness {
   // Hoy, de la primera apertura al último cierre del equipo ("HH:mm"); null si
   // hoy no atiende nadie (AvailabilityService.todayHours)
   todayHours: { opensAt: string; closesAt: string } | null;
+  // Días de las próximas dos semanas en que no atiende nadie ("YYYY-MM-DD"),
+  // para marcarlos en la grilla (AvailabilityService.dailyHours). Opcional
+  // mientras el backend anterior siga respondiendo durante un despliegue
+  closedDays?: string[];
   services: Omit<Service, "active">[];
   members: {
     id: string;

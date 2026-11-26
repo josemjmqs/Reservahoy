@@ -661,7 +661,11 @@ export default function PublicPage({
               Elige la hora en que llegarás al local.
             </p>
           )}
-          <DayStrip value={date} onChange={setDate} />
+          <DayStrip
+            value={date}
+            onChange={setDate}
+            closedDays={business.closedDays}
+          />
           <p className="mb-3 mt-4 text-sm font-medium text-gray-700">
             {capitalize(longDate(`${date}T12:00:00`, tz))}
           </p>

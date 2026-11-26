@@ -115,6 +115,7 @@ describe('AvailabilityService.getBusiness (página pública)', () => {
         'acceptsBookings',
         'address',
         'brandColor',
+        'closedDays',
         'demo',
         'logoUrl',
         'members',
@@ -271,6 +272,55 @@ describe('AvailabilityService.getBusiness (página pública)', () => {
         })
       ).id;
       expect(await hoursFor([other])).toBeNull();
+    });
+
+    // La grilla de días marca como cerrados los días sin horario
+    const closedFor = async (ids: string[]) =>
+      (await availability.dailyHours({ slug, timezone: tz }, ids, 7, now))
+        .filter((d) => !d.hours)
+        .map((d) => d.date);
+
+    it('dailyHours: cerrado los días en que nadie trabaja', async () => {
+      const week = await availability.dailyHours(
+        { slug, timezone: tz },
+        [morning, afternoon],
+        7,
+        now,
+      );
+      expect(week.slice(0, 2)).toEqual([
+        { date: '2026-11-18', hours: { opensAt: '09:00', closesAt: '20:30' } },
+        { date: '2026-11-19', hours: { opensAt: '07:00', closesAt: '22:00' } },
+      ]);
+      expect(await closedFor([morning, afternoon])).toEqual([
+        '2026-11-20',
+        '2026-11-21',
+        '2026-11-22',
+        '2026-11-23',
+        '2026-11-24',
+      ]);
+    });
+
+    it('dailyHours: un bloqueo de todo el negocio que cubre el día lo cierra', async () => {
+      await prisma.timeBlock.create({
+        data: {
+          businessId,
+          memberId: null,
+          startsAt: DateTime.fromISO('2026-11-19T00:00', { zone: tz }).toJSDate(),
+          endsAt: DateTime.fromISO('2026-11-20T00:00', { zone: tz }).toJSDate(),
+        },
+      });
+      expect(await closedFor([morning, afternoon])).toEqual([
+        '2026-11-19',
+        '2026-11-20',
+        '2026-11-21',
+        '2026-11-22',
+        '2026-11-23',
+        '2026-11-24',
+      ]);
+    });
+
+    it('dailyHours: sin profesionales, todos los días cerrados', async () => {
+      expect(await closedFor([])).toHaveLength(7);
     });
   });
 
