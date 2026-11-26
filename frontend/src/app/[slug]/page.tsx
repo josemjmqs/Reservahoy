@@ -474,9 +474,8 @@ export default function PublicPage({
 
       <SectionTitle
         aside={
-          serviceIds.length >= MAX_SERVICES
-            ? `Máximo ${MAX_SERVICES} por reserva`
-            : "Puedes elegir más de uno"
+          serviceIds.length >= MAX_SERVICES &&
+          `Máximo ${MAX_SERVICES} por reserva`
         }
       >
         Servicios
