@@ -1,6 +1,6 @@
 # Reservahoy
 
-![CI](https://github.com/josemjmqs/Reservaya/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/josemjmqs/Reservahoy/actions/workflows/ci.yml/badge.svg)
 
 Plataforma de reservas online para pequeños negocios (talleres, peluquerías, consultas). Cada negocio tiene su página pública donde sus clientes reservan una hora **sin crear cuenta**, y un panel donde el dueño administra servicios, horarios y agenda.
 
@@ -158,8 +158,8 @@ Navegador ──► Next.js (Vercel) ──► API NestJS (Render) ──► Pos
 Requisitos: Node 22 y Docker Desktop.
 
 ```bash
-git clone https://github.com/josemjmqs/Reservaya.git
-cd Reservaya
+git clone https://github.com/josemjmqs/Reservahoy.git
+cd Reservahoy
 ```
 
 ### 1. Base de datos (PostgreSQL en Docker)
