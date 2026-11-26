@@ -287,4 +287,4 @@ docker-compose.yml
 
 ## Autor
 
-José Díaz · [GitHub](https://github.com/josemjmqs) · [LinkedIn](https://www.linkedin.com/in/jos%C3%A9-ignacio-d%C3%ADaz-hormaz%C3%A1bal-9b515143b)
+José Díaz · [GitHub](https://github.com/josemjmqs) · [LinkedIn](https://www.linkedin.com/in/joseignaciodiazh)
