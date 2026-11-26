@@ -166,10 +166,18 @@ export async function createBusiness(prisma: PrismaClient, spec: BusinessSpec) {
       },
     });
 
-  const corte = await service('Corte de pelo', 45, 12000, 'Pelo', [
-    camila.id,
-    diego.id,
-  ]);
+  // El corte de siempre; los estilos con foto van aparte, en "Estilos de corte"
+  const corte = await service(
+    'Corte de pelo',
+    45,
+    12000,
+    'Pelo',
+    [camila.id, diego.id],
+    {
+      description:
+        'A tijera o máquina, a tu gusto. Si buscas un estilo en particular, míralo en Estilos de corte.',
+    },
+  );
   const barba = await service('Perfilado de barba', 30, 8000, 'Barba', [
     camila.id,
     diego.id,
@@ -179,7 +187,7 @@ export async function createBusiness(prisma: PrismaClient, spec: BusinessSpec) {
     camila.id,
   ]);
 
-  // Tipos de corte con foto, en su propia categoría (va después de Pelo y
+  // Estilos de corte con foto, en su propia categoría (va después de Pelo y
   // Barba, así que parte cerrada). Las fotos están en frontend/public/seed/cortes:
   // la API arma la URL con R2_PUBLIC_URL, así que en local se ven con
   // R2_PUBLIC_URL=http://localhost:3001 (sin esa variable, los servicios quedan
@@ -187,27 +195,28 @@ export async function createBusiness(prisma: PrismaClient, spec: BusinessSpec) {
   // Fotos de Unsplash (licencia de Unsplash, uso libre): degradado, Amritpal
   // Singh; pompadour, Ahmad Ebadi; rapado, Mitchell Orr; bob, Lu; capas,
   // "Jessie Dee" Dabrowski
+  const STYLES = 'Estilos de corte';
   const photo = (file: string) => `seed/cortes/${file}.webp`;
-  await service('Degradado', 45, 14000, 'Cortes', [camila.id, diego.id], {
+  await service('Degradado', 45, 14000, STYLES, [camila.id, diego.id], {
     description:
       'Máquina a los costados que se funde con el largo de arriba. Puede llevar un diseño con navaja.',
     imageKey: photo('degradado'),
   });
-  await service('Pompadour', 50, 16000, 'Cortes', [camila.id, diego.id], {
+  await service('Pompadour', 50, 16000, STYLES, [camila.id, diego.id], {
     description:
       'Volumen hacia atrás arriba y costados cortos. Incluye el peinado con cera o pomada.',
     imageKey: photo('pompadour'),
   });
-  await service('Rapado', 20, 8000, 'Cortes', [camila.id, diego.id], {
+  await service('Rapado', 20, 8000, STYLES, [camila.id, diego.id], {
     description: 'Todo a máquina, al mismo largo o con un leve degradado en la nuca.',
     imageKey: photo('rapado'),
   });
-  await service('Corte bob', 60, 20000, 'Cortes', [camila.id], {
+  await service('Corte bob', 60, 20000, STYLES, [camila.id], {
     description:
       'Recto, a la altura de la mandíbula o del mentón. Incluye lavado y secado.',
     imageKey: photo('bob'),
   });
-  await service('Corte en capas', 60, 22000, 'Cortes', [camila.id], {
+  await service('Corte en capas', 60, 22000, STYLES, [camila.id], {
     description:
       'Para pelo largo: capas que dan movimiento y quitan peso. Incluye lavado y secado.',
     imageKey: photo('capas'),
