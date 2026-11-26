@@ -94,7 +94,7 @@ test("el color de marca reemplaza al índigo en la página pública, con texto l
 
     // dentro de las dos semanas de la grilla de días; no reserva nada
     const date = workdayFrom(5);
-    await openSlots(page, { category: "Pelo", service: "Corte de pelo", date });
+    await openSlots(page, { category: "Cortes", service: "Corte de pelo", date });
     await expectColors(pressed(page, DAY), { bg: rgb(TEAL), fg: WHITE });
     await expectColors(page.getByRole("link", { name: "Ver horas" }), {
       bg: rgb(TEAL),
@@ -115,7 +115,7 @@ test("el color de marca reemplaza al índigo en la página pública, con texto l
     await page.request.patch("/api/business", {
       data: { brandColor: YELLOW },
     });
-    await openSlots(page, { category: "Pelo", service: "Corte de pelo", date });
+    await openSlots(page, { category: "Cortes", service: "Corte de pelo", date });
     await expectColors(pressed(page, DAY), { bg: rgb(YELLOW), fg: DARK });
 
     // Volver al color de Reservahoy (índigo)
@@ -125,7 +125,7 @@ test("el color de marca reemplaza al índigo en la página pública, con texto l
     await expect(
       page.getByRole("status").filter({ hasText: "Guardado." }),
     ).toBeVisible();
-    await openSlots(page, { category: "Pelo", service: "Corte de pelo", date });
+    await openSlots(page, { category: "Cortes", service: "Corte de pelo", date });
     await expectColors(pressed(page, DAY), { bg: rgb("#4f39f6"), fg: WHITE });
   } finally {
     // Deja el negocio demo como estaba
