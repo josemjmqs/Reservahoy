@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/josemjmqs/Reservahoy/actions/workflows/ci.yml/badge.svg)
 
-Plataforma de reservas online para pequeños negocios (talleres, peluquerías, consultas). Cada negocio tiene su página pública donde sus clientes reservan una hora **sin crear cuenta**, y un panel donde el dueño administra servicios, horarios y agenda.
+Plataforma de reservas online para pequeños negocios (talleres, peluquerías, consultas), en producción y usada por un negocio real. Cada negocio tiene su página pública donde sus clientes reservan una hora **sin crear cuenta**, y un panel donde el dueño administra servicios, horarios y agenda.
 
 **Demo:** https://reservahoy.cl/demo (página pública de una peluquería de ejemplo)
 **Panel del negocio, sin cuenta:** en https://reservahoy.cl/login, "Ver el panel de demostración". Entra como la dueña o como un profesional; se puede recorrer todo, pero los cambios no se guardan
