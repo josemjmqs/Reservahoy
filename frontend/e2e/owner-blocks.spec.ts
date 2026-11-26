@@ -11,7 +11,7 @@ import {
 // página pública deja de ofrecer esas horas. (La del profesional, sin "Aplica
 // a", está en staff-panel.spec.ts.)
 
-const SERVICE = { category: "Pelo", service: "Corte de pelo" };
+const SERVICE = { category: "Cortes", service: "Corte de pelo" };
 // Va en el motivo de cada bloqueo de este archivo
 const run = Date.now().toString(36);
 

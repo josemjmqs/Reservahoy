@@ -196,7 +196,7 @@ test.afterAll(async () => {
 async function bookingForm(page: Page) {
   // El formulario con nombre, teléfono y correo aparece al elegir una hora
   await openSlots(page, {
-    category: "Pelo",
+    category: "Cortes",
     service: "Corte de pelo",
     date: workdayFrom(35),
   });

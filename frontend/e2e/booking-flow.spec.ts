@@ -18,7 +18,7 @@ test("un cliente reserva desde la página pública y el dueño la ve en su agend
 
   // 1. Cliente: elige servicio, día y hora, y reserva sin cuenta
   const time = await bookFirstSlot(page, {
-    category: "Pelo",
+    category: "Cortes",
     service: "Corte de pelo",
     date,
     customer,
@@ -40,7 +40,7 @@ test("el cliente elige con qué profesional reserva", async ({ page }) => {
   const customer = `Con Diego E2E ${Date.now().toString(36)}`;
 
   await bookFirstSlot(page, {
-    category: "Pelo",
+    category: "Cortes",
     service: "Corte de pelo",
     date,
     customer,
@@ -97,7 +97,7 @@ test("las categorías muestran sus servicios y las miniaturas solo donde hay fot
   );
   await patchPublicServices(page, (services) =>
     services.map((s) =>
-      s.name === "Corte de pelo" ? { ...s, imageUrl: photo } : s,
+      s.name === "Color completo" ? { ...s, imageUrl: photo } : s,
     ),
   );
   await openPelo(page);
@@ -107,14 +107,14 @@ test("las categorías muestran sus servicios y las miniaturas solo donde hay fot
   );
 
   // Pelo tiene una foto: "Lavado y peinado" deja el espacio vacío, así su
-  // nombre queda alineado con el de "Corte de pelo"
+  // nombre queda alineado con el de "Color completo"
   const pelo = page.locator("#category-Pelo");
   await expect(pelo.locator(`img[src="${photo}"]`)).toBeVisible();
   await expect(pelo.getByText("L", { exact: true })).toHaveCount(0);
   const left = async (name: string) =>
     (await pelo.getByText(name, { exact: true }).boundingBox())!.x;
   const withSpace = await left("Lavado y peinado");
-  expect(withSpace).toBeCloseTo(await left("Corte de pelo"), 0);
+  expect(withSpace).toBeCloseTo(await left("Color completo"), 0);
 
   // Barba no tiene fotos: sin el espacio, el nombre va pegado al borde (abrir
   // Barba cierra Pelo: por eso se midió antes)
@@ -156,19 +156,22 @@ test("un servicio sin detalle se elige y se quita con el +", async ({
 test("con el máximo elegido, otro servicio explica por qué no se suma", async ({
   page,
 }) => {
-  // dos servicios más en Pelo para llegar al máximo (5) y que sobre uno; sin
+  // tres servicios más en Pelo para llegar al máximo (5) y que sobre uno; sin
   // descripción, para que todos se elijan con su "+"
-  const plain = { description: null, imageUrl: null };
   await patchPublicServices(page, (services) => [
-    ...services.map((s) =>
-      s.name === "Corte de pelo" ? { ...s, ...plain } : s,
-    ),
-    { ...services[0], ...plain, id: "e2e-extra-1", name: "Extra uno", category: "Pelo" },
-    { ...services[0], ...plain, id: "e2e-extra-2", name: "Extra dos", category: "Pelo" },
+    ...services,
+    ...["uno", "dos", "tres"].map((n) => ({
+      ...services[0],
+      description: null,
+      imageUrl: null,
+      id: `e2e-extra-${n}`,
+      name: `Extra ${n}`,
+      category: "Pelo",
+    })),
   ]);
   await openPelo(page);
   for (const name of [
-    "Corte de pelo",
+    "Extra tres",
     "Color completo",
     "Lavado y peinado",
     "Extra uno",
@@ -197,15 +200,15 @@ test("tocar un servicio con detalle lo muestra y se elige con el +", async ({
 }) => {
   await patchPublicServices(page, (services) =>
     services.map((s) =>
-      ["Corte de pelo", "Lavado y peinado"].includes(s.name)
+      ["Color completo", "Lavado y peinado"].includes(s.name)
         ? { ...s, description: "Incluye lavado y secado." }
         : s,
     ),
   );
   await openPelo(page);
 
-  const row = page.getByRole("button", { name: /^Corte de pelo/ });
-  const add = page.getByRole("button", { name: "Seleccionar Corte de pelo" });
+  const row = page.getByRole("button", { name: /^Color completo/ });
+  const add = page.getByRole("button", { name: "Seleccionar Color completo" });
   const seeTimes = page.getByRole("link", { name: "Ver horas" });
 
   // cerrado, sin "+" (va la flecha)
@@ -243,7 +246,7 @@ test("tocar un servicio con detalle lo muestra y se elige con el +", async ({
   await expect(row).toHaveAttribute("aria-expanded", "false");
 
   // el check de un servicio elegido lo quita sin abrir su detalle
-  await page.getByRole("button", { name: "Desmarcar Corte de pelo" }).click();
+  await page.getByRole("button", { name: "Desmarcar Color completo" }).click();
   await expect(seeTimes).toHaveCount(0);
   await expect(row).toHaveAttribute("aria-expanded", "false");
 });
@@ -255,7 +258,7 @@ test("tocar un servicio con detalle lo muestra y se elige con el +", async ({
 test("elegir una hora lleva a Tus datos", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   const [time] = await openSlots(page, {
-    category: "Pelo",
+    category: "Cortes",
     service: "Corte de pelo",
     date: workdayFrom(10),
   });
