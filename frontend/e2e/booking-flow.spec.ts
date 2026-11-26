@@ -136,15 +136,15 @@ test("un servicio sin detalle se elige y se quita con el +", async ({
   const seeTimes = page.getByRole("link", { name: "Ver horas" });
 
   await expect(
-    page.getByRole("button", { name: /^Corte de pelo/ }),
+    page.getByRole("button", { name: /^Color completo/ }),
   ).toHaveCount(0);
   // tocar el nombre no hace nada
-  await page.getByText("Corte de pelo", { exact: true }).click();
+  await page.getByText("Color completo", { exact: true }).click();
   await expect(seeTimes).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Seleccionar Corte de pelo" }).click();
+  await page.getByRole("button", { name: "Seleccionar Color completo" }).click();
   await expect(seeTimes).toBeVisible();
-  const remove = page.getByRole("button", { name: "Desmarcar Corte de pelo" });
+  const remove = page.getByRole("button", { name: "Desmarcar Color completo" });
   // es el mismo botón: el foco no se pierde
   await expect(remove).toBeFocused();
   await remove.click();
@@ -156,11 +156,15 @@ test("un servicio sin detalle se elige y se quita con el +", async ({
 test("con el máximo elegido, otro servicio explica por qué no se suma", async ({
   page,
 }) => {
-  // dos servicios más en Pelo para llegar al máximo (5) y que sobre uno
+  // dos servicios más en Pelo para llegar al máximo (5) y que sobre uno; sin
+  // descripción, para que todos se elijan con su "+"
+  const plain = { description: null, imageUrl: null };
   await patchPublicServices(page, (services) => [
-    ...services,
-    { ...services[0], id: "e2e-extra-1", name: "Extra uno", category: "Pelo" },
-    { ...services[0], id: "e2e-extra-2", name: "Extra dos", category: "Pelo" },
+    ...services.map((s) =>
+      s.name === "Corte de pelo" ? { ...s, ...plain } : s,
+    ),
+    { ...services[0], ...plain, id: "e2e-extra-1", name: "Extra uno", category: "Pelo" },
+    { ...services[0], ...plain, id: "e2e-extra-2", name: "Extra dos", category: "Pelo" },
   ]);
   await openPelo(page);
   for (const name of [
@@ -270,16 +274,16 @@ test("la barra de abajo muestra el detalle de lo elegido", async ({ page }) => {
     await category.click();
 
   // sin foto ni descripción, se eligen con el "+" de la fila
-  for (const name of ["Corte de pelo", "Lavado y peinado"])
+  for (const name of ["Color completo", "Lavado y peinado"])
     await page.getByRole("button", { name: `Seleccionar ${name}` }).click();
 
   const toggle = page.getByRole("button", {
-    name: "Lo que estás reservando: Corte de pelo + Lavado y peinado",
+    name: "Lo que estás reservando: Color completo + Lavado y peinado",
   });
   const details = page.locator("#booking-details");
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
   await toggle.click();
-  await expect(details).toContainText("Corte de pelo");
+  await expect(details).toContainText("Color completo");
   await expect(details).toContainText("Lavado y peinado");
   await expect(details).toContainText("Se hacen seguidos");
 
