@@ -166,8 +166,8 @@ export async function createBusiness(prisma: PrismaClient, spec: BusinessSpec) {
       },
     });
 
-  // Las categorías salen en el orden de su primer servicio: Cortes (la que parte
-  // abierta), Pelo y Barba
+  // Las categorías salen en el orden de su primer servicio: Cortes, Pelo y
+  // Barba
   const CUTS = 'Cortes';
   const corte = await service(
     'Corte de pelo',

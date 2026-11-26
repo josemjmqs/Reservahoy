@@ -65,8 +65,9 @@ export function ServicePicker({
   const groups = groupByCategory(services, "Otros");
   // Con una sola categoría (o ninguna) no tiene sentido pedir un clic extra
   const collapsible = groups.length > 1;
-  // La primera categoría parte abierta: se ven servicios y precios sin un clic
-  const [open, setOpen] = useState<string | null>(groups[0]?.[0] ?? null);
+  // Todas parten cerradas: se ven las categorías y lo que trae cada una, y el
+  // cliente abre la que busca
+  const [open, setOpen] = useState<string | null>(null);
 
   if (services.length === 0)
     return <p className="text-sm text-gray-600">Sin servicios disponibles.</p>;

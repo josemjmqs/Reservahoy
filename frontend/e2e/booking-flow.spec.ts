@@ -82,6 +82,19 @@ async function openPelo(page: Page) {
     await category.click();
 }
 
+// Al entrar, todas las categorías están cerradas: el cliente abre la que busca
+test("las categorías parten cerradas", async ({ page }) => {
+  await page.goto(`/${DEMO.slug}`);
+  for (const name of [/^Cortes/, /^Pelo/, /^Barba/])
+    await expect(page.getByRole("button", { name })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  await expect(
+    page.getByRole("button", { name: /^Seleccionar / }),
+  ).toHaveCount(0);
+});
+
 // La categoría muestra los nombres de sus servicios. Las miniaturas van por
 // categoría: donde algún servicio tiene foto, los demás dejan el espacio vacío
 // (sin inicial ni ícono); una categoría sin fotos va sin ese espacio
