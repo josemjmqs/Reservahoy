@@ -90,7 +90,7 @@ export async function openSlots(
   }: { category: string; service: string; date: string; member?: string },
 ): Promise<string[]> {
   await page.goto(`/${DEMO.slug}`);
-  // la primera categoría parte abierta: un clic más la cerraría
+  // las categorías parten cerradas; si ya está abierta, un clic más la cerraría
   const categoryButton = page.getByRole("button", {
     name: new RegExp(`^${category}`),
   });
