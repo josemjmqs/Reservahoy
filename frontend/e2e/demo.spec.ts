@@ -55,7 +55,7 @@ test("la página pública de la demo deja probar la reserva sin guardarla", asyn
   await page.goto(`/${DEMO_SLUG}`);
   await expect(page.getByText("Negocio de demostración.")).toBeVisible();
 
-  await page.getByRole("button", { name: "Seleccionar Corte de pelo", exact: true }).click();
+  await page.getByRole("button", { name: "Seleccionar Color completo", exact: true }).click();
   // Una fecha lejos de hoy, para que haya horas libres a cualquier hora del día
   const date = new Date(Date.now() + 9 * 86_400_000);
   if (date.getDay() === 0) date.setDate(date.getDate() + 1);
