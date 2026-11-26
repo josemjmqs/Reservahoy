@@ -12,13 +12,17 @@ export const todayISO = () => localISO(new Date());
 
 // Las próximas dos semanas como botones ("lun 16") en dos filas de 7, sin
 // desplazamiento lateral (que con mouse no se descubre), y un campo para
-// elegir una fecha más adelante
+// elegir una fecha más adelante. Los días en que el negocio no atiende
+// (`closedDays`, "YYYY-MM-DD") van en gris: se pueden tocar igual, pero se ve
+// de un vistazo cuándo abre
 export function DayStrip({
   value,
   onChange,
+  closedDays = [],
 }: {
   value: string;
   onChange: (date: string) => void;
+  closedDays?: string[];
 }) {
   const now = new Date();
   const days = Array.from({ length: STRIP_DAYS }, (_, i) => {
@@ -45,28 +49,45 @@ export function DayStrip({
       ? month(first)
       : `${month(first)} y ${month(last)}`;
 
+  const closed = new Set(closedDays);
+  const anyClosed = days.some((d) => closed.has(d.iso));
+
   return (
     <div>
-      <p className="mb-2 text-sm text-gray-600 first-letter:uppercase">{months}</p>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm text-gray-600">
+        <p className="first-letter:uppercase">{months}</p>
+        {anyClosed && (
+          <p className="flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className="size-3 rounded-[3px] border border-gray-200 bg-gray-200/70"
+            />
+            Cerrado
+          </p>
+        )}
+      </div>
       <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
           {days.map((d, i) => {
             const selected = d.iso === value;
+            const isClosed = closed.has(d.iso);
             return (
               <button
                 key={d.iso}
                 type="button"
                 aria-pressed={selected}
-                aria-label={d.label}
+                aria-label={isClosed ? `${d.label}, cerrado` : d.label}
                 onClick={() => onChange(d.iso)}
                 className={`flex h-16 flex-col items-center justify-center gap-0.5 rounded-control border transition ${
                   selected
                     ? "border-brand bg-brand text-brand-fg"
-                    : "border-gray-200 bg-white hover:border-brand/40"
+                    : isClosed
+                      ? "border-gray-200 bg-gray-200/70 text-gray-500 hover:border-gray-300"
+                      : "border-gray-200 bg-white hover:border-brand/40"
                 }`}
               >
                 {/* El primero dice "Hoy": es el día que más se busca */}
                 <span
-                  className={`text-[13px] leading-none font-medium capitalize ${selected ? "text-brand-fg/85" : "text-gray-600"}`}
+                  className={`text-[13px] leading-none font-medium capitalize ${selected ? "text-brand-fg/85" : isClosed ? "text-gray-500" : "text-gray-600"}`}
                 >
                   {i === 0 ? "Hoy" : d.weekday}
                 </span>
